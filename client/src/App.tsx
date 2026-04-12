@@ -128,7 +128,7 @@ function LoginPage({ onLogin }: { onLogin: (user: AppAuthUser) => void }) {
       const nextUser: AppAuthUser = {
         name: demoCreds.name,
         email: demoCreds.email,
-        role: demoCreds.role,
+        role: demoCreds.role as PortalRole,
         source: 'demo',
       };
 
@@ -319,14 +319,14 @@ export default function App() {
         <Route 
           path="/" 
           element={
-            user ? (
-              <Navigate to={user.role === 'employee' ? '/employee/dashboard' : '/manager/dashboard'} replace />
+            user && user.role === 'employee' ? (
+              <Navigate to="/employee/dashboard" replace />
             ) : (
               <PortalSelectionPage />
             )
           } 
         />
-        <Route path="/login/:portal" element={user ? <Navigate to={user.role === 'employee' ? '/employee/dashboard' : '/manager/dashboard'} replace /> : <LoginPage onLogin={handleLogin} />} />
+        <Route path="/login/:portal" element={user ? <Navigate to={user.role === 'employee' ? '/employee/dashboard' : '/'} replace /> : <LoginPage onLogin={handleLogin} />} />
         <Route path="/invite-signup" element={user ? <Navigate to="/employee/dashboard" replace /> : <InviteSignupPage onLogin={handleLogin} />} />
         <Route path="/unauthorized" element={<Unauthorized />} />
 

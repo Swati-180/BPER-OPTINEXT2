@@ -1,6 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Copy, MailPlus, Search, UserPlus, X } from 'lucide-react';
-import { createInvite, getInviteSignupLink } from '../../lib/authStorage';
+import { Check, Copy, Link2, MailPlus, Search, UserPlus, X } from 'lucide-react';
 
 type UserRole = 'Admin' | 'Employee' | 'Manager';
 type UserStatus = 'Active' | 'Inactive';
@@ -77,10 +76,16 @@ export default function UsersPage() {
 	const [createUserForm, setCreateUserForm] = useState<CreateUserFormState>(initialCreateUserForm);
 	const [createUserError, setCreateUserError] = useState('');
 	const [isInviteOpen, setIsInviteOpen] = useState(false);
-	const [inviteEmail, setInviteEmail] = useState('');
 	const [inviteError, setInviteError] = useState('');
-	const [inviteLink, setInviteLink] = useState('');
 	const [inviteCopied, setInviteCopied] = useState(false);
+
+	const inviteUrl = useMemo(() => {
+		try {
+			return `${window.location.origin}/invite-signup?org=QGGlobal&type=employee&invite=true`;
+		} catch {
+			return '';
+		}
+	}, []);
 
 	const filteredUsers = useMemo(() => {
 		const normalized = query.trim().toLowerCase();
@@ -107,9 +112,7 @@ export default function UsersPage() {
 
 	function closeInviteModal() {
 		setIsInviteOpen(false);
-		setInviteEmail('');
 		setInviteError('');
-		setInviteLink('');
 		setInviteCopied(false);
 	}
 
@@ -149,29 +152,18 @@ export default function UsersPage() {
 		closeCreateUserModal();
 	}
 
-	function handleInviteEmployee() {
-		const email = inviteEmail.trim().toLowerCase();
-		if (!email) {
-			setInviteError('Employee email is required.');
+	async function handleCopyInviteUrl() {
+		if (!inviteUrl) {
+			setInviteError('Invite URL could not be generated.');
 			return;
 		}
-
-		if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-			setInviteError('Please enter a valid employee email address.');
-			return;
-		}
-
-		const invite = createInvite(email, 'QG User2');
-		setInviteError('');
-		setInviteLink(getInviteSignupLink(invite.token));
-		setInviteCopied(false);
-	}
-
-	async function copyInviteLink() {
-		if (!inviteLink) return;
-		if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
-			await navigator.clipboard.writeText(inviteLink);
+		try {
+			await navigator.clipboard.writeText(inviteUrl);
+			setInviteError('');
 			setInviteCopied(true);
+			setTimeout(() => setInviteCopied(false), 2000);
+		} catch {
+			setInviteError('Invite URL could not be generated.');
 		}
 	}
 
@@ -538,7 +530,7 @@ export default function UsersPage() {
 							<div>
 								<h2 className="text-2xl font-bold tracking-tight text-[#152542]">Invite Employee</h2>
 								<p className="mt-1 text-sm text-[#667C99]">
-									Send a signup link that pre-fills the email and forces the employee onboarding flow.
+									Generate and copy an invite URL to share with the employee. The link will open the signup page with the organization pre-filled and employee onboarding enabled.
 								</p>
 							</div>
 							<button
@@ -550,62 +542,54 @@ export default function UsersPage() {
 							</button>
 						</div>
 
-						<div className="px-6 py-6">
-							<div className="grid grid-cols-1 gap-4 md:grid-cols-[1fr_auto] md:items-end">
-								<label className="space-y-1.5">
-									<span className="text-[11px] font-bold uppercase tracking-[0.14em] text-[#6A809E]">Employee Email</span>
-									<input
-										type="email"
-										value={inviteEmail}
-										onChange={(event) => {
-											setInviteEmail(event.target.value);
-											setInviteError('');
-										}}
-										placeholder="employee.name@company.com"
-										className="h-11 w-full rounded-xl border border-[#D8E2F0] bg-white px-4 text-sm text-[#243A59] outline-none placeholder:text-[#95A7BF] focus:border-[#7BA0CF] focus:ring-2 focus:ring-[#D7E6F7]"
-									/>
-								</label>
-								<button
-									type="button"
-									onClick={handleInviteEmployee}
-									className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-[#165BAA] px-5 text-sm font-semibold text-white shadow-[0_8px_14px_rgba(22,91,170,0.22)] transition-colors hover:bg-[#124B8D]"
-								>
-									Create Invite
-								</button>
+						<div className="px-6 py-6 space-y-4">
+							<div className="space-y-1.5">
+								<span className="text-[11px] font-bold uppercase tracking-[0.14em] text-[#6A809E]">Copy Invite URL</span>
+								<div className="flex items-center gap-2">
+									<div className="relative flex-1">
+										<Link2 className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#8AA0BC]" />
+										<input
+											readOnly
+											value={inviteUrl}
+											className="h-11 w-full rounded-xl border border-[#D8E2F0] bg-[#F6FAFF] pl-9 pr-4 text-sm text-[#243A59] outline-none cursor-default select-all"
+										/>
+									</div>
+									<button
+										type="button"
+										onClick={handleCopyInviteUrl}
+										className={`inline-flex h-11 min-w-[90px] items-center justify-center gap-2 rounded-xl px-5 text-sm font-semibold text-white shadow-[0_8px_14px_rgba(22,91,170,0.22)] transition-all ${
+											inviteCopied
+												? 'bg-[#1A9A52] hover:bg-[#178044]'
+												: 'bg-[#165BAA] hover:bg-[#124B8D]'
+										}`}
+									>
+										{inviteCopied ? (
+											<><Check className="h-4 w-4" /> Copied!</>
+										) : (
+											<><Copy className="h-4 w-4" /> Copy</>
+										)}
+									</button>
+								</div>
+								{inviteError && (
+									<p className="text-xs font-semibold text-[#AC373A] mt-1">{inviteError}</p>
+								)}
 							</div>
 
-							{inviteError && (
-								<div className="mt-4 rounded-xl border border-[#F4D2D3] bg-[#FFF5F5] px-4 py-3 text-sm font-medium text-[#AC373A]">
-									{inviteError}
-								</div>
-							)}
+							<div className="rounded-xl border border-[#DCE6F3] bg-[#F6FAFF] px-4 py-3">
+								<p className="text-xs text-[#4E6787] leading-relaxed">
+									<span className="font-semibold text-[#1A3556]">How it works:</span> Share this URL with the employee. When they open it, the signup page will automatically mark them as an employee and pre-fill the organization details. After signing up, they will be directed straight to the Employee Portal.
+								</p>
+							</div>
 
-							{inviteLink && (
-								<div className="mt-4 rounded-2xl border border-[#DCE6F3] bg-[#F6FAFF] p-4">
-									<p className="text-[11px] font-bold uppercase tracking-[0.14em] text-[#6A809E]">Invite Link</p>
-									<p className="mt-1 break-all text-sm text-[#1A3556]">{inviteLink}</p>
-									<p className="mt-2 text-xs text-[#6A829F]">
-										The signup page will prefill this email and hide portal selection for the invited employee.
-									</p>
-									<div className="mt-4 flex items-center gap-2">
-										<button
-											type="button"
-											onClick={copyInviteLink}
-											className="inline-flex items-center gap-2 rounded-lg border border-[#BFD3EA] bg-white px-3 py-2 text-xs font-semibold text-[#1E5EAB] hover:bg-[#F2F7FF]"
-										>
-											<Copy className="h-3.5 w-3.5" />
-											{inviteCopied ? 'Copied' : 'Copy Link'}
-										</button>
-										<button
-											type="button"
-											onClick={closeInviteModal}
-											className="rounded-lg px-3 py-2 text-xs font-semibold text-[#4C617E] transition-colors hover:bg-[#F3F7FC]"
-										>
-											Done
-										</button>
-									</div>
-								</div>
-							)}
+							<div className="flex justify-end pt-1">
+								<button
+									type="button"
+									onClick={closeInviteModal}
+									className="rounded-lg px-4 py-2 text-sm font-semibold text-[#4C617E] transition-colors hover:bg-[#F3F7FC]"
+								>
+									Close
+								</button>
+							</div>
 						</div>
 					</div>
 				</div>
