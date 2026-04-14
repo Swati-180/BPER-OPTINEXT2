@@ -16,16 +16,13 @@ interface EditorState {
   suggestions?: string[];
 }
 
-const majorProcessSuggestions = ["Accounts Payable", "General Accounting", "Treasury", "Vendor Management"];
-const processSuggestions = ["Invoice Processing", "Month End / Per", "Reconciliation", "Audit Support"];
-const subProcessSuggestions = [
-  "CHA, Freight inward/…",
-  "GIT Entries",
-  "P1 from Plants",
-  "Monthly accrual reconciliations",
-];
-const applicationSuggestions = ["SAP", "ServiceNow", "Excel", "Power BI", "Concur"];
 const frequencyOptions = ["Daily", "Weekly", "Fortnightly", "Monthly", "Quarterly", "Annual"];
+
+interface TaxonomyItem {
+  majorProcess: string;
+  process: string;
+  subProcesses: string[];
+}
 
 interface StepProps {
   employee: EmployeeSnapshot;
@@ -40,54 +37,10 @@ const initialRows: WdtActivityRow[] = [
     activityCategory: "core",
     majorProcess: "Accounts Payable",
     process: "Invoice Processing",
-    subProcess: "CHA, Freight inward/…",
+    subProcess: "Validation and Posting",
     frequency: "Daily",
     volumesMonthly: 10000,
     timeTakenHoursPerMonth: 1,
-    applicationsUsed: "SAP",
-    comments: "",
-  },
-  {
-    activityCategory: "core",
-    majorProcess: "General Accounting",
-    process: "Month End / Per",
-    subProcess: "GIT Entries",
-    frequency: "Fortnightly",
-    volumesMonthly: 100,
-    timeTakenHoursPerMonth: 2,
-    applicationsUsed: "SAP",
-    comments: "",
-  },
-  {
-    activityCategory: "core",
-    majorProcess: "General Accounting",
-    process: "Month End / Per",
-    subProcess: "P1 from Plants",
-    frequency: "Annual",
-    volumesMonthly: 10,
-    timeTakenHoursPerMonth: 30,
-    applicationsUsed: "SAP",
-    comments: "",
-  },
-  {
-    activityCategory: "core",
-    majorProcess: "General Accounting",
-    process: "Month End / Per",
-    subProcess: "New period for GL, AF…",
-    frequency: "Fortnightly",
-    volumesMonthly: 200,
-    timeTakenHoursPerMonth: 40,
-    applicationsUsed: "SAP",
-    comments: "",
-  },
-  {
-    activityCategory: "support",
-    majorProcess: "Support Activities",
-    process: "Miscellaneous Tasks",
-    subProcess: "Monthly accrual reconciliations",
-    frequency: "Monthly",
-    volumesMonthly: 20,
-    timeTakenHoursPerMonth: 20,
     applicationsUsed: "SAP",
     comments: "",
   },
@@ -118,6 +71,42 @@ export function Step2({ employee, payload, onNext, onPrev, onPayloadChange }: St
   const [rows, setRows] = useState<WdtActivityRow[]>(payload?.rows?.length ? payload.rows : initialRows);
   const [editor, setEditor] = useState<EditorState | null>(null);
   const [editorDraft, setEditorDraft] = useState("");
+  const [taxonomy, setTaxonomy] = useState<TaxonomyItem[]>([]);
+
+  useEffect(() => {
+    async function fetchTaxonomy() {
+      try {
+        const token = localStorage.getItem('bper.auth.token');
+        const res = await fetch('http://localhost:5000/api/taxonomy/processes', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (res.ok) {
+          setTaxonomy(await res.json());
+        }
+      } catch (err) {
+        console.error('Failed to fetch taxonomy:', err);
+      }
+    }
+    fetchTaxonomy();
+  }, []);
+
+  const majorProcessSuggestions = useMemo(() => Array.from(new Set(taxonomy.map(t => t.majorProcess))), [taxonomy]);
+  
+  const getProcessSuggestions = (rowIndex: number) => {
+    const row = rows[rowIndex];
+    if (!row?.majorProcess) return Array.from(new Set(taxonomy.map(t => t.process)));
+    return taxonomy.filter(t => t.majorProcess === row.majorProcess).map(t => t.process);
+  };
+
+  const getSubProcessSuggestions = (rowIndex: number) => {
+    const row = rows[rowIndex];
+    if (!row?.process) return [];
+    const match = taxonomy.find(t => t.process === row.process && (!row.majorProcess || t.majorProcess === row.majorProcess));
+    return match ? match.subProcesses : [];
+  };
+
+  const applicationSuggestions = ["SAP", "ServiceNow", "Excel", "Power BI", "Concur"];
+
   const coreEntries = useMemo(
     () => rows.map((row, rowIndex) => ({ row, rowIndex })).filter((entry) => entry.row.activityCategory !== "support"),
     [rows]
@@ -278,7 +267,7 @@ export function Step2({ employee, payload, onNext, onPrev, onPayloadChange }: St
                             rowIndex,
                             field: "majorProcess",
                             label: "Major Process",
-                            description: "Select from predefined process families (Central Process Database integration will be added later) or type in natural language.",
+                            description: "Select from predefined process families fetched from the Central Process Database.",
                             kind: "single",
                             placeholder: "e.g. Accounts Payable",
                             suggestions: majorProcessSuggestions,
@@ -298,7 +287,7 @@ export function Step2({ employee, payload, onNext, onPrev, onPayloadChange }: St
                             description: "Pick a standard process or type a custom process description in natural language.",
                             kind: "single",
                             placeholder: "e.g. Invoice Processing",
-                            suggestions: processSuggestions,
+                            suggestions: getProcessSuggestions(rowIndex),
                           })
                         }
                       />
@@ -312,10 +301,10 @@ export function Step2({ employee, payload, onNext, onPrev, onPayloadChange }: St
                             rowIndex,
                             field: "subProcess",
                             label: "Sub Process",
-                            description: "Use natural language for complete activity detail. Longer entries are easier to edit in this expanded view.",
+                            description: "Use natural language for complete activity detail.",
                             kind: "multi",
                             placeholder: "Describe sub process in detail",
-                            suggestions: subProcessSuggestions,
+                            suggestions: getSubProcessSuggestions(rowIndex),
                           })
                         }
                       />
@@ -468,7 +457,7 @@ export function Step2({ employee, payload, onNext, onPrev, onPayloadChange }: St
                             description: "Describe the support activity in detail.",
                             kind: "multi",
                             placeholder: "Enter miscellaneous activity",
-                            suggestions: subProcessSuggestions,
+                            suggestions: getSubProcessSuggestions(rowIndex),
                           })
                         }
                       />

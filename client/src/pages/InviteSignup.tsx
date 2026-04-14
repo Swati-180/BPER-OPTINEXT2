@@ -54,20 +54,46 @@ export default function InviteSignupPage({ onLogin }: InviteSignupProps) {
     }
 
     setIsLoading(true);
-    await new Promise((resolve) => setTimeout(resolve, 900));
+    
+    try {
+      const response = await fetch('http://localhost:5000/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: fullName.trim(),
+          email: invite.email,
+          password,
+          role: 'employee',
+          userType: 'employee'
+        })
+      });
 
-    acceptInvite(invite.token);
-    const nextUser: AppAuthUser = {
-      name: fullName.trim(),
-      email: invite.email,
-      role: 'employee',
-      source: 'invite',
-      inviteToken: invite.token,
-    };
+      const data = await response.json();
 
-    onLogin(nextUser);
-    navigate('/employee/dashboard', { replace: true });
-    setIsLoading(false);
+      if (!response.ok) {
+        throw new Error(data.message || 'Signup failed');
+      }
+
+      acceptInvite(invite.token);
+      const nextUser: AppAuthUser = {
+        name: fullName.trim(),
+        email: invite.email,
+        role: 'employee',
+        source: 'invite',
+        inviteToken: invite.token,
+      };
+
+      if (typeof window !== 'undefined') {
+        window.localStorage.setItem('bper.auth.token', data.token);
+      }
+
+      onLogin(nextUser);
+      navigate('/employee/dashboard', { replace: true });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An unexpected error occurred');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   if (!invite) {

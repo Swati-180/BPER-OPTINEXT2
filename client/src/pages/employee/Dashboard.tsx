@@ -1,6 +1,7 @@
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, BookOpenCheck, CircleHelp, ClipboardCheck, FilePenLine } from 'lucide-react';
+import { ArrowRight, BookOpenCheck, CircleHelp, ClipboardCheck, FilePenLine, Loader2 } from 'lucide-react';
+import { apiFetch } from '../../lib/api';
 import { demoEmployeeProfile } from './demoEmployeeData';
 import {
   type BperSubmissionRecord,
@@ -75,6 +76,37 @@ function activityStatusChipClass(status: 'Under Review' | 'Approved' | 'Changes 
 }
 
 export default function Dashboard() {
+  const [profile, setProfile] = useState<any>(null);
+  const [submissions, setSubmissions] = useState<BperSubmissionRecord[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+
+
+  useEffect(() => {
+    async function init() {
+      setIsLoading(true);
+      try {
+        // Fetch Profile
+        const profileRes = await apiFetch('/auth/me');
+        const profileData = await profileRes.json();
+        
+        if (profileRes.ok) {
+          setProfile(profileData);
+          
+          // Fetch Submissions
+          const subsData = await loadBperSubmissions();
+          // Filter by real employeeId
+          setSubmissions(subsData.filter((item) => item.employee.employeeId === profileData.employeeId));
+        }
+      } catch (error) {
+        console.error('Dashboard init failed:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    init();
+  }, []);
+
   const loginAt = useMemo(() => {
     if (typeof window === 'undefined') return null;
     return window.sessionStorage.getItem(LOGIN_SESSION_KEY);
@@ -86,24 +118,16 @@ export default function Dashboard() {
     return Number.isNaN(value) ? null : value;
   }, [loginAt]);
 
-  const employeeSubmissions = useMemo(
+  const filteredSubmissions = useMemo(
     () =>
-      loadBperSubmissions().filter(
-        (item) => item.employee.employeeId === demoEmployeeProfile.employeeId
-      ),
-    []
-  );
-
-  const submissions = useMemo(
-    () =>
-      employeeSubmissions.filter(
+      submissions.filter(
         (item) => loginAtEpoch === null || new Date(item.submittedAt).getTime() >= loginAtEpoch
       ),
-    [employeeSubmissions, loginAtEpoch]
+    [submissions, loginAtEpoch]
   );
 
-  const latestSubmission = submissions[0] ?? null;
-  const hasSubmission = submissions.length > 0;
+  const latestSubmission = filteredSubmissions[0] ?? null;
+  const hasSubmission = filteredSubmissions.length > 0;
   const latestStatus: 'Under Review' | 'Approved' | 'Changes Requested' | 'Submission Pending' =
     latestSubmission?.status ?? 'Submission Pending';
 
@@ -130,7 +154,7 @@ export default function Dashboard() {
           <h1 className="text-3xl font-bold tracking-tight text-[#0F1F3D]">Dashboard</h1>
         </div>
         <p className="text-base text-[#4A607C]">
-          Hi {demoEmployeeProfile.name}, submit from Forms to start this cycle. Once approved by manager, your deadline will be marked finished.
+          Hi {profile?.name || 'User'}, submit from Forms to start this cycle. Once approved by manager, your deadline will be marked finished.
         </p>
       </div>
 
@@ -228,17 +252,17 @@ export default function Dashboard() {
           <div className="mt-4 space-y-4 flex-1">
             <div className="rounded-xl border border-[#DCE4F2] bg-[#F8FBFF] p-3">
               <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#6F88A8]">Total records</p>
-              <p className="mt-1 text-2xl font-bold text-[#1A2E4D]">{submissions.length}</p>
+              <p className="mt-1 text-2xl font-bold text-[#1A2E4D]">{filteredSubmissions.length}</p>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div className="rounded-xl border border-[#DCE4F2] bg-white p-3">
                 <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#6F88A8]">Under review</p>
-                <p className="mt-1 text-xl font-bold text-[#1A2E4D]">{underReviewCount}</p>
+                <p className="mt-1 text-xl font-bold text-[#1A2E4D]">{filteredSubmissions.filter(i => i.status === 'Under Review').length}</p>
               </div>
               <div className="rounded-xl border border-[#DCE4F2] bg-white p-3">
                 <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#6F88A8]">Approved</p>
-                <p className="mt-1 text-xl font-bold text-[#1A2E4D]">{approvedCount}</p>
+                <p className="mt-1 text-xl font-bold text-[#1A2E4D]">{filteredSubmissions.filter(i => i.status === 'Approved').length}</p>
               </div>
             </div>
 
@@ -281,14 +305,21 @@ export default function Dashboard() {
                 </tr>
               </thead>
               <tbody>
-                {submissions.length === 0 ? (
+                {isLoading ? (
+                  <tr>
+                    <td colSpan={7} className="px-6 py-8 text-center text-sm text-slate-500">
+                      <Loader2 className="animate-spin h-5 w-5 mx-auto mb-2" />
+                      Loading submissions...
+                    </td>
+                  </tr>
+                ) : filteredSubmissions.length === 0 ? (
                   <tr>
                     <td colSpan={7} className="px-6 py-8 text-center text-sm text-slate-500">
                       No submission activity yet in this login session. Submit your BPER form in Forms to populate this section.
                     </td>
                   </tr>
                 ) : (
-                  submissions.slice(0, 5).map((record, index) => {
+                  filteredSubmissions.slice(0, 5).map((record, index) => {
                     const formId = buildDashboardFormId(record.referenceId, record.employee.employeeId);
                     const commentsLabel = record.reviewHistory.length > 0 ? 'Comments' : 'View Status';
                     const actionLabel = record.status === 'Changes Requested' ? 'Update & Resubmit' : 'NA';

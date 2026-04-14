@@ -1,11 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Check, Download, Flag, Printer, X } from 'lucide-react';
-import { demoEmployeeProfile } from '../employee/demoEmployeeData';
+import { Check, Download, Flag, Printer, X, Loader2 } from 'lucide-react';
+import { apiFetch } from '../../lib/api';
 import {
 	applyManagerReviewToSubmission,
-	buildBperSubmission,
 	loadBperSubmissions,
-	resetEmployeeReviewQueueToSinglePending,
 	type BperSubmissionRecord,
 } from '../employee/bperSubmissionStorage';
 
@@ -50,69 +48,42 @@ export default function FormsPage() {
 	const [flagDraft, setFlagDraft] = useState('');
 	const [savedFlags, setSavedFlags] = useState<Record<string, { rowIndex: number; note: string }[]>>({});
 	const [pendingUserApprovals, setPendingUserApprovals] = useState<PendingUserApproval[]>(initialPendingUserApprovals);
+	const [managerProfile, setManagerProfile] = useState<any>(null);
+	const [allSubmissions, setAllSubmissions] = useState<BperSubmissionRecord[]>([]);
+	const [isLoading, setIsLoading] = useState(true);
+	const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
+	const [reviewStatus, setReviewStatus] = useState<'Approved' | 'Changes Requested'>('Approved');
+	const [reviewComment, setReviewComment] = useState('');
 
 	useEffect(() => {
-		const all = loadBperSubmissions();
-		const latestDemo = all.find((record) => record.employee.employeeId === demoEmployeeProfile.employeeId);
-		const payload = latestDemo?.payload ?? {
-			employee: demoEmployeeProfile,
-			rows: [
-				{
-					activityCategory: 'core',
-					majorProcess: 'Accounts Payable',
-					process: 'Invoice Operations',
-					subProcess: 'Validate Vendor Invoice',
-					frequency: 'Daily',
-					volumesMonthly: 640,
-					timeTakenHoursPerMonth: 88,
-					applicationsUsed: 'SAP',
-					comments: 'Looks good. Validate weekend allocation.',
-				},
-				{
-					activityCategory: 'core',
-					majorProcess: 'Accounts Payable',
-					process: 'ERP Posting',
-					subProcess: 'Post Invoice In ERP',
-					frequency: 'Daily',
-					volumesMonthly: 520,
-					timeTakenHoursPerMonth: 56,
-					applicationsUsed: 'SAP',
-					comments: 'Posting queue tracked against SLA.',
-				},
-				{
-					activityCategory: 'support',
-					majorProcess: 'Reconciliation',
-					process: 'Month-End Close',
-					subProcess: 'Monthly Accrual Reconciliations',
-					frequency: 'Monthly',
-					volumesMonthly: 24,
-					timeTakenHoursPerMonth: 20,
-					applicationsUsed: 'Excel',
-					comments: 'Monthly accrual reconciliations',
-				},
-			],
-		};
+		async function init() {
+			setIsLoading(true);
+			try {
+				// Fetch Manager Profile
+				const profileRes = await apiFetch('/auth/me');
+				if (profileRes.ok) {
+					setManagerProfile(await profileRes.json());
+				}
 
-		resetEmployeeReviewQueueToSinglePending({
-			employeeId: demoEmployeeProfile.employeeId,
-			payload,
-		});
-
-		setRefreshTick((prev) => prev + 1);
-	}, []);
-
-	const allSubmissions = useMemo(() => loadBperSubmissions(), [refreshTick]);
+				// Fetch Submissions
+				const subsData = await loadBperSubmissions();
+				setAllSubmissions(subsData);
+			} catch (error) {
+				console.error('Forms init failed:', error);
+			} finally {
+				setIsLoading(false);
+			}
+		}
+		init();
+	}, [refreshTick]);
 
 	const pendingQueue = useMemo(
-		() =>
-			allSubmissions.filter(
-				(record) => record.employee.employeeId === demoEmployeeProfile.employeeId && record.status === 'Under Review'
-			),
+		() => allSubmissions.filter((record) => record.status === 'Under Review'),
 		[allSubmissions]
 	);
 
 	const historyQueue = useMemo(
-		() => allSubmissions.filter((record) => record.employee.employeeId === demoEmployeeProfile.employeeId && record.status !== 'Under Review'),
+		() => allSubmissions.filter((record) => record.status !== 'Under Review'),
 		[allSubmissions]
 	);
 
@@ -120,7 +91,8 @@ export default function FormsPage() {
 
 	const selectedRecord = useMemo(() => {
 		if (!activeQueue.length) return null;
-		return activeQueue.find((record) => record.referenceId === selectedReferenceId) || activeQueue[0];
+		const match = activeQueue.find((record) => record.referenceId === selectedReferenceId);
+		return match || activeQueue[0];
 	}, [activeQueue, selectedReferenceId]);
 
 	useEffect(() => {
@@ -138,6 +110,8 @@ export default function FormsPage() {
 	function refreshQueue() {
 		setFlagRowIndex(null);
 		setFlagDraft('');
+		setReviewComment('');
+		setIsReviewModalOpen(false);
 		setRefreshTick((prev) => prev + 1);
 	}
 
@@ -148,35 +122,25 @@ export default function FormsPage() {
 		}
 	}, [canReviewSelected]);
 
-	function handleApprove() {
-		if (!selectedRecord) return;
-		applyManagerReviewToSubmission({
-			referenceId: selectedRecord.referenceId,
-			status: 'Approved',
-			comment: flaggedCount > 0 ? 'Submission approved with manager flags acknowledged.' : 'Submission approved by manager.',
-			managerName: 'QG User2',
-		});
-		refreshQueue();
+	function openReviewModal(status: 'Approved' | 'Changes Requested') {
+		setReviewStatus(status);
+		// Pre-fill with a summary of flags if any
+		if (status === 'Changes Requested' && flaggedCount > 0) {
+			const summary = selectedFlags.map(f => `Row ${f.rowIndex + 1}: ${f.note}`).join('\n');
+			setReviewComment(`Please address the following items:\n${summary}`);
+		} else {
+			setReviewComment('');
+		}
+		setIsReviewModalOpen(true);
 	}
 
-	function handleGrant() {
-		if (!selectedRecord) return;
-		applyManagerReviewToSubmission({
+	async function submitReview() {
+		if (!selectedRecord || !managerProfile) return;
+		await applyManagerReviewToSubmission({
 			referenceId: selectedRecord.referenceId,
-			status: 'Approved',
-			comment: 'Final approval granted by manager.',
-			managerName: 'QG User2',
-		});
-		refreshQueue();
-	}
-
-	function handleReturn() {
-		if (!selectedRecord) return;
-		applyManagerReviewToSubmission({
-			referenceId: selectedRecord.referenceId,
-			status: 'Changes Requested',
-			comment: flagDraft.trim() || 'Changes requested. Please address flagged items and resubmit.',
-			managerName: 'QG User2',
+			status: reviewStatus,
+			comment: reviewComment.trim() || (reviewStatus === 'Approved' ? 'Submission approved.' : 'Changes requested.'),
+			managerName: managerProfile.name,
 		});
 		refreshQueue();
 	}
@@ -207,6 +171,11 @@ export default function FormsPage() {
 
 	return (
 		<div className="space-y-4 animate-in fade-in duration-500">
+			{isLoading ? (
+				<div className="flex h-96 items-center justify-center rounded-2xl border border-[#D9E4F2] bg-white shadow-sm">
+					<Loader2 className="h-10 w-10 animate-spin text-[#1A5BA7]" />
+				</div>
+			) : (
 			<section className="rounded-2xl border border-[#D9E4F2] bg-white shadow-[0_6px_18px_rgba(16,42,80,0.08)] overflow-hidden">
 				<div className="grid grid-cols-1 lg:grid-cols-[280px_1fr]">
 					<aside className="border-r border-[#DDE7F3] bg-[#F8FBFF]">
@@ -263,7 +232,7 @@ export default function FormsPage() {
 											</div>
 											<div>
 												<p className="text-base font-bold text-[#102846]">{record.employee.name}</p>
-												<p className="text-xs font-semibold uppercase tracking-[0.13em] text-[#8CA0BA]">{record.employee.department}</p>
+												<p className="text-xs font-semibold uppercase tracking-[0.13em] text-[#8CA0BA]">{record.employee.title || 'Employee'}</p>
 											</div>
 										</div>
 
@@ -393,25 +362,18 @@ export default function FormsPage() {
 											<div className="flex flex-wrap items-center justify-end gap-2.5">
 												<button
 													type="button"
-													onClick={handleReturn}
+													onClick={() => openReviewModal('Changes Requested')}
 													className="rounded-xl border border-[#CFDBEB] bg-white px-4 py-2.5 text-sm font-semibold text-[#374F70] hover:bg-[#F7FAFF]"
 												>
 													Return for Revision
 												</button>
 												<button
 													type="button"
-													onClick={handleGrant}
-													className="rounded-xl border border-[#BDE8CA] bg-[#EAF8F0] px-4 py-2.5 text-sm font-semibold text-[#198B4D] hover:bg-[#DDF4E7]"
-												>
-													Grant
-												</button>
-												<button
-													type="button"
-													onClick={handleApprove}
+													onClick={() => openReviewModal('Approved')}
 													className="inline-flex items-center gap-2 rounded-xl bg-[#031F45] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[#062B5F]"
 												>
 													<Check className="h-4 w-4" />
-													Approve Submission
+													Complete Review
 												</button>
 											</div>
 										) : (
@@ -430,6 +392,52 @@ export default function FormsPage() {
 					</div>
 				</div>
 			</section>
+			)}
+
+			{isReviewModalOpen && (
+				<div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm">
+					<div className="w-full max-w-lg rounded-2xl border border-[#DDE7F3] bg-white shadow-2xl">
+						<div className="flex items-center justify-between border-b border-[#E1EAF6] px-6 py-4">
+							<h3 className="text-xl font-bold text-[#102846]">Confirm {reviewStatus}</h3>
+							<button onClick={() => setIsReviewModalOpen(false)} className="text-[#8CA0BA] hover:text-[#5C7597]">
+								<X size={20} />
+							</button>
+						</div>
+						<div className="p-6">
+							<p className="text-sm text-[#4D6380]">
+								You are about to {reviewStatus === 'Approved' ? 'approve' : 'request changes for'} <strong>{selectedRecord?.employee.name}'s</strong> submission.
+							</p>
+							<div className="mt-4">
+								<label className="text-[11px] font-bold uppercase tracking-[0.14em] text-[#8FA4BE]">
+									Review Comments / Guidance
+								</label>
+								<textarea
+									value={reviewComment}
+									onChange={(e) => setReviewComment(e.target.value)}
+									placeholder="Add general comments or specific instructions..."
+									className="mt-2 h-32 w-full resize-none rounded-xl border border-[#CFDBEB] p-3 text-sm outline-none focus:border-[#1A5BA7] focus:ring-2 focus:ring-[#EBF4FF]"
+								/>
+							</div>
+							<div className="mt-6 flex gap-3">
+								<button
+									onClick={() => setIsReviewModalOpen(false)}
+									className="flex-1 rounded-xl border border-[#CFDBEB] py-2.5 text-sm font-semibold text-[#374F70] hover:bg-slate-50"
+								>
+									Cancel
+								</button>
+								<button
+									onClick={submitReview}
+									className={`flex-1 rounded-xl py-2.5 text-sm font-semibold text-white ${
+										reviewStatus === 'Approved' ? 'bg-[#031F45] hover:bg-[#062B5F]' : 'bg-[#E92D2D] hover:bg-[#CF2424]'
+									}`}
+								>
+									Confirm {reviewStatus}
+								</button>
+							</div>
+						</div>
+					</div>
+				</div>
+			)}
 
 			<section className="rounded-2xl border border-[#D9E4F2] bg-white shadow-[0_6px_18px_rgba(16,42,80,0.08)] overflow-hidden">
 				<div className="border-b border-[#E1EAF6] px-5 py-4">

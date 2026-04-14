@@ -25,6 +25,27 @@ export interface BperSubmissionRecord {
 
 const STORAGE_KEY = "bper.employee.submissions";
 const ACTIVE_UNDER_REVIEW_KEY = "bper.employee.activeUnderReviewRef";
+const DRAFT_KEY = "bper.employee.formDraft";
+
+export async function saveBperDraft(payload: WdtPayload | null) {
+  if (typeof window === "undefined") return;
+  if (!payload) {
+    window.localStorage.removeItem(DRAFT_KEY);
+  } else {
+    window.localStorage.setItem(DRAFT_KEY, JSON.stringify(payload));
+  }
+}
+
+export function loadBperDraft(): WdtPayload | null {
+  if (typeof window === "undefined") return null;
+  const draft = window.localStorage.getItem(DRAFT_KEY);
+  if (!draft) return null;
+  try {
+    return JSON.parse(draft);
+  } catch {
+    return null;
+  }
+}
 
 const DEFAULT_MANAGER_NAME = "QG User2";
 
@@ -94,40 +115,42 @@ export function buildBperSubmission(payload: WdtPayload): BperSubmissionRecord {
   };
 }
 
-export function loadBperSubmissions(): BperSubmissionRecord[] {
-  if (typeof window === "undefined") return [];
-
+export async function loadBperSubmissions(): Promise<BperSubmissionRecord[]> {
   try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(seededRecords));
-      return seededRecords;
-    }
-
-    const parsed = JSON.parse(raw) as unknown;
-    if (!Array.isArray(parsed)) return seededRecords;
-
-    const normalized = parsed.map(normalizeRecord).filter((item): item is BperSubmissionRecord => item !== null);
-    const hasSeeded = normalized.some((item) => item.referenceId === seededRecords[0].referenceId);
-    const next = hasSeeded ? normalized : [...normalized, ...seededRecords];
-    const cleaned = retainLatestUnderReview(sortBySubmittedAtDesc(next));
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(cleaned));
-    return cleaned;
-  } catch {
-    return seededRecords;
+    const token = localStorage.getItem('bper.auth.token');
+    const response = await fetch('http://localhost:5000/api/wdt/submissions', {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    const data = await response.json();
+    return response.ok ? data : [];
+  } catch (error) {
+    console.error('Failed to load submissions:', error);
+    return [];
   }
 }
 
-export function saveBperSubmission(record: BperSubmissionRecord) {
-  if (typeof window === "undefined") return;
-
-  const existing = loadBperSubmissions();
-  const next = [
-    record,
-    ...existing.filter((item) => item.referenceId !== record.referenceId && item.status !== "Under Review"),
-  ];
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-  window.localStorage.setItem(ACTIVE_UNDER_REVIEW_KEY, record.referenceId);
+export async function saveBperSubmission(record: BperSubmissionRecord) {
+  try {
+    const token = localStorage.getItem('bper.auth.token');
+    const response = await fetch('http://localhost:5000/api/wdt/submit', {
+      method: 'POST',
+      headers: { 
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify(record)
+    });
+    
+    if (response.ok) {
+      const data = await response.json();
+      if (typeof window !== 'undefined') {
+        window.localStorage.setItem(ACTIVE_UNDER_REVIEW_KEY, data.referenceId);
+      }
+      return data;
+    }
+  } catch (error) {
+    console.error('Failed to save submission:', error);
+  }
 }
 
 export function getLatestBperSubmission() {
@@ -156,52 +179,35 @@ export function clearActiveUnderReviewReferenceId() {
   window.localStorage.removeItem(ACTIVE_UNDER_REVIEW_KEY);
 }
 
-export function applyManagerReviewToSubmission(input: {
+export async function applyManagerReviewToSubmission(input: {
   referenceId: string;
   status: "Approved" | "Changes Requested";
   comment: string;
   managerName?: string;
 }) {
-  if (typeof window === "undefined") return null;
-
-  const records = loadBperSubmissions();
-  const managerName = input.managerName?.trim() || DEFAULT_MANAGER_NAME;
-  const comment = input.comment.trim();
-  const reviewedAt = new Date().toISOString();
-
-  let updatedRecord: BperSubmissionRecord | null = null;
-
-  const next = records.map((record) => {
-    if (record.referenceId !== input.referenceId) return record;
-
-    updatedRecord = {
-      ...record,
-      status: input.status,
-      pendingFrom: "NA",
-      reviewHistory: [
-        {
-          reviewedAt,
-          managerName,
-          status: input.status,
-          comment:
-            comment ||
-            (input.status === "Approved"
-              ? "Submission approved by manager."
-              : "Changes requested. Please revise and resubmit."),
-        },
-        ...record.reviewHistory,
-      ],
-    };
-
-    return updatedRecord;
-  });
-
-  if (!updatedRecord) return null;
-
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-  clearActiveUnderReviewReferenceId();
-
-  return updatedRecord;
+  try {
+    const token = localStorage.getItem('bper.auth.token');
+    const response = await fetch(`http://localhost:5000/api/wdt/submissions/${input.referenceId}`, {
+      method: 'PATCH',
+      headers: { 
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        status: input.status,
+        comment: input.comment,
+        managerName: input.managerName || "Manager"
+      })
+    });
+    
+    if (response.ok) {
+      clearActiveUnderReviewReferenceId();
+      return await response.json();
+    }
+  } catch (error) {
+    console.error('Failed to update submission:', error);
+    return null;
+  }
 }
 
 export function resetEmployeeReviewQueueToSinglePending(input: {

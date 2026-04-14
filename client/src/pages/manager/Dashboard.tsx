@@ -1,9 +1,10 @@
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import {
   ArrowRight,
   Check,
   Clock3,
   FileCheck2,
+  Loader2,
   TrendingUp,
   UserRound,
   Users,
@@ -42,13 +43,24 @@ function getStatusClass(status: BperSubmissionRecord['status']) {
 }
 
 export default function Dashboard() {
-  const submissions = useMemo(
-    () =>
-      loadBperSubmissions().filter(
-        (item) => item.employee.employeeId === demoEmployeeProfile.employeeId
-      ),
-    []
-  );
+  const [submissions, setSubmissions] = useState<BperSubmissionRecord[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    async function init() {
+      setIsLoading(true);
+      try {
+        const data = await loadBperSubmissions();
+        // Show all team submissions for the manager dashboard
+        setSubmissions(data || []);
+      } catch (err) {
+        console.error('Loader error:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    init();
+  }, []);
 
   const latestSubmission = submissions[0] ?? null;
 
@@ -125,6 +137,14 @@ export default function Dashboard() {
 
   const maxTowerFte = towerDistribution[0]?.fte || 1;
 
+  if (isLoading) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-[#165BAA]/5">
+        <Loader2 className="h-10 w-10 animate-spin text-[#165BAA]" />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-3.5 animate-in fade-in duration-500">
       <section className="rounded-2xl border border-[#D9E4F2] bg-white p-4 shadow-[0_5px_14px_rgba(16,42,80,0.08)]">
@@ -142,7 +162,7 @@ export default function Dashboard() {
         </div>
 
         <div className="mt-3 grid grid-cols-1 gap-2.5 sm:grid-cols-2 xl:grid-cols-5">
-          <KpiCard icon={Users} label="Total Employees" value="1" helper="QG User1 in active scope" />
+          <KpiCard icon={Users} label="Total Employees" value={String(new Set(submissions.map(s => s.employee.employeeId)).size)} helper="Active in cycle" />
           <KpiCard icon={FileCheck2} label="Forms Submitted" value={String(statusCounts.total)} helper="Quarterly cycle records" />
           <KpiCard icon={Clock3} label="Pending Review" value={String(statusCounts.pending)} helper={statusCounts.pending > 0 ? 'Needs manager action' : 'No active queue'} />
           <KpiCard icon={Check} label="Approved" value={String(statusCounts.approved)} helper={statusCounts.approved > 0 ? 'Review closed' : 'Awaiting approval'} />
@@ -207,7 +227,7 @@ export default function Dashboard() {
         <article className="rounded-2xl border border-[#D9E4F2] bg-white shadow-[0_5px_14px_rgba(16,42,80,0.06)] overflow-hidden">
           <div className="flex items-center justify-between border-b border-[#E4ECF7] px-4 py-3">
             <h3 className="text-xl font-bold text-[#102846]">Top 5 Activities by FTE</h3>
-            <span className="text-xs font-semibold uppercase tracking-[0.14em] text-[#8AA0BA]">QG User1 Workload</span>
+            <span className="text-xs font-semibold uppercase tracking-[0.14em] text-[#8AA0BA]">Aggregated Team Workload</span>
           </div>
 
           <div className="overflow-x-auto">

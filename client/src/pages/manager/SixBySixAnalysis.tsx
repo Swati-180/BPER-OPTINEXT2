@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 
 type Department = 'F&A' | 'HR' | 'Logistics' | 'SCM';
 type CriteriaValue = 'H' | 'M' | 'L';
@@ -16,34 +16,7 @@ type ProcessRow = {
 const PERFORMANCE_LABELS = ['ML', 'R', 'V', 'M', 'S', 'E'];
 const CHARACTERISTIC_LABELS = ['S', 'C', 'C', 'P', 'R', 'S'];
 
-const PROCESS_DATA: ProcessRow[] = [
-	row('Inter company Reconciliations for Sales and Goods', 'F&A', 'Accounting', ['L', 'H', 'H', 'H', 'H', 'H', 'L', 'H', 'L', 'L', 'H', 'L'], 9, true),
-	row('Investor Reporting', 'F&A', 'Reporting', ['L', 'H', 'H', 'H', 'L', 'H', 'L', 'H', 'L', 'H', 'H', 'H'], 6, false),
-	row('Management reporting Variance Analysis', 'F&A', 'Reporting', ['L', 'H', 'H', 'H', 'L', 'H', 'L', 'H', 'L', 'L', 'L', 'L'], 9, true),
-	row('Monthend accounting entries - provisions, accruals, write offs', 'F&A', 'Accounting', ['L', 'H', 'H', 'H', 'H', 'H', 'L', 'H', 'L', 'L', 'L', 'L'], 10, true),
-	row('Approvals for expenses (operating / capital)', 'F&A', 'Transactional', ['H', 'H', 'H', 'H', 'H', 'H', 'L', 'L', 'L', 'L', 'L', 'L'], 12, true),
-	row('Verification of Invoices', 'F&A', 'Transactional', ['L', 'H', 'H', 'H', 'H', 'H', 'L', 'H', 'L', 'L', 'L', 'L'], 10, true),
-	row('Three way reconciliations of goods received', 'F&A', 'Transactional', ['H', 'H', 'H', 'H', 'H', 'H', 'L', 'H', 'L', 'L', 'L', 'L'], 11, true),
-	row('Invoice Processing - finished goods, services', 'F&A', 'Transactional', ['L', 'H', 'H', 'H', 'H', 'H', 'L', 'L', 'L', 'L', 'L', 'L'], 11, true),
-	row('Payment Processing (checks / funds transfers)', 'F&A', 'Transactional', ['L', 'H', 'H', 'H', 'H', 'H', 'L', 'H', 'L', 'L', 'L', 'L'], 10, true),
-	row('Accounting for accounts receivables', 'F&A', 'Accounting', ['L', 'H', 'H', 'H', 'H', 'H', 'L', 'L', 'L', 'L', 'L', 'L'], 11, true),
-	row('Tax Verification - income tax (corporate)', 'F&A', 'Accounting', ['L', 'H', 'H', 'H', 'L', 'L', 'L', 'H', 'L', 'L', 'H', 'H'], 6, false),
-	row('Inter company Accounting - Sales and Goods', 'F&A', 'Accounting', ['L', 'H', 'H', 'H', 'H', 'H', 'L', 'H', 'L', 'L', 'H', 'L'], 9, true),
-	row('Sourcing Resumes', 'HR', 'Functional', ['L', 'M', 'H', 'H', 'H', 'M', 'L', 'H', 'L', 'L', 'L', 'L'], 8, true),
-	row('Workforce Analytics', 'HR', 'Analytics', ['H', 'H', 'H', 'L', 'H', 'H', 'L', 'L', 'L', 'L', 'L', 'L'], 11, true),
-	row('Employee Data Management', 'HR', 'Functional', ['H', 'H', 'H', 'L', 'H', 'H', 'L', 'L', 'M', 'L', 'L', 'L'], 10, true),
-	row('Payroll Processing - Staff and Operators', 'HR', 'Transactional', ['H', 'H', 'H', 'M', 'H', 'H', 'L', 'L', 'L', 'L', 'L', 'L'], 11, true),
-	row('Health and Welfare Benefits Administration', 'HR', 'Functional', ['H', 'H', 'H', 'M', 'H', 'H', 'L', 'L', 'L', 'L', 'M', 'L'], 10, true),
-	row('Building Job Descriptions', 'HR', 'Functional', ['L', 'M', 'M', 'H', 'H', 'M', 'L', 'H', 'L', 'L', 'L', 'H'], 6, false),
-	row('Approval and Payments on freight charges', 'Logistics', 'Transactional', ['L', 'H', 'H', 'H', 'H', 'L', 'L', 'H', 'L', 'L', 'H', 'L'], 8, true),
-	row('Freight Forwarding Management', 'Logistics', 'Functional', ['L', 'H', 'H', 'H', 'H', 'L', 'L', 'H', 'L', 'H', 'H', 'L'], 7, false),
-	row('Logistics MIS and Reporting', 'Logistics', 'Analytics', ['L', 'H', 'H', 'H', 'L', 'H', 'L', 'L', 'L', 'L', 'L', 'L'], 10, true),
-	row('Develop and Implement Procurement Strategies', 'SCM', 'Analytics', ['H', 'L', 'H', 'H', 'L', 'L', 'H', 'L', 'H', 'L', 'L', 'H'], 6, false),
-	row('Create and Maintain PO from approved PI', 'SCM', 'Transactional', ['H', 'H', 'H', 'L', 'H', 'H', 'L', 'H', 'L', 'L', 'L', 'L'], 10, true),
-	row('Reconciliations (PR / PO / Invoice)', 'SCM', 'Transactional', ['H', 'H', 'H', 'M', 'H', 'H', 'L', 'H', 'L', 'L', 'L', 'L'], 10, true),
-	row('EOQ Management - Inventory Planning', 'SCM', 'Analytics', ['H', 'H', 'H', 'L', 'H', 'H', 'L', 'H', 'H', 'L', 'L', 'H'], 8, true),
-	row('Vendor Master maintenance', 'SCM', 'Transactional', ['L', 'H', 'H', 'H', 'H', 'H', 'L', 'L', 'L', 'L', 'L', 'L'], 11, true),
-];
+
 
 const SCORE_BUCKETS = [
 	{ label: '0-4', min: 0, max: 4 },
@@ -56,16 +29,35 @@ const SCORE_BUCKETS = [
 export default function SixBySixAnalysisPage() {
 	const [activeTab, setActiveTab] = useState<AnalysisTab>('overview');
 	const [departmentFilter, setDepartmentFilter] = useState<'All Departments' | Department>('All Departments');
+	const [processData, setProcessData] = useState<ProcessRow[]>([]);
+	const [isLoading, setIsLoading] = useState(true);
+
+	useEffect(() => {
+		const fetchData = async () => {
+			setIsLoading(true);
+			try {
+				const token = localStorage.getItem('bper.auth.token');
+				const response = await fetch(`http://localhost:5000/api/analysis/six-by-six?department=${departmentFilter}`, {
+					headers: {
+						'Authorization': `Bearer ${token}`
+					}
+				});
+				const data = await response.json();
+				if (response.ok) {
+					setProcessData(data);
+				}
+			} catch (error) {
+				console.error('Failed to fetch 6x6 data:', error);
+			} finally {
+				setIsLoading(false);
+			}
+		};
+		fetchData();
+	}, [departmentFilter]);
 
 	const departments = useMemo(() => ['All Departments', 'F&A', 'HR', 'Logistics', 'SCM'] as const, []);
 
-	const filteredRows = useMemo(
-		() =>
-			PROCESS_DATA.filter((item) =>
-				departmentFilter === 'All Departments' ? true : item.department === departmentFilter
-			),
-		[departmentFilter]
-	);
+	const filteredRows = processData;
 
 	const departmentStats = useMemo(() => {
 		const map = new Map<Department, { consolidated: number; notConsolidated: number }>();
@@ -373,16 +365,7 @@ export default function SixBySixAnalysisPage() {
 	);
 }
 
-function row(
-	process: string,
-	department: Department,
-	type: string,
-	criteria: CriteriaValue[],
-	score: number,
-	consolidated: boolean
-): ProcessRow {
-	return { process, department, type, criteria, score, consolidated };
-}
+
 
 function TabButton({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
 	return (

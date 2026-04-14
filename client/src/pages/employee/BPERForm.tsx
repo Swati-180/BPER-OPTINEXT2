@@ -1,22 +1,82 @@
 import { useEffect, useMemo, useState } from "react";
-import { Check, CheckCircle2, Download, ExternalLink, X } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { Check, CheckCircle2, Download, ExternalLink, X, Loader2 } from "lucide-react";
+import { useNavigate, useParams } from "react-router-dom";
 import { Step1 } from "./Step1";
 import { Step2 } from "./Step2";
 import { Step3 } from "./Step3";
 import type { WdtPayload } from "./formTypes";
 import { demoEmployeeProfile } from "./demoEmployeeData";
-import { buildBperSubmission, saveBperSubmission } from "./bperSubmissionStorage";
+import { buildBperSubmission, saveBperSubmission, loadBperDraft, saveBperDraft } from "./bperSubmissionStorage";
 import { useEmployeeDraftGuard } from "../../layouts/EmployeeLayout";
 
 export default function BPERForm() {
   const navigate = useNavigate();
+  const { refId } = useParams();
   const { setHasUnsavedDraft } = useEmployeeDraftGuard();
+  const [profile, setProfile] = useState<any>(null);
+  const [isLoadingProfile, setIsLoadingProfile] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
   const [payload, setPayload] = useState<WdtPayload | null>(null);
   const [showSuccessOverlay, setShowSuccessOverlay] = useState(false);
   const [submittedCount, setSubmittedCount] = useState(0);
   const [isSubmitted, setIsSubmitted] = useState(false);
+
+  useEffect(() => {
+    async function fetchProfile() {
+      setIsLoadingProfile(true);
+      try {
+        const token = localStorage.getItem('bper.auth.token');
+        const res = await fetch('http://localhost:5000/api/auth/me', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await res.json();
+        if (res.ok) {
+          setProfile(data);
+        }
+      } catch (error) {
+        console.error('Failed to fetch profile for form:', error);
+      } finally {
+        setIsLoadingProfile(false);
+      }
+    }
+    fetchProfile();
+  }, []);
+
+  useEffect(() => {
+    async function loadInitialData() {
+      if (refId) {
+        setIsLoadingProfile(true);
+        try {
+          const token = localStorage.getItem('bper.auth.token');
+          const res = await fetch(`http://localhost:5000/api/wdt/submissions/${refId}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          if (res.ok) {
+            const data = await res.json();
+            setPayload(data.payload);
+            setCurrentStep(2); // Jump to details for revision
+          }
+        } catch (err) {
+          console.error('Failed to load refId submission:', err);
+        } finally {
+          setIsLoadingProfile(false);
+        }
+      } else {
+        const draft = loadBperDraft();
+        if (draft) {
+          setPayload(draft);
+        }
+      }
+    }
+    loadInitialData();
+  }, [refId]);
+
+  useEffect(() => {
+    if (payload && !isSubmitted) {
+      saveBperDraft(payload);
+    }
+  }, [payload, isSubmitted]);
 
   useEffect(() => {
     if (isSubmitted) {
@@ -32,17 +92,34 @@ export default function BPERForm() {
     [payload]
   );
 
-  const handleSubmit = () => {
-    if (!payload) return;
-    setSubmittedCount(payload.rows.length);
-    saveBperSubmission(buildBperSubmission(payload));
-    setIsSubmitted(true);
-    setHasUnsavedDraft(false);
-    setShowSuccessOverlay(true);
+  const handleSubmit = async () => {
+    if (!payload || !profile) return;
+    setIsSubmitting(true);
+    try {
+      const submission = buildBperSubmission(payload);
+      // Ensure submission uses real profile data if not already set
+      submission.employee = {
+        ...profile,
+        title: profile.designation,
+        supervisorTitle: profile.supervisorTitle || "Manager",
+      };
+
+      setSubmittedCount(payload.rows.length);
+      await saveBperSubmission(submission);
+      await saveBperDraft(null); // Clear draft on success
+      setIsSubmitted(true);
+      setHasUnsavedDraft(false);
+      setShowSuccessOverlay(true);
+    } catch (error) {
+      console.error('Submission failed:', error);
+      alert('Failed to submit form. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleDownloadSummary = () => {
-    if (!payload) return;
+    if (!payload || !profile) return;
 
     const summaryWindow = window.open("", "_blank", "noopener,noreferrer,width=980,height=760");
     if (!summaryWindow) {
@@ -85,8 +162,8 @@ export default function BPERForm() {
           <h1>BPER Submission Summary</h1>
           <div class="sub">Employee submission snapshot ready for download or print-to-PDF.</div>
           <div class="grid">
-            <div class="card"><div class="label">Employee</div><div class="value">${escapeHtml(demoEmployeeProfile.name)}</div></div>
-            <div class="card"><div class="label">Employee ID</div><div class="value">${escapeHtml(demoEmployeeProfile.employeeId)}</div></div>
+            <div class="card"><div class="label">Employee</div><div class="value">${escapeHtml(profile.name)}</div></div>
+            <div class="card"><div class="label">Employee ID</div><div class="value">${escapeHtml(profile.employeeId)}</div></div>
             <div class="card"><div class="label">Activity Entries</div><div class="value">${payload.rows.length}</div></div>
             <div class="card"><div class="label">Total Hours</div><div class="value">${totalHours.toFixed(1)} hrs/month</div></div>
           </div>
@@ -146,6 +223,12 @@ export default function BPERForm() {
         </div>
       </div>
 
+      {isLoadingProfile ? (
+        <div className="flex h-64 items-center justify-center rounded-xl border border-slate-200 bg-white shadow-sm">
+          <Loader2 className="h-8 w-8 animate-spin text-blue-700" />
+        </div>
+      ) : (
+      <>
       <div className="w-full relative shadow-sm rounded-md">
         <div className="bg-white rounded-t-md border border-slate-200 px-4 py-4 sm:px-6 shadow-sm relative z-10 space-y-4">
           <div className="flex items-center justify-between gap-4">
@@ -199,10 +282,10 @@ export default function BPERForm() {
         </div>
 
         <div className="relative -mt-px w-full z-0">
-          {currentStep === 1 && <Step1 employee={demoEmployeeProfile} onNext={() => setCurrentStep(2)} onPrev={() => navigate("/employee/dashboard")} />}
+          {currentStep === 1 && <Step1 employee={profile} onNext={() => setCurrentStep(2)} onPrev={() => navigate("/employee/dashboard")} />}
           {currentStep === 2 && (
             <Step2
-              employee={demoEmployeeProfile}
+              employee={profile}
               payload={payload}
               onNext={() => setCurrentStep(3)}
               onPrev={() => setCurrentStep(1)}
@@ -274,9 +357,9 @@ export default function BPERForm() {
                   <div className="rounded-xl border border-blue-100 bg-white p-4 shadow-sm">
                     <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500 mb-3">Submission details</p>
                     <div className="space-y-3 text-sm">
-                      <DetailLine label="Employee" value={demoEmployeeProfile.name} />
-                      <DetailLine label="Employee ID" value={demoEmployeeProfile.employeeId} />
-                      <DetailLine label="Reference" value={`BPER-${demoEmployeeProfile.employeeId}-${submittedCount}`} />
+                      <DetailLine label="Employee" value={profile?.name} />
+                      <DetailLine label="Employee ID" value={profile?.employeeId} />
+                      <DetailLine label="Reference" value={`BPER-${profile?.employeeId}-${submittedCount}`} />
                     </div>
                   </div>
                 </div>
@@ -308,6 +391,8 @@ export default function BPERForm() {
             </div>
           </div>
         </div>
+      )}
+      </>
       )}
     </div>
   );

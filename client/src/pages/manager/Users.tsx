@@ -1,5 +1,6 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { Check, Copy, Link2, MailPlus, Search, UserPlus, X } from 'lucide-react';
+import { apiFetch } from '../../lib/api';
 
 type UserRole = 'Admin' | 'Employee' | 'Manager';
 type UserStatus = 'Active' | 'Inactive';
@@ -67,7 +68,8 @@ const initialCreateUserForm: CreateUserFormState = {
 };
 
 export default function UsersPage() {
-	const [userRows, setUserRows] = useState<UserRow[]>(initialUsers);
+	const [userRows, setUserRows] = useState<UserRow[]>([]);
+	const [isLoading, setIsLoading] = useState(true);
 	const [query, setQuery] = useState('');
 	const [roleFilter, setRoleFilter] = useState<'All' | UserRole>('All');
 	const [clientFilter, setClientFilter] = useState<'All' | string>('All');
@@ -78,6 +80,39 @@ export default function UsersPage() {
 	const [isInviteOpen, setIsInviteOpen] = useState(false);
 	const [inviteError, setInviteError] = useState('');
 	const [inviteCopied, setInviteCopied] = useState(false);
+
+	const fetchUsers = async () => {
+		setIsLoading(true);
+		try {
+			const token = localStorage.getItem('bper.auth.token');
+			const response = await fetch('http://localhost:5000/api/auth/users', {
+				headers: { 'Authorization': `Bearer ${token}` }
+			});
+			const data = await response.json();
+			if (response.ok) {
+				// Map backend users to frontend UserRow structure
+				const mapped: UserRow[] = data.map((u: any) => ({
+					employeeId: u.employeeId || 'NA',
+					name: u.name,
+					email: u.email,
+					client: u.client || 'BU011',
+					band: u.band || 'NA',
+					designation: u.designation || 'NA',
+					role: (u.role.charAt(0).toUpperCase() + u.role.slice(1)) as UserRole,
+					status: u.isActive ? 'Active' : 'Inactive'
+				}));
+				setUserRows(mapped);
+			}
+		} catch (error) {
+			console.error('Failed to fetch users:', error);
+		} finally {
+			setIsLoading(false);
+		}
+	};
+
+	useEffect(() => {
+		fetchUsers();
+	}, []);
 
 	const inviteUrl = useMemo(() => {
 		try {
@@ -116,7 +151,7 @@ export default function UsersPage() {
 		setInviteCopied(false);
 	}
 
-	function handleCreateUser() {
+	async function handleCreateUser() {
 		const employeeId = createUserForm.employeeId.trim();
 		const fullName = createUserForm.fullName.trim();
 		const email = createUserForm.email.trim().toLowerCase();
@@ -126,30 +161,34 @@ export default function UsersPage() {
 			return;
 		}
 
-		const duplicateExists = userRows.some(
-			(user) => user.employeeId.toLowerCase() === employeeId.toLowerCase() || user.email.toLowerCase() === email
-		);
+		setCreateUserError('');
+		try {
+			const response = await apiFetch('/auth/register', {
+				method: 'POST',
+				body: JSON.stringify({
+					name: fullName,
+					email,
+					password: 'DefaultPassword123!', // Admin created default
+					employeeId,
+					designation: createUserForm.jobTitle.trim(),
+					band: createUserForm.jobBand,
+					client: createUserForm.client,
+					role: createUserForm.role.toLowerCase(),
+					userType: createUserForm.role === 'Employee' ? 'employee' : 'manager'
+				})
+			});
 
-		if (duplicateExists) {
-			setCreateUserError('A user with this Employee ID or Email already exists.');
-			return;
+			const data = await response.json();
+			if (!response.ok) {
+				throw new Error(data.message || 'Failed to create user');
+			}
+
+			// Refresh list
+			fetchUsers();
+			closeCreateUserModal();
+		} catch (err: any) {
+			setCreateUserError(err.message);
 		}
-
-		setUserRows((previous) => [
-			{
-				employeeId,
-				name: fullName,
-				email,
-				client: createUserForm.client || 'QG Global',
-				band: createUserForm.jobBand || 'L1',
-				designation: createUserForm.jobTitle.trim() || '-',
-				role: createUserForm.role,
-				status: 'Active',
-			},
-			...previous,
-		]);
-
-		closeCreateUserModal();
 	}
 
 	async function handleCopyInviteUrl() {
@@ -266,7 +305,16 @@ export default function UsersPage() {
 								</tr>
 							</thead>
 							<tbody>
-								{filteredUsers.length === 0 ? (
+								{isLoading ? (
+									<tr>
+										<td colSpan={7} className="px-4 py-12 text-center text-sm text-[#6B829E]">
+											<div className="flex flex-col items-center gap-3">
+												<div className="h-6 w-6 animate-spin rounded-full border-2 border-[#1E5EAB] border-t-transparent"></div>
+												<span>Loading workforce ledger...</span>
+											</div>
+										</td>
+									</tr>
+								) : filteredUsers.length === 0 ? (
 									<tr>
 										<td colSpan={7} className="px-4 py-7 text-center text-xs text-[#6B829E]">
 											No users match the selected filters.

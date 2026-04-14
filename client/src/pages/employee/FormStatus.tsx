@@ -1,5 +1,6 @@
-import { type ReactNode, useMemo, useState } from "react";
-import { Clock3, Search, ShieldCheck, FileText, X, MessageSquareText, CircleAlert } from "lucide-react";
+import { type ReactNode, useMemo, useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { Clock3, Search, ShieldCheck, FileText, X, MessageSquareText, CircleAlert, Loader2 } from "lucide-react";
 import {
   type BperSubmissionRecord,
   loadBperSubmissions,
@@ -7,14 +8,50 @@ import {
   formatDateISO,
   getActiveUnderReviewReferenceId,
 } from "./bperSubmissionStorage";
-import { demoEmployeeProfile } from "./demoEmployeeData";
 
 export default function FormStatus() {
-  const records = useMemo(() => loadBperSubmissions(), []);
-  const activeUnderReviewRef = useMemo(() => getActiveUnderReviewReferenceId(), []);
+  const navigate = useNavigate();
+  const [profile, setProfile] = useState<any>(null);
+  const [records, setRecords] = useState<BperSubmissionRecord[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedReferenceId, setSelectedReferenceId] = useState<string>(records[0]?.referenceId || "");
+  const [selectedReferenceId, setSelectedReferenceId] = useState<string>("");
   const [activeCommentsRef, setActiveCommentsRef] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function init() {
+      setIsLoading(true);
+      try {
+        const token = localStorage.getItem('bper.auth.token');
+        
+        // Fetch Profile
+        const profileRes = await fetch('http://localhost:5000/api/auth/me', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const profileData = await profileRes.json();
+        
+        if (profileRes.ok) {
+          setProfile(profileData);
+          
+          // Fetch Submissions
+          const subsData = await loadBperSubmissions();
+          // Filter by real employeeId
+          const filtered = subsData.filter((item) => item.employee.employeeId === profileData.employeeId);
+          setRecords(filtered);
+          if (filtered.length > 0) {
+            setSelectedReferenceId(filtered[0].referenceId);
+          }
+        }
+      } catch (error) {
+        console.error('Form Status init failed:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    init();
+  }, []);
+
+  const activeUnderReviewRef = useMemo(() => getActiveUnderReviewReferenceId(), []);
 
   const visibleRecords = useMemo(
     () => records.filter((record) => record.status !== "Under Review" || record.referenceId === activeUnderReviewRef),
@@ -44,6 +81,17 @@ export default function FormStatus() {
     filteredRecords.find((record) => record.referenceId === selectedReferenceId) || filteredRecords[0] || visibleRecords[0] || null;
   const activeCommentsRecord = visibleRecords.find((record) => record.referenceId === activeCommentsRef) || null;
 
+  if (isLoading) {
+    return (
+      <div className="flex h-96 items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="h-10 w-10 animate-spin text-[#165BAA]" />
+          <span className="text-slate-500 font-semibold">Loading submissions...</span>
+        </div>
+      </div>
+    );
+  }
+
   if (!selectedRecord) {
     return (
       <div className="space-y-6 animate-in fade-in duration-500">
@@ -68,11 +116,11 @@ export default function FormStatus() {
 
   const submittedDate = formatBperSubmittedDate(selectedRecord.submittedAt);
   const effectiveTitle =
-    selectedRecord.employee.title && selectedRecord.employee.title !== "-" ? selectedRecord.employee.title : demoEmployeeProfile.title;
+    selectedRecord.employee.title && selectedRecord.employee.title !== "-" ? selectedRecord.employee.title : (profile?.band + ' ' + profile?.designation);
   const effectiveSupervisor =
     selectedRecord.employee.supervisorName && selectedRecord.employee.supervisorName !== "-"
       ? selectedRecord.employee.supervisorName
-      : demoEmployeeProfile.supervisorName;
+      : profile?.supervisorName;
   const statusMode = getStatusMode(selectedRecord.status);
 
   return (
@@ -137,8 +185,8 @@ export default function FormStatus() {
 
           <div className="md:hidden space-y-5">
             <MobileStatusStep active label="Submitted" date={submittedDate} />
-            <MobileStatusStep active={statusMode.reviewState !== "upcoming"} label="Under Review" date={statusMode.reviewDate} />
-            <MobileStatusStep active={statusMode.finalState !== "upcoming"} label="Final Decision" date={statusMode.finalDate} />
+            <MobileStatusStep active={statusMode.reviewState === "current" || statusMode.reviewState === "done"} label="Under Review" date={statusMode.reviewDate} />
+            <MobileStatusStep active={statusMode.finalState === "current" || statusMode.finalState === "done"} label="Final Decision" date={statusMode.finalDate} />
           </div>
         </div>
       </section>
@@ -194,6 +242,7 @@ export default function FormStatus() {
                     isSelected={record.referenceId === selectedRecord.referenceId}
                     onSelect={() => setSelectedReferenceId(record.referenceId)}
                     onOpenComments={() => setActiveCommentsRef(record.referenceId)}
+                    onResubmit={() => navigate(`/employee/form/${record.referenceId}`)}
                     hasManagerComments={record.reviewHistory.length > 0}
                   />
                 ))
@@ -236,13 +285,13 @@ export default function FormStatus() {
                 icon={<Clock3 size={16} />}
                 title="Under Review"
                 text={statusMode.reviewDate}
-                active={statusMode.reviewState !== "upcoming"}
+                active={statusMode.reviewState === "current" || statusMode.reviewState === "done"}
               />
               <TimelineNote
                 icon={<Clock3 size={16} />}
                 title="Final Decision"
                 text={statusMode.finalDate}
-                active={statusMode.finalState !== "upcoming"}
+                active={statusMode.finalState === "current" || statusMode.finalState === "done"}
               />
             </div>
           </div>
@@ -299,6 +348,7 @@ function SubmissionRow({
   isSelected,
   onSelect,
   onOpenComments,
+  onResubmit,
   hasManagerComments,
 }: {
   serialNo: string;
@@ -310,6 +360,7 @@ function SubmissionRow({
   isSelected: boolean;
   onSelect: () => void;
   onOpenComments: () => void;
+  onResubmit: () => void;
   hasManagerComments: boolean;
 }) {
   return (
@@ -338,7 +389,22 @@ function SubmissionRow({
         </button>
       </td>
       <td className="px-6 py-5">{pendingFrom}</td>
-      <td className="px-6 py-5">{action}</td>
+      <td className="px-6 py-5">
+        {action === "Update & Resubmit" ? (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onResubmit();
+            }}
+            className="rounded-lg bg-blue-600 px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider text-white shadow-sm transition-all hover:bg-blue-700 active:scale-95"
+          >
+            Revise
+          </button>
+        ) : (
+          action
+        )}
+      </td>
     </tr>
   );
 }
@@ -422,7 +488,7 @@ function CommentsModal({ record, onClose }: { record: BperSubmissionRecord; onCl
   );
 }
 
-function ReviewEventCard({ event }: { event: { reviewedAt: string; managerName: string; status: string; comment: string } }) {
+function ReviewEventCard({ event }: { event: BperReviewEvent }) {
   return (
     <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
       <div className="px-4 py-2 border-b border-slate-100 bg-slate-50 text-xs font-semibold text-slate-500 uppercase tracking-[0.14em]">

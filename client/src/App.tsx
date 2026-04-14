@@ -38,8 +38,8 @@ import { clearActiveUnderReviewReferenceId } from './pages/employee/bperSubmissi
 import { clearAuthUser, loadAuthUser, saveAuthUser, type AppAuthUser, type PortalRole } from './lib/authStorage';
 
 const DEMO_CREDENTIALS = {
-  employee: { name: 'QG User1', email: 'employee.demo@bper.local', password: 'pass1234', role: 'employee' },
-  manager: { name: 'QG User2', email: 'manager.demo@bper.local', password: 'pass1234', role: 'manager' }
+  employee: { name: 'QG Employee', email: 'employee@bper.com', password: 'Employee@123', role: 'employee' },
+  manager: { name: 'QG Admin', email: 'admin@BPER.com', password: 'Admin@123', role: 'manager' }
 };
 
 const LOGIN_SESSION_KEY = 'bper.session.loginAt';
@@ -121,29 +121,42 @@ function LoginPage({ onLogin }: { onLogin: (user: AppAuthUser) => void }) {
     if (!validate()) return;
     setIsLoading(true);
 
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    const demoCreds = role === 'employee' ? DEMO_CREDENTIALS.employee : DEMO_CREDENTIALS.manager;
+    try {
+      const response = await fetch('http://localhost:5000/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
 
-    if (email === demoCreds.email && password === demoCreds.password) {
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Login failed');
+      }
+
       const nextUser: AppAuthUser = {
-        name: demoCreds.name,
-        email: demoCreds.email,
-        role: demoCreds.role as PortalRole,
-        source: 'demo',
+        name: data.user.name,
+        email: data.user.email,
+        role: data.user.role as PortalRole,
+        source: 'normal',
       };
 
       if (typeof window !== 'undefined') {
         window.sessionStorage.setItem(LOGIN_SESSION_KEY, new Date().toISOString());
+        window.localStorage.setItem('bper.auth.token', data.token);
       }
-      if (demoCreds.role === 'employee') {
+      
+      if (nextUser.role === 'employee') {
         clearActiveUnderReviewReferenceId();
       }
+      
       saveAuthUser(nextUser);
       onLogin(nextUser);
-    } else {
-      setGeneralError('Invalid credentials. Please check your email and password or ensure the correct role is selected.');
+    } catch (err: any) {
+      setGeneralError(err.message || 'Invalid credentials. Please check your email and password.');
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   };
 
   if (!fixedRole && params.portal && params.portal !== 'employee' && params.portal !== 'manager') {
@@ -319,14 +332,23 @@ export default function App() {
         <Route 
           path="/" 
           element={
-            user && user.role === 'employee' ? (
-              <Navigate to="/employee/dashboard" replace />
+            user ? (
+              <Navigate to={user.role === 'manager' ? '/manager/dashboard' : '/employee/dashboard'} replace />
             ) : (
               <PortalSelectionPage />
             )
           } 
         />
-        <Route path="/login/:portal" element={user ? <Navigate to={user.role === 'employee' ? '/employee/dashboard' : '/'} replace /> : <LoginPage onLogin={handleLogin} />} />
+        <Route 
+          path="/login/:portal" 
+          element={
+            user ? (
+              <Navigate to={user.role === 'manager' ? '/manager/dashboard' : '/employee/dashboard'} replace />
+            ) : (
+              <LoginPage onLogin={handleLogin} />
+            )
+          } 
+        />
         <Route path="/invite-signup" element={user ? <Navigate to="/employee/dashboard" replace /> : <InviteSignupPage onLogin={handleLogin} />} />
         <Route path="/unauthorized" element={<Unauthorized />} />
 
@@ -340,6 +362,7 @@ export default function App() {
                   <Route path="dashboard" element={<EmployeeDashboard />} />
                   <Route path="profile" element={<EmployeeProfile />} />
                   <Route path="form" element={<BPERForm />} />
+                  <Route path="form/:refId" element={<BPERForm />} />
                   <Route path="status" element={<FormStatus />} />
                   <Route path="*" element={<Navigate to="dashboard" replace />} />
                 </Routes>

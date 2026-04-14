@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { BarChart3, BriefcaseBusiness, Clock3, Filter, Layers3, UserRound } from 'lucide-react';
 import { formatDateISO, loadBperSubmissions, type BperSubmissionRecord } from '../employee/bperSubmissionStorage';
 
@@ -25,8 +25,29 @@ function getStatusClass(status: BperSubmissionRecord['status']) {
 
 export default function WDTAnalyticsPage() {
 	const [departmentFilter, setDepartmentFilter] = useState<DepartmentFilter>('All Departments');
+	const [submissions, setSubmissions] = useState<BperSubmissionRecord[]>([]);
+	const [isLoading, setIsLoading] = useState(true);
 
-	const submissions = useMemo(() => loadBperSubmissions(), []);
+	useEffect(() => {
+		const fetchData = async () => {
+			setIsLoading(true);
+			try {
+				const token = localStorage.getItem('bper.auth.token');
+				const response = await fetch(`http://localhost:5000/api/wdt/submissions?department=${departmentFilter}`, {
+					headers: { 'Authorization': `Bearer ${token}` }
+				});
+				const data = await response.json();
+				if (response.ok) {
+					setSubmissions(data);
+				}
+			} catch (error) {
+				console.error('Failed to fetch WDT data:', error);
+			} finally {
+				setIsLoading(false);
+			}
+		};
+		fetchData();
+	}, [departmentFilter]);
 
 	const departments = useMemo(() => {
 		const values = new Set(
@@ -37,10 +58,7 @@ export default function WDTAnalyticsPage() {
 		return ['All Departments', ...Array.from(values).sort((a, b) => a.localeCompare(b))];
 	}, [submissions]);
 
-	const filteredSubmissions = useMemo(() => {
-		if (departmentFilter === 'All Departments') return submissions;
-		return submissions.filter((item) => item.employee.department === departmentFilter);
-	}, [submissions, departmentFilter]);
+	const filteredSubmissions = submissions;
 
 	const flattenedRows = useMemo(
 		() =>

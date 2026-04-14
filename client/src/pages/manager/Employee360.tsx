@@ -67,18 +67,51 @@ function formatReviewDate(value: string | null) {
 }
 
 export default function Employee360Page() {
-	const records = useMemo(
-		() =>
-			loadBperSubmissions().filter(
-				(item) => item.employee.employeeId === demoEmployeeProfile.employeeId
-			),
-		[]
-	);
+	const { employeeId } = useParams<{ employeeId: string }>();
+	const [profile, setProfile] = useState<any>(null);
+	const [fitment, setFitment] = useState<any>(null);
+	const [submissions, setSubmissions] = useState<BperSubmissionRecord[]>([]);
+	const [isLoading, setIsLoading] = useState(true);
 
-	const latestSubmission = records[0] ?? null;
+	useEffect(() => {
+		async function fetchData() {
+			if (!employeeId) return;
+			setIsLoading(true);
+			try {
+				const token = localStorage.getItem('bper.auth.token');
+				
+				// Fetch Profile (Searching by employeeId)
+				const usersRes = await fetch(`http://localhost:5000/api/auth/users?employeeId=${employeeId}`, {
+					headers: { 'Authorization': `Bearer ${token}` }
+				});
+				const users = await usersRes.json();
+				const targetProfile = Array.isArray(users) ? users.find(u => u.employeeId === employeeId) : null;
+				setProfile(targetProfile);
+
+				// Fetch Fitment
+				const fitmentRes = await fetch(`http://localhost:5000/api/fitment/${employeeId}`, {
+					headers: { 'Authorization': `Bearer ${token}` }
+				});
+				if (fitmentRes.ok) {
+					setFitment(await fitmentRes.json());
+				}
+
+				// Fetch Submissions
+				const subs = await loadBperSubmissions();
+				setSubmissions(subs.filter(s => s.employee.employeeId === employeeId));
+
+			} catch (error) {
+				console.error('Failed to load Employee 360 data:', error);
+			} finally {
+				setIsLoading(false);
+			}
+		}
+		fetchData();
+	}, [employeeId]);
 
 	const bperRows = useMemo(() => {
-		const rows = latestSubmission?.payload.rows ?? [];
+		const latest = submissions[0];
+		const rows = latest?.payload.rows ?? [];
 		if (rows.length === 0) return DEFAULT_BPER_ROWS;
 
 		return rows.slice(0, 3).map((row) => ({
@@ -87,32 +120,29 @@ export default function Employee360Page() {
 			subProcess: 'Activity from latest submission',
 			hours: Number(row.timeTakenHoursPerMonth || 0),
 		}));
-	}, [latestSubmission]);
+	}, [submissions]);
 
 	const totalWeeklyHours = bperRows.reduce((sum, item) => sum + item.hours, 0);
 
-	const weightedFitmentScore = useMemo(() => {
-		const total = FITMENT_PARAMETERS.reduce(
-			(sum, item) => sum + (item.score / 5) * item.weight,
-			0
-		);
-		return Number(total.toFixed(1));
-	}, []);
+	const weightedFitmentScore = fitment?.weightedScore ?? 0;
+	const fitmentLabel = fitment?.fitmentLabel ?? 'UNFIT';
+	const fitmentParameters = fitment?.parameters ?? [];
 
-	const fitmentLabel =
-		weightedFitmentScore >= 80
-			? 'FIT'
-			: weightedFitmentScore >= 65
-				? 'TRAIN TO FIT'
-				: 'UNFIT';
-
-	const efficiencyRating = latestSubmission?.status === 'Approved' ? '100.0%' : '86.0%';
-	const ratingDelta = latestSubmission?.status === 'Approved' ? '+2.4' : '+1.1';
+	const efficiencyRating = submissions[0]?.status === 'Approved' ? '100.0%' : '86.0%';
+	const ratingDelta = submissions[0]?.status === 'Approved' ? '+2.4' : '+1.1';
 	const lastEvaluationDate = formatReviewDate(
-		latestSubmission?.reviewHistory[0]?.reviewedAt ?? latestSubmission?.submittedAt ?? null
+		submissions[0]?.reviewHistory[0]?.reviewedAt ?? submissions[0]?.submittedAt ?? null
 	);
 
-	const latestStatus = latestSubmission?.status ?? 'Under Review';
+	const latestStatus = submissions[0]?.status ?? 'Under Review';
+
+	if (isLoading) {
+		return (
+			<div className="flex h-96 items-center justify-center">
+				<Loader2 className="h-8 w-8 animate-spin text-[#1A5CA8]" />
+			</div>
+		);
+	}
 
 	return (
 		<div className="space-y-3 animate-in fade-in duration-500">
@@ -124,18 +154,18 @@ export default function Employee360Page() {
 						</div>
 						<div className="space-y-1">
 							<div className="flex items-center gap-2.5">
-								<h1 className="text-3xl font-bold text-[#0F2649]">QG User 1</h1>
-								<span className="inline-flex rounded-full bg-[#E7F7EE] px-2.5 py-0.5 text-xs font-bold tracking-[0.12em] text-[#15935A]">
-									ACTIVE
+								<h1 className="text-3xl font-bold text-[#0F2649]">{profile?.name || 'User not found'}</h1>
+								<span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-bold tracking-[0.12em] ${profile?.isActive ? 'bg-[#E7F7EE] text-[#15935A]' : 'bg-gray-100 text-gray-500'}`}>
+									{profile?.isActive ? 'ACTIVE' : 'INACTIVE'}
 								</span>
 							</div>
 
-							<p className="text-base text-[#4E6787]">D2 Sr Executive</p>
+							<p className="text-base text-[#4E6787]">{profile?.band} {profile?.designation}</p>
 
 							<div className="flex flex-wrap items-center gap-2 text-xs font-semibold text-[#7A92AF]">
-								<span className="inline-flex items-center gap-1 rounded-lg bg-[#F3F7FC] px-3 py-1"># DMIN-001</span>
+								<span className="inline-flex items-center gap-1 rounded-lg bg-[#F3F7FC] px-3 py-1"># {profile?.employeeId}</span>
 								<span className="inline-flex items-center gap-1 rounded-lg bg-[#F3F7FC] px-3 py-1">
-									<MapPin className="h-3.5 w-3.5" /> F &amp; A Department
+									<MapPin className="h-3.5 w-3.5" /> {profile?.client || 'BPER'}
 								</span>
 							</div>
 						</div>
@@ -230,7 +260,15 @@ export default function Employee360Page() {
 								</tr>
 							</thead>
 							<tbody>
-								{FITMENT_PARAMETERS.map((item) => {
+								{fitmentParameters.length === 0 ? (
+									<tr>
+										<td colSpan={4} className="px-4 py-8 text-center text-sm text-[#6B829E]">
+											No fitment parameters mapped for this employee.
+										</td>
+									</tr>
+								) : (
+									<>
+									{fitmentParameters.map((item: any) => {
 									const weighted = Number(((item.score / 5) * item.weight).toFixed(1));
 									return (
 										<tr key={item.parameter} className="border-b border-[#E8EEF7] last:border-b-0">
@@ -240,7 +278,9 @@ export default function Employee360Page() {
 											<td className="px-4 py-3 text-right text-xs font-bold text-[#1D5AA9]">{weighted.toFixed(1)}</td>
 										</tr>
 									);
-								})}
+									})}
+									</>
+								)}
 							</tbody>
 						</table>
 					</div>
@@ -289,7 +329,7 @@ export default function Employee360Page() {
 						<ShieldCheck className="absolute -right-5 -bottom-5 h-28 w-28 text-[#2A5EA4]/35" />
 							<h4 className="text-2xl font-bold text-white">Risk Insight</h4>
 							<p className="mt-1.5 text-sm leading-relaxed text-[#D8E7FF]">
-							QG User1 spends 46% of time on tasks identified as consolidatable. This suggests strong potential for role evolution toward strategic and analytics-led work.
+							{profile?.name} spends {efficiencyRating} of effort on activities that align with their core competencies. Optimized role evolution involves transitioning more responsibility toward {fitmentLabel} areas.
 						</p>
 						<button
 							type="button"

@@ -5,9 +5,16 @@ const userSchema = new mongoose.Schema({
   name: { type: String, required: true },
   email: { type: String, required: true, unique: true, lowercase: true },
   password: { type: String, required: true },
+  employeeId: { type: String, unique: true, sparse: true },
+  designation: { type: String, default: '' },
+  band: { type: String, default: '' },
+  client: { type: String, default: '' },
+  location: { type: String, default: '' },
+  supervisorName: { type: String, default: '' },
+  supervisorTitle: { type: String, default: '' },
   role: {
     type: String,
-    enum: ['admin', 'tower_lead', 'supervisor', 'employee'],
+    enum: ['admin', 'tower_lead', 'supervisor', 'employee', 'manager'],
     default: 'employee'
   },
   userType: {
@@ -16,12 +23,6 @@ const userSchema = new mongoose.Schema({
     default: 'manager'
   },
   organization: { type: String, default: '' },
-  requestedRole: {
-    type: String,
-    enum: ['admin', 'tower_lead', 'supervisor', 'employee'],
-    default: 'employee'
-  },
-  department: { type: mongoose.Schema.Types.ObjectId, ref: 'Department', default: null },
   isActive: { type: Boolean, default: true },
   lastLoginAt: { type: Date, default: null }
 }, { collection: 'users', timestamps: true });

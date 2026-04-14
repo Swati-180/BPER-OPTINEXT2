@@ -1,20 +1,49 @@
-import { BriefcaseBusiness, Building2, Mail, MapPin, UserCircle2, Users, type LucideIcon } from 'lucide-react';
-import { demoEmployeeProfile } from './demoEmployeeData';
-
-const profileFields = [
-  { label: 'Employee ID', value: demoEmployeeProfile.employeeId, icon: UserCircle2 },
-  { label: 'Employee Name', value: demoEmployeeProfile.name, icon: Users },
-  { label: 'Employee Email', value: demoEmployeeProfile.email, icon: Mail },
-  { label: 'Title', value: demoEmployeeProfile.title, icon: BriefcaseBusiness },
-  { label: 'Client', value: demoEmployeeProfile.client, icon: Building2 },
-  { label: 'Location', value: demoEmployeeProfile.location, icon: MapPin },
-  { label: 'Band', value: demoEmployeeProfile.band, icon: BriefcaseBusiness },
-  { label: 'Employee Type', value: demoEmployeeProfile.employeeType, icon: BriefcaseBusiness },
-  { label: 'Name of Supervisor', value: demoEmployeeProfile.supervisorName, icon: Users },
-  { label: 'Title of Supervisor', value: demoEmployeeProfile.supervisorTitle, icon: BriefcaseBusiness },
-];
+import { useEffect, useState } from 'react';
+import { BriefcaseBusiness, Building2, Mail, MapPin, UserCircle2, Users, Loader2, type LucideIcon } from 'lucide-react';
+import { apiFetch } from '../../lib/api';
 
 export default function Profile() {
+  const [profile, setProfile] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchProfile() {
+      setIsLoading(true);
+      try {
+        const response = await apiFetch('/auth/me');
+        if (response.ok) {
+          setProfile(await response.json());
+        }
+      } catch (error) {
+        console.error('Failed to fetch profile:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    fetchProfile();
+  }, []);
+
+  if (isLoading) {
+    return (
+      <div className="flex h-96 items-center justify-center">
+        <Loader2 className="h-10 w-10 animate-spin text-[#165BAA]" />
+      </div>
+    );
+  }
+
+  const profileFields = [
+    { label: 'Employee ID', value: profile?.employeeId || '-', icon: UserCircle2 },
+    { label: 'Employee Name', value: profile?.name || '-', icon: Users },
+    { label: 'Employee Email', value: profile?.email || '-', icon: Mail },
+    { label: 'Title', value: profile?.designation || '-', icon: BriefcaseBusiness },
+    { label: 'Client', value: profile?.client || '-', icon: Building2 },
+    { label: 'Location', value: profile?.location || '-', icon: MapPin },
+    { label: 'Band', value: profile?.band || '-', icon: BriefcaseBusiness },
+    { label: 'Employee Type', value: 'Permanent', icon: BriefcaseBusiness },
+    { label: 'Name of Supervisor', value: profile?.supervisorName || '-', icon: Users },
+    { label: 'Title of Supervisor', value: profile?.supervisorTitle || '-', icon: BriefcaseBusiness },
+  ];
+
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
       <div className="flex flex-col gap-2">
@@ -31,7 +60,7 @@ export default function Profile() {
             </p>
           </div>
           <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 shadow-sm w-fit">
-            <span className="h-2 w-2 rounded-full bg-emerald-500" /> Active Employee Record
+            <span className={`h-2 w-2 rounded-full ${profile?.isActive ? 'bg-emerald-500' : 'bg-gray-300'}`} /> {profile?.isActive ? 'Active' : 'Inactive'} Employee Record
           </div>
         </div>
       </div>
@@ -43,31 +72,31 @@ export default function Profile() {
             <div className="flex items-center gap-5">
               <div className="relative flex h-24 w-24 shrink-0 items-center justify-center rounded-full border border-white/15 bg-white/10 shadow-lg backdrop-blur-sm">
                 <UserCircle2 className="h-14 w-14 text-white/80" />
-                <span className="absolute bottom-1.5 right-1.5 h-3.5 w-3.5 rounded-full border-2 border-white bg-emerald-400" aria-hidden="true" />
+                <span className={`absolute bottom-1.5 right-1.5 h-3.5 w-3.5 rounded-full border-2 border-white ${profile?.isActive ? 'bg-emerald-400' : 'bg-gray-400'}`} aria-hidden="true" />
               </div>
 
               <div className="min-w-0">
                 <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-blue-100/90 mb-2">Employee Profile</p>
-                <h2 className="text-3xl font-bold tracking-tight md:text-4xl">{demoEmployeeProfile.name}</h2>
+                <h2 className="text-3xl font-bold tracking-tight md:text-4xl">{profile?.name}</h2>
                 <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-blue-100">
                   <span className="inline-flex items-center gap-1.5">
-                    <UserCircle2 size={14} /> Employee ID {demoEmployeeProfile.employeeId}
+                    <UserCircle2 size={14} /> Employee ID {profile?.employeeId}
                   </span>
                   <span className="hidden md:inline text-white/25">•</span>
                   <span className="inline-flex items-center gap-1.5">
-                    <MapPin size={14} /> {demoEmployeeProfile.location}
+                    <MapPin size={14} /> {profile?.location || 'Unassigned'}
                   </span>
                   <span className="hidden md:inline text-white/25">•</span>
                   <span className="inline-flex items-center gap-1.5">
-                    <BriefcaseBusiness size={14} /> {demoEmployeeProfile.band} Band
+                    <BriefcaseBusiness size={14} /> {profile?.band || 'NA'} Band
                   </span>
                 </div>
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-3 lg:w-[18rem]">
-              <ProfilePill label="Employee Type" value={demoEmployeeProfile.employeeType} />
-              <ProfilePill label="Client" value={demoEmployeeProfile.client} />
+              <ProfilePill label="Employee Type" value="Full-Time" />
+              <ProfilePill label="Client" value={profile?.client || 'BPER'} />
             </div>
           </div>
         </div>
@@ -92,10 +121,10 @@ export default function Profile() {
                 <p className="text-[10px] uppercase tracking-[0.2em] text-[#165BAA] font-semibold">Employee Snapshot</p>
               </div>
               <div className="grid gap-3 p-5">
-                <MetricCard label="Primary Tower" value={demoEmployeeProfile.primaryTower} />
-                <MetricCard label="Assigned Client" value={demoEmployeeProfile.assignedClient} />
-                <MetricCard label="Supervisor" value={demoEmployeeProfile.supervisorName} />
-                <MetricCard label="Supervisor Title" value={demoEmployeeProfile.supervisorTitle} />
+                <MetricCard label="Designation" value={profile?.designation || '-'} />
+                <MetricCard label="Client Unit" value={profile?.client || '-'} />
+                <MetricCard label="Supervisor" value={profile?.supervisorName || '-'} />
+                <MetricCard label="Supervisor Title" value={profile?.supervisorTitle || '-'} />
               </div>
             </div>
           </div>
@@ -110,8 +139,8 @@ export default function Profile() {
                 </p>
               </div>
               <div className="grid grid-cols-2 gap-3 md:min-w-72">
-                <MiniStat label="Status" value="Active" />
-                <MiniStat label="Access" value="Employee" />
+                <MiniStat label="Status" value={profile?.isActive ? 'Active' : 'Inactive'} />
+                <MiniStat label="Access" value={profile?.role?.toUpperCase() || 'EMPLOYEE'} />
               </div>
             </div>
           </div>
