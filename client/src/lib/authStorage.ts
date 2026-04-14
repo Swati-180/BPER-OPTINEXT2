@@ -119,7 +119,8 @@ export function acceptInvite(token: string) {
   return accepted;
 }
 
-export function getInviteSignupLink(token: string) {
-  if (typeof window === 'undefined') return `/invite-signup?token=${token}`;
-  return `${window.location.origin}/invite-signup?token=${token}`;
+export function getInviteSignupLink(token: string, organization = 'QGGlobal') {
+  const encodedOrg = encodeURIComponent(organization);
+  if (typeof window === 'undefined') return `/invite-signup?token=${token}&org=${encodedOrg}&type=employee&invite=true`;
+  return `${window.location.origin}/invite-signup?token=${token}&org=${encodedOrg}&type=employee&invite=true`;
 }

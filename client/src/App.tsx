@@ -349,7 +349,7 @@ export default function App() {
             )
           } 
         />
-        <Route path="/invite-signup" element={user ? <Navigate to="/employee/dashboard" replace /> : <InviteSignupPage onLogin={handleLogin} />} />
+        <Route path="/invite-signup" element={<InviteSignupPage onLogin={handleLogin} />} />
         <Route path="/unauthorized" element={<Unauthorized />} />
 
         {/* Employee Routes */}

@@ -15,10 +15,14 @@ export default function InviteSignupPage({ onLogin }: InviteSignupProps) {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const token = searchParams.get('token')?.trim() ?? '';
+  const orgParam = searchParams.get('org')?.trim() ?? 'QGGlobal';
+  const inviteType = searchParams.get('type')?.trim() ?? '';
+  const isEmployeeInvite = searchParams.get('invite') === 'true' || inviteType === 'employee';
 
   const invite = useMemo(() => (token ? findInviteByToken(token) : null), [token]);
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState(invite?.email ?? '');
+  const [organization, setOrganization] = useState(orgParam);
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
@@ -64,7 +68,8 @@ export default function InviteSignupPage({ onLogin }: InviteSignupProps) {
           email: invite.email,
           password,
           role: 'employee',
-          userType: 'employee'
+          userType: 'employee',
+          organization,
         })
       });
 
@@ -132,6 +137,13 @@ export default function InviteSignupPage({ onLogin }: InviteSignupProps) {
           <div className="mb-5 rounded-2xl border border-[#DCE6F3] bg-[#F6FAFF] p-4 text-sm text-[#4E6787]">
             <p className="font-semibold text-[#102846]">Invited email</p>
             <p className="mt-1">{invite.email}</p>
+            <p className="mt-4 font-semibold text-[#102846]">Organization</p>
+            <p className="mt-1">{organization}</p>
+            {isEmployeeInvite && (
+              <p className="mt-4 rounded-xl bg-[#E8F0FF] p-3 text-xs text-[#3656A8]">
+                This is an invited employee signup link. Your account will be created as an employee user for {organization}.
+              </p>
+            )}
           </div>
 
           {error && (
