@@ -350,10 +350,10 @@ export default function FormsPage() {
 
 								<div className="border-t border-[#DFE8F4] bg-white px-5 py-3.5">
 									<div className="grid grid-cols-1 gap-3 xl:grid-cols-[1fr_auto] xl:items-center">
-										<div className="grid grid-cols-2 gap-3 md:grid-cols-5">
+										<div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-y-4 gap-x-3 items-center">
 											<Metric label="Total Hours" value={totalHours.toFixed(1)} accent="text-[#0F2444]" />
 											<Metric label="Flags Raised" value={String(flaggedCount).padStart(2, '0')} accent="text-[#D92D2D]" />
-											<Metric label="Avg Turnaround" value={`${selectedRows.length ? (totalHours / selectedRows.length).toFixed(1) : '0.0'} Hours`} accent="text-[#0F2444]" />
+											<Metric label="Avg Turnaround" value={`${selectedRows.length ? (totalHours / selectedRows.length).toFixed(1) : '0.0'}h`} accent="text-[#0F2444]" />
 											<Metric label="Submission Rate" value="100%" accent="text-[#0F2444]" />
 											<Metric label="Team Compliance" value="50%" accent="text-[#169F54]" />
 										</div>

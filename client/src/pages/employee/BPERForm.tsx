@@ -21,6 +21,8 @@ export default function BPERForm() {
   const [showSuccessOverlay, setShowSuccessOverlay] = useState(false);
   const [submittedCount, setSubmittedCount] = useState(0);
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [showSavedIndicator, setShowSavedIndicator] = useState(false);
+  const [windowStatus, setWindowStatus] = useState<any>(null);
 
   useEffect(() => {
     async function fetchProfile() {
@@ -34,8 +36,14 @@ export default function BPERForm() {
         if (res.ok) {
           setProfile(data);
         }
+
+        // Fetch Window Status
+        const windowRes = await fetch('http://localhost:5000/api/wdt/window-status');
+        if (windowRes.ok) {
+          setWindowStatus(await windowRes.json());
+        }
       } catch (error) {
-        console.error('Failed to fetch profile for form:', error);
+        console.error('Failed to fetch profile/window for form:', error);
       } finally {
         setIsLoadingProfile(false);
       }
@@ -75,6 +83,9 @@ export default function BPERForm() {
   useEffect(() => {
     if (payload && !isSubmitted) {
       saveBperDraft(payload);
+      setShowSavedIndicator(true);
+      const timer = setTimeout(() => setShowSavedIndicator(false), 2000);
+      return () => clearTimeout(timer);
     }
   }, [payload, isSubmitted]);
 
@@ -96,13 +107,7 @@ export default function BPERForm() {
     if (!payload || !profile) return;
     setIsSubmitting(true);
     try {
-      const submission = buildBperSubmission(payload);
-      // Ensure submission uses real profile data if not already set
-      submission.employee = {
-        ...profile,
-        title: profile.designation,
-        supervisorTitle: profile.supervisorTitle || "Manager",
-      };
+      const submission = buildBperSubmission(payload, profile);
 
       setSubmittedCount(payload.rows.length);
       await saveBperSubmission(submission);
@@ -233,12 +238,19 @@ export default function BPERForm() {
         <div className="bg-white rounded-t-md border border-slate-200 px-4 py-4 sm:px-6 shadow-sm relative z-10 space-y-4">
           <div className="flex items-center justify-between gap-4">
             <div className="min-w-0 flex-1">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+                  Form Progress
+                </p>
+                {showSavedIndicator && (
+                  <span className="text-[10px] font-bold text-emerald-600 flex items-center gap-1 animate-in fade-in slide-in-from-right-2">
+                    <CheckCircle2 size={12} /> Saved √
+                  </span>
+                )}
+              </div>
               <div className="h-2 w-full rounded-full bg-slate-200 overflow-hidden">
                 <div className="h-full rounded-full bg-blue-700 transition-all duration-300" style={{ width: `${progressPercent}%` }} />
               </div>
-              <p className="mt-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
-                Form Progress
-              </p>
             </div>
             <span className="shrink-0 inline-flex items-center rounded-full bg-blue-50 text-blue-700 border border-blue-200 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em]">
               Step {currentStep} of {stepItems.length}
@@ -282,7 +294,7 @@ export default function BPERForm() {
         </div>
 
         <div className="relative -mt-px w-full z-0">
-          {currentStep === 1 && <Step1 employee={profile} onNext={() => setCurrentStep(2)} onPrev={() => navigate("/employee/dashboard")} />}
+          {currentStep === 1 && <Step1 employee={profile} windowStatus={windowStatus} onNext={() => setCurrentStep(2)} onPrev={() => navigate("/employee/dashboard")} />}
           {currentStep === 2 && (
             <Step2
               employee={profile}

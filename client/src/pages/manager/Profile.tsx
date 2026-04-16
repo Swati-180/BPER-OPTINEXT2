@@ -1,7 +1,8 @@
-import { useMemo } from 'react';
-import { MapPin, ShieldCheck } from 'lucide-react';
+import { useMemo, useState, useEffect } from 'react';
+import { useParams } from 'react-router-dom';
+import { MapPin, ShieldCheck, Loader2 } from 'lucide-react';
 import { demoEmployeeProfile } from '../employee/demoEmployeeData';
-import { formatDateISO, loadBperSubmissions } from '../employee/bperSubmissionStorage';
+import { formatDateISO, loadBperSubmissions, type BperSubmissionRecord } from '../employee/bperSubmissionStorage';
 
 type FitmentParameter = {
 	parameter: string;
@@ -66,7 +67,7 @@ function formatReviewDate(value: string | null) {
 	return date.toLocaleDateString([], { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
-export default function Employee360Page() {
+export default function ProfilePage() {
 	const { employeeId } = useParams<{ employeeId: string }>();
 	const [profile, setProfile] = useState<any>(null);
 	const [fitment, setFitment] = useState<any>(null);
@@ -178,7 +179,7 @@ export default function Employee360Page() {
 							helper={ratingDelta}
 							helperTone="positive"
 						/>
-						<MetricCard label="Last Evaluation" value={lastEvaluationDate} helper={formatDateISO(latestSubmission?.submittedAt ?? '')} helperTone="default" />
+						<MetricCard label="Last Evaluation" value={lastEvaluationDate} helper={submissions[0]?.submittedAt ? formatDateISO(submissions[0].submittedAt) : '-'} helperTone="default" />
 					</div>
 				</div>
 			</section>

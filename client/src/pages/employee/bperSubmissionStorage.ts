@@ -13,6 +13,8 @@ export interface BperReviewEvent {
 export interface BperSubmissionRecord {
   referenceId: string;
   submittedAt: string;
+  month: number;
+  year: number;
   status: BperSubmissionStatus;
   employee: EmployeeSnapshot;
   payload: WdtPayload;
@@ -94,19 +96,25 @@ const seededRecords: BperSubmissionRecord[] = [
   },
 ];
 
-export function buildBperSubmission(payload: WdtPayload): BperSubmissionRecord {
+export function buildBperSubmission(payload: WdtPayload, profile?: EmployeeSnapshot): BperSubmissionRecord {
+  const emp = profile || payload.employee;
   const totalHours = payload.rows.reduce((sum, row) => sum + Number(row.timeTakenHoursPerMonth || 0), 0);
   const coreCount = payload.rows.filter((row) => row.activityCategory !== "support").length;
   const supportCount = payload.rows.filter((row) => row.activityCategory === "support").length;
-  const submittedAt = new Date().toISOString();
-  const referenceId = `BPER-${payload.employee.employeeId}-${Date.now().toString().slice(-5)}`;
+  const now = new Date();
+  const submittedAt = now.toISOString();
+  const month = now.getMonth() + 1;
+  const year = now.getFullYear();
+  const referenceId = `BPER-${emp.employeeId || "NEW"}-${Date.now().toString().slice(-5)}`;
 
   return {
     referenceId,
     submittedAt,
+    month,
+    year,
     status: "Under Review",
-    employee: payload.employee,
-    payload,
+    employee: emp,
+    payload: { ...payload, employee: emp },
     totalHours,
     coreCount,
     supportCount,

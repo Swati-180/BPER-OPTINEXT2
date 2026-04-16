@@ -31,7 +31,8 @@ import ManagerUsers from './pages/manager/Users';
 import ManagerForms from './pages/manager/Forms';
 import ManagerWDTAnalytics from './pages/manager/WDTAnalytics';
 import ManagerSixBySixAnalysis from './pages/manager/SixBySixAnalysis';
-import ManagerEmployee360 from './pages/manager/Employee360';
+import ManagerEmployee360 from './pages/manager/Profile';
+import PersonalProfile from './pages/manager/PersonalProfile';
 
 import Unauthorized from './pages/Unauthorized';
 import { clearActiveUnderReviewReferenceId } from './pages/employee/bperSubmissionStorage';
@@ -383,7 +384,8 @@ export default function App() {
                   <Route path="forms" element={<ManagerForms />} />
                   <Route path="wdt-analytics" element={<ManagerWDTAnalytics />} />
                   <Route path="6x6-analysis" element={<ManagerSixBySixAnalysis />} />
-                  <Route path="employee-360" element={<ManagerEmployee360 />} />
+                  <Route path="profile/:employeeId" element={<ManagerEmployee360 />} />
+                  <Route path="my-profile" element={<PersonalProfile />} />
                   <Route path="*" element={<Navigate to="dashboard" replace />} />
                 </Routes>
               </ManagerLayout>
