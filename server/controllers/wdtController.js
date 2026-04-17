@@ -3,8 +3,46 @@ const User = require('../models/User');
 
 const submitWDT = async (req, res) => {
   try {
+    const { employee, month, year } = req.body;
+    
+    // 1. Check Submission Window (20th to 31st)
+    const today = new Date().getDate();
+    if (today < 20) {
+      return res.status(403).json({ message: 'Submission window is not yet open for this period.' });
+    }
+
+    // 2. Check for Duplicates (Only for NEW submissions, not revisions)
+    const existing = await WDTSubmission.findOne({ 
+      'employee.employeeId': employee.employeeId, 
+      month, 
+      year 
+    });
+
+    if (existing) {
+      return res.status(409).json({ message: `A submission for ${month}/${year} already exists.` });
+    }
+
     const record = await WDTSubmission.create(req.body);
     res.status(201).json(record);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+const getSubmissionWindowStatus = async (req, res) => {
+  try {
+    const today = new Date();
+    const date = today.getDate();
+    const isOpen = date >= 20;
+    const daysUntilNext = isOpen ? 0 : 20 - date;
+    
+    res.json({
+      isOpen,
+      currentMonth: today.getMonth() + 1,
+      currentYear: today.getFullYear(),
+      daysUntilNext,
+      message: isOpen ? 'Submission Window is Open' : `Opens in ${daysUntilNext} days`
+    });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -15,7 +53,7 @@ const getSubmissions = async (req, res) => {
     const { department } = req.query;
     
     // Fetch the logged-in user to evaluate role and access
-    const currentUser = await User.findById(req.user.userId);
+    const currentUser = await User.findById(req.user.userId || req.user.id);
     if (!currentUser) return res.status(404).json({ message: 'User not found' });
 
     let query = {};
@@ -27,7 +65,7 @@ const getSubmissions = async (req, res) => {
 
     // Role-based filtering
     if (currentUser.role !== 'admin') {
-       if (currentUser.userType === 'manager') {
+       if (currentUser.userType === 'manager' || currentUser.role === 'manager') {
          // Managers see their own department OR forms explicitly pending from them
          query['$or'] = [
             { 'employee.department': currentUser.department },
@@ -35,7 +73,12 @@ const getSubmissions = async (req, res) => {
          ];
        } else {
          // Employees only see their own submissions
-         query['employee.employeeId'] = currentUser.employeeId;
+         // Use employeeId if available, fallback to email
+         if (currentUser.employeeId) {
+             query['employee.employeeId'] = currentUser.employeeId;
+         } else {
+             query['employee.email'] = currentUser.email;
+         }
        }
     }
 
@@ -96,4 +139,10 @@ const getSubmissionByRefId = async (req, res) => {
   }
 };
 
-module.exports = { submitWDT, getSubmissions, updateSubmissionStatus, getSubmissionByRefId };
+module.exports = { 
+  submitWDT, 
+  getSubmissions, 
+  updateSubmissionStatus, 
+  getSubmissionByRefId,
+  getSubmissionWindowStatus 
+};

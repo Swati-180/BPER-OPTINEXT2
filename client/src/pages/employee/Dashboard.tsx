@@ -2,7 +2,6 @@ import { useMemo, useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight, BookOpenCheck, CircleHelp, ClipboardCheck, FilePenLine, Loader2 } from 'lucide-react';
 import { apiFetch } from '../../lib/api';
-import { demoEmployeeProfile } from './demoEmployeeData';
 import {
   type BperSubmissionRecord,
   formatDateISO,
@@ -78,6 +77,7 @@ function activityStatusChipClass(status: 'Under Review' | 'Approved' | 'Changes 
 export default function Dashboard() {
   const [profile, setProfile] = useState<any>(null);
   const [submissions, setSubmissions] = useState<BperSubmissionRecord[]>([]);
+  const [windowStatus, setWindowStatus] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
 
 
@@ -97,6 +97,12 @@ export default function Dashboard() {
           const subsData = await loadBperSubmissions();
           // Filter by real employeeId
           setSubmissions(subsData.filter((item) => item.employee.employeeId === profileData.employeeId));
+
+          // Fetch Window Status
+          const windowRes = await apiFetch('/wdt/window-status');
+          if (windowRes.ok) {
+            setWindowStatus(await windowRes.json());
+          }
         }
       } catch (error) {
         console.error('Dashboard init failed:', error);
@@ -197,7 +203,7 @@ export default function Dashboard() {
           </Link>
         </article>
 
-        <article className="h-full min-h-72 rounded-2xl border border-[#D8E1EE] bg-white p-6 shadow-[0_4px_12px_rgba(15,40,86,0.06)] flex flex-col items-center justify-center text-center">
+        <article className={`h-full min-h-72 rounded-2xl border bg-white p-6 shadow-[0_4px_12px_rgba(15,40,86,0.06)] flex flex-col items-center justify-center text-center ${windowStatus?.isOpen ? 'border-blue-100' : 'border-amber-100'}`}>
           <h3 className="text-sm font-extrabold tracking-[0.16em] text-[#243A59] uppercase">Submission Deadline</h3>
 
           {latestStatus === 'Under Review' ? (
@@ -230,17 +236,24 @@ export default function Dashboard() {
                 <div
                   className="absolute inset-0 rounded-full"
                   style={{
-                    background: `conic-gradient(#1E5EAB ${((countdown.totalDays - countdown.daysLeft) / Math.max(1, countdown.totalDays)) * 360}deg, #E0E9F5 0deg)`,
+                    background: windowStatus?.isOpen 
+                      ? `conic-gradient(#1E5EAB ${((31 - new Date().getDate()) / 12) * 360}deg, #E0E9F5 0deg)`
+                      : '#F59E0B',
                   }}
                 />
                 <div className="absolute inset-2.5 rounded-full bg-white border border-[#E6ECF7] flex items-center justify-center flex-col">
-                  <span className="text-3xl font-bold text-[#0F1F3D] leading-none">{countdown.daysLeft}</span>
+                  <span className={`text-3xl font-bold leading-none ${windowStatus?.isOpen ? 'text-[#0F1F3D]' : 'text-amber-600'}`}>
+                    {windowStatus?.isOpen ? (31 - new Date().getDate()) : windowStatus?.daysUntilNext}
+                  </span>
                   <span className="text-xs font-semibold tracking-[0.15em] uppercase text-[#6F88A8]">Days</span>
                 </div>
               </div>
 
-              <p className="mt-6 text-sm font-medium tracking-[0.12em] uppercase text-[#6F88A8]">
-                {countdown.remainingHours}h {countdown.remainingMinutes}m remaining
+              <p className={`mt-6 text-sm font-bold tracking-[0.12em] uppercase ${windowStatus?.isOpen ? 'text-emerald-600' : 'text-amber-600'}`}>
+                {windowStatus?.message}
+              </p>
+              <p className="mt-1 text-xs font-medium text-[#6F88A8] italic">
+                {windowStatus?.isOpen ? 'Period: 20th - 31st' : 'Submissions currently closed'}
               </p>
             </>
           )}

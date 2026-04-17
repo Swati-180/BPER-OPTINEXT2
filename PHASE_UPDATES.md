@@ -23,3 +23,35 @@
 ### **Identified Improvements (Next Steps)**
 1. **Submission Deadlines**: Implement the "Submission Window" logic to close the form after the quarterly deadline.
 2. **Numeric Validation**: Add stricter range checks (e.g., hours per month cannot exceed 744) in the Step 2 editor.
+
+---
+
+## Phase 8: Live Reports, Dashboard Analytics, and Employee 360 Decommission
+**Status: COMPLETED**
+- **Computed Reports API Layer**: Added live manager-report endpoints backed by MongoDB aggregation logic in backend controllers.
+	- `/api/reports/dashboard`
+	- `/api/reports/utilization`
+	- `/api/reports/fte-summary`
+	- `/api/reports/fte-consolidation-summary`
+	- `/api/reports/fitment-summary`
+- **Role-Based Access Hardening**: Report routes are token-protected and manager-only; employee access is explicitly denied with `403`.
+- **Manager Dashboard Refactor**: Replaced hardcoded KPI/card/chart/table data with live report payloads.
+	- Added robust loading, empty, and error states.
+	- Added submission-window status rendering directly in dashboard summary.
+- **WDT Analytics Refactor**: Connected analytics cards/charts/tables to live utilization report payloads with safe handling for empty/partial data.
+- **Live Refresh Reliability**:
+	- Introduced data update event emission after submission and manager review updates.
+	- Added event-driven and periodic refresh on manager dashboard/analytics pages to keep summaries in sync.
+- **Employee 360 Removal**:
+	- Removed manager route and all UI navigation links to Employee 360.
+	- Deleted Employee 360 page implementation as requested.
+- **Verification Tooling Added**:
+	- Added `npm run verify:reports` script in backend.
+	- Verifier confirms manager access, employee denial, and cross-report submission-count consistency.
+	- If `MONGODB_URI` is provided, verifier can additionally run direct DB parity checks.
+
+### **Validation Outcome (Phase 8)**
+1. Manager report access: **PASS**
+2. Employee access blocked on manager reports: **PASS (403)**
+3. Dashboard/utilization submission-count consistency: **PASS**
+4. Direct DB parity: **Conditionally supported** (runs when `MONGODB_URI` is configured)

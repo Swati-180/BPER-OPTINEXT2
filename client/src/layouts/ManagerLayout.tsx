@@ -6,7 +6,6 @@ import {
   FileText, 
   BarChart3, 
   Grid3X3, 
-  UserSearch,
   LogOut, 
   Menu, 
   Bell, 
@@ -40,7 +39,6 @@ export default function ManagerLayout({ children, user, onLogout }: ManagerLayou
     { name: 'Forms', path: '/manager/forms', icon: FileText },
     { name: 'WDT Analytics', path: '/manager/wdt-analytics', icon: BarChart3 },
     { name: '6x6 Analysis', path: '/manager/6x6-analysis', icon: Grid3X3 },
-    { name: 'Employee 360', path: '/manager/employee-360', icon: UserSearch },
   ];
 
   const isSidebarExpanded = isSidebarOpen || isSidebarHovered;
@@ -100,7 +98,10 @@ export default function ManagerLayout({ children, user, onLogout }: ManagerLayou
         </div>
 
         {/* User Profile Section */}
-        <div className="p-4 border-b border-white/5 shrink-0">
+        <div 
+          className="p-4 border-b border-white/5 shrink-0 cursor-pointer hover:bg-white/5 transition-colors"
+          onClick={() => navigate('/manager/my-profile')}
+        >
           <div className="flex items-center gap-3">
             <motion.div
               transition={sidebarTransition}

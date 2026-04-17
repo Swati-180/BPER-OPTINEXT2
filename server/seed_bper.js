@@ -4,9 +4,10 @@ const User = require('./models/User');
 const Fitment = require('./models/Fitment');
 const WDTSubmission = require('./models/WDTSubmission');
 const Taxonomy = require('./models/Taxonomy');
+const ProcessAnalysis = require('./models/ProcessAnalysis');
 const bcrypt = require('bcryptjs');
 
-dotenv.config();
+dotenv.config({ path: './server/.env' });
 
 const users = [
   {
@@ -21,6 +22,20 @@ const users = [
     location: 'Corporate',
     supervisorName: 'N/A',
     supervisorTitle: 'N/A',
+    isActive: true
+  },
+  {
+    name: 'QG Employee',
+    email: 'employee@bper.com',
+    password: 'Employee@123',
+    role: 'employee',
+    employeeId: 'BPER-001',
+    designation: 'Operations Analyst',
+    band: 'B3',
+    client: 'BPER Internal',
+    location: 'Corporate',
+    supervisorName: 'QG Admin',
+    supervisorTitle: 'Administrator',
     isActive: true
   },
   {
@@ -138,6 +153,7 @@ async function seed() {
     await Fitment.deleteMany({});
     await WDTSubmission.deleteMany({});
     await Taxonomy.deleteMany({});
+    await ProcessAnalysis.deleteMany({});
     console.log('Cleared existing data');
 
     // Insert taxonomy
@@ -178,6 +194,8 @@ async function seed() {
         await WDTSubmission.create({
             referenceId: `BPER-${emp.employeeId}-${Date.now().toString().slice(-4)}-${i}`,
             submittedAt: new Date(Date.now() - (i * 86400000 * 2)), // staggered dates
+            month: new Date().getMonth() + 1,
+            year: new Date().getFullYear(),
             status: i === 0 ? 'Under Review' : 'Approved',
             employee: {
                 employeeId: emp.employeeId,
@@ -197,6 +215,19 @@ async function seed() {
       }
     }
     console.log('Generated Random WDT Submissions');
+
+    // Insert ProcessAnalysis for 6x6
+    const analysisRecords = [
+      { process: 'Invoice Validation', department: 'Finance', type: 'Core', criteria: ['H', 'M', 'H', 'L', 'M', 'H', 'H', 'M', 'L', 'H', 'M', 'H'] },
+      { process: 'Payroll Disbursement', department: 'HR', type: 'Core', criteria: ['M', 'H', 'H', 'M', 'L', 'H', 'M', 'H', 'H', 'M', 'L', 'H'] },
+      { process: 'Network Security', department: 'IT', type: 'Core', criteria: ['H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H'] },
+      { process: 'Vendor Onboarding', department: 'Finance', type: 'Support', criteria: ['L', 'M', 'L', 'H', 'M', 'L', 'M', 'H', 'L', 'M', 'H', 'L'] },
+      { process: 'User Access Mgmt', department: 'IT', type: 'Support', criteria: ['M', 'L', 'M', 'H', 'H', 'M', 'L', 'M', 'H', 'L', 'M', 'H'] },
+      { process: 'Tax Filing', department: 'HR', type: 'Specialized', criteria: ['H', 'H', 'L', 'M', 'H', 'H', 'L', 'M', 'H', 'H', 'L', 'M'] }
+    ];
+
+    await ProcessAnalysis.insertMany(analysisRecords);
+    console.log('Inserted Process Analysis Data (6x6)');
 
     console.log('Seeding Complete!');
     if (require.main === module) process.exit(0);

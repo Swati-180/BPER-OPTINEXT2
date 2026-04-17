@@ -14,8 +14,23 @@ type ProcessRow = {
 	consolidated: boolean;
 };
 
-const PERFORMANCE_LABELS = ['ML', 'R', 'V', 'M', 'S', 'E'];
-const CHARACTERISTIC_LABELS = ['S', 'C', 'C', 'P', 'R', 'S'];
+const PERFORMANCE_LABELS: Record<string, string> = {
+  'ML': 'Manual Labour Intensity',
+  'R': 'Repeatability',
+  'V': 'Volume Variability',
+  'M': 'Maturity',
+  'S': 'Standardization',
+  'E': 'Exception Handling'
+};
+
+const CHARACTERISTIC_LABELS: Record<string, string> = {
+  'S': 'Stability',
+  'C': 'Complexity',
+  'C2': 'Connectivity',
+  'P': 'Predictability',
+  'R': 'Regulatory',
+  'S2': 'Scalability'
+};
 
 
 
@@ -327,11 +342,11 @@ export default function SixBySixAnalysisPage() {
 							<thead>
 								<tr className="bg-[#F5F8FD] text-xs font-bold text-[#617289] border-b border-[#E3EAF4]">
 									<th className="px-3 py-2.5 sticky left-0 z-20 bg-[#F5F8FD] shadow-[1px_0_0_#E3EAF4]">Process</th>
-									{PERFORMANCE_LABELS.map((label) => (
-										<th key={`p-${label}`} className="px-2 py-2.5 text-center text-[#2860D3]">{label}</th>
+									{Object.entries(PERFORMANCE_LABELS).map(([label, fullName]) => (
+										<th key={`p-${label}`} title={fullName} className="px-2 py-2.5 text-center text-[#2860D3] cursor-help border-x border-[#F0F4F9]">{label}</th>
 									))}
-									{CHARACTERISTIC_LABELS.map((label, index) => (
-										<th key={`c-${label}-${index}`} className="px-2 py-2.5 text-center text-[#7A39DB]">{label}</th>
+									{Object.entries(CHARACTERISTIC_LABELS).map(([label, fullName], index) => (
+										<th key={`c-${label}-${index}`} title={fullName} className="px-2 py-2.5 text-center text-[#7A39DB] cursor-help border-x border-[#F0F4F9]">{label.slice(0, 1)}</th>
 									))}
 									<th className="px-3 py-2.5 text-center">Score</th>
 									<th className="px-3 py-2.5 text-center">Cons</th>

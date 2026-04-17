@@ -10,13 +10,13 @@ export default function PortalSelectionPage() {
         <div className="mb-6 text-center">
           <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-[#5E7EA6]">BPER Platform</p>
           <h1 className="mt-2 text-4xl font-bold tracking-tight text-[#102846]">Choose your portal</h1>
-          <p className="mt-2 text-sm text-[#607A9A]">Select the access path that matches your work profile.</p>
+          <p className="mt-2 text-sm text-[#607A9A]">Select the workspace you want to open for this session.</p>
         </div>
 
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <button
             type="button"
-            onClick={() => navigate('/login/employee')}
+            onClick={() => navigate('/employee-portal')}
             className="group rounded-3xl border border-[#D9E4F2] bg-white p-6 text-left shadow-[0_8px_24px_rgba(16,42,80,0.08)] transition-transform hover:-translate-y-1"
           >
             <div className="flex items-center justify-between">
@@ -33,7 +33,7 @@ export default function PortalSelectionPage() {
 
           <button
             type="button"
-            onClick={() => navigate('/login/manager')}
+            onClick={() => navigate('/manager-portal')}
             className="group rounded-3xl border border-[#D9E4F2] bg-white p-6 text-left shadow-[0_8px_24px_rgba(16,42,80,0.08)] transition-transform hover:-translate-y-1"
           >
             <div className="flex items-center justify-between">

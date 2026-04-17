@@ -1,52 +1,13 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
-const bcrypt = require('bcryptjs');
 
 const requestAccess = async (req, res) => {
-  try {
-    const { name, email, password, department, grade, requestedRole, company } = req.body;
-    if (!name || !email || !password) {
-      return res.status(400).json({ message: 'Name, email, and password are required.' });
-    }
-
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      return res.status(400).json({ message: 'Please provide a valid email address' });
-    }
-
-    const allowedRequestedRoles = ['employee', 'supervisor', 'tower_lead'];
-    const safeRequestedRole = allowedRequestedRoles.includes(requestedRole) ? requestedRole : 'employee';
-
-    const existing = await User.findOne({ email: email.toLowerCase().trim() });
-    if (existing) {
-      return res.status(409).json({ message: 'Email already registered.' });
-    }
-
-    const user = await User.create({
-      name: name.trim(),
-      email: email.toLowerCase().trim(),
-      password,
-      role: 'employee',
-      requestedRole: safeRequestedRole,
-      department: department || null,
-      grade: grade || '',
-      organization: company || '',
-      status: 'pending',
-      isActive: false
-    });
-
-    return res.status(201).json({
-      message: 'Access request submitted. Awaiting admin approval.',
-      userId: user._id
-    });
-  } catch (err) {
-    return res.status(500).json({ message: err.message });
-  }
+  return res.status(410).json({ message: 'Request access flow is deprecated. Use /api/auth/signup.' });
 };
 
 const register = async (req, res) => {
   try {
-    const { name, email, password, role = 'employee', department, tower, grade, reportingTo, userType = 'manager', organization } = req.body;
+    const { name, email, password, role = 'manager', organization = '' } = req.body;
     
     if (!name || !email || !password) {
       return res.status(400).json({ message: 'Name, email, and password are required' });
@@ -61,14 +22,13 @@ const register = async (req, res) => {
       return res.status(400).json({ message: 'Password must be at least 6 characters' });
     }
     
-    const validRoles = ['admin', 'tower_lead', 'supervisor', 'employee'];
+    const validRoles = ['manager', 'employee'];
     if (!validRoles.includes(role)) {
-      return res.status(400).json({ message: `Invalid role provider. Choose from: ${validRoles.join(', ')}` });
+      return res.status(400).json({ message: `Invalid role. Choose from: ${validRoles.join(', ')}` });
     }
 
-    const validUserTypes = ['manager', 'employee'];
-    if (!validUserTypes.includes(userType)) {
-      return res.status(400).json({ message: `Invalid userType. Choose from: ${validUserTypes.join(', ')}` });
+    if (role === 'employee' && !organization.trim()) {
+      return res.status(400).json({ message: 'Organization is required for employee signup.' });
     }
 
     const existing = await User.findOne({ email: email.toLowerCase().trim() });
@@ -79,13 +39,7 @@ const register = async (req, res) => {
       email: email.toLowerCase().trim(), 
       password, 
       role, 
-      userType,
-      organization,
-      department, 
-      tower, 
-      grade, 
-      reportingTo,
-      status: 'active',
+      organization: organization.trim(),
       isActive: true
     });
     
@@ -100,9 +54,7 @@ const register = async (req, res) => {
         name: user.name,
         email: user.email,
         role: user.role,
-        userType: user.userType,
-        organization: user.organization,
-        status: user.status
+        organization: user.organization
       }
     });
   } catch (err) {
@@ -125,7 +77,7 @@ const login = async (req, res) => {
     await user.save();
 
     const token = jwt.sign(
-      { userId: user._id, role: user.role, userType: user.userType, email: user.email },
+      { userId: user._id, role: user.role, email: user.email },
       process.env.JWT_SECRET,
       { expiresIn: '30d' }
     );
@@ -138,7 +90,6 @@ const login = async (req, res) => {
         name: user.name,
         email: user.email,
         role: user.role,
-        userType: user.userType,
         organization: user.organization
       }
     });

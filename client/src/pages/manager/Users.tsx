@@ -1,9 +1,9 @@
 import { useMemo, useState, useEffect } from 'react';
 import { Check, Copy, Link2, MailPlus, Search, UserPlus, X } from 'lucide-react';
 import { apiFetch } from '../../lib/api';
-import { createInvite, getInviteSignupLink } from '../../lib/authStorage';
+import { getInviteSignupLink, loadAuthUser } from '../../lib/authStorage';
 
-type UserRole = 'Admin' | 'Employee' | 'Manager';
+type UserRole = 'Employee' | 'Manager';
 type UserStatus = 'Active' | 'Inactive';
 
 type UserRow = {
@@ -39,7 +39,7 @@ const initialUsers: UserRow[] = [
 		client: 'BU011',
 		band: 'M4',
 		designation: 'Manager',
-		role: 'Admin',
+		role: 'Manager',
 		status: 'Active',
 	},
 	{
@@ -81,7 +81,6 @@ export default function UsersPage() {
 	const [isInviteOpen, setIsInviteOpen] = useState(false);
 	const [inviteError, setInviteError] = useState('');
 	const [inviteCopied, setInviteCopied] = useState(false);
-	const [inviteEmail, setInviteEmail] = useState('');
 	const [generatedInviteUrl, setGeneratedInviteUrl] = useState('');
 
 	const fetchUsers = async () => {
@@ -144,30 +143,17 @@ export default function UsersPage() {
 		setIsInviteOpen(false);
 		setInviteError('');
 		setInviteCopied(false);
-		setInviteEmail('');
 		setGeneratedInviteUrl('');
 	}
 
-	function isValidEmail(email: string) {
-		return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
+	function openInviteModal() {
+		generateInviteUrl();
+		setIsInviteOpen(true);
 	}
 
 	function generateInviteUrl() {
-		const email = inviteEmail.trim().toLowerCase();
-		const inviteOrg = 'QGGlobal';
-
-		if (!email) {
-			setInviteError('Employee email is required.');
-			return '';
-		}
-
-		if (!isValidEmail(email)) {
-			setInviteError('Please enter a valid work email address.');
-			return '';
-		}
-
-		const invite = createInvite(email);
-		const url = getInviteSignupLink(invite.token, inviteOrg);
+		const inviteOrg = loadAuthUser()?.organization?.trim() || 'QGGlobal';
+		const url = getInviteSignupLink(inviteOrg);
 		setGeneratedInviteUrl(url);
 		setInviteError('');
 		setInviteCopied(false);
@@ -213,8 +199,8 @@ export default function UsersPage() {
 					designation: createUserForm.jobTitle.trim(),
 					band: createUserForm.jobBand,
 					client: createUserForm.client,
-					role: createUserForm.role.toLowerCase(),
-					userType: createUserForm.role === 'Employee' ? 'employee' : 'manager'
+					role: createUserForm.role === 'Employee' ? 'employee' : 'manager',
+					organization: createUserForm.client
 				})
 			});
 
@@ -245,7 +231,7 @@ export default function UsersPage() {
 						<div className="flex flex-wrap items-center gap-2">
 							<button
 								type="button"
-								onClick={() => setIsInviteOpen(true)}
+								onClick={openInviteModal}
 								className="inline-flex items-center gap-2 rounded-lg border border-[#BFD3EA] bg-[#F4F8FF] px-3.5 py-2 text-xs font-semibold text-[#1E5EAB] transition-all hover:bg-[#EAF2FF]"
 							>
 								<MailPlus className="h-3.5 w-3.5" />
@@ -284,7 +270,7 @@ export default function UsersPage() {
 							className="h-9 w-full rounded-lg border border-[#D6E0EE] bg-white px-3 text-xs font-medium text-[#243A59] outline-none transition-all focus:border-[#6E97CB] focus:ring-2 focus:ring-[#D7E6F7]"
 						>
 							<option value="All">All Roles</option>
-							<option value="Admin">Admin</option>
+							<option value="Manager">Manager</option>
 							<option value="Employee">Employee</option>
 						</select>
 					</label>
@@ -365,7 +351,9 @@ export default function UsersPage() {
 															.join('')}
 													</div>
 													<div>
-														<p className="text-[16px] font-bold leading-tight text-[#1A2E4D]">{user.name}</p>
+														<p className="text-[16px] font-bold leading-tight text-[#1A2E4D]">
+															{user.name}
+														</p>
 														<p className="mt-0.5 text-xs text-[#6A82A0]">{user.designation}</p>
 													</div>
 												</div>
@@ -380,7 +368,7 @@ export default function UsersPage() {
 											<td className="px-4 py-3">
 												<span
 													className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold ${
-														user.role === 'Admin'
+														user.role === 'Manager'
 															? 'border-[#BCD3EF] bg-[#E8F1FF] text-[#235BA7]'
 															: 'border-[#D6DEE9] bg-[#F4F7FB] text-[#5E718A]'
 													}`}
@@ -479,7 +467,6 @@ export default function UsersPage() {
 									>
 										<option value="Employee">Employee</option>
 										<option value="Manager">Manager</option>
-										<option value="Admin">Admin</option>
 									</select>
 								</label>
 
@@ -616,16 +603,6 @@ export default function UsersPage() {
 						</div>
 
 						<div className="px-6 py-6 space-y-4">
-							<label className="space-y-1.5">
-								<span className="text-[11px] font-bold uppercase tracking-[0.14em] text-[#6A809E]">Employee Email</span>
-								<input
-									type="email"
-									value={inviteEmail}
-									onChange={(event) => setInviteEmail(event.target.value)}
-									placeholder="employee@example.com"
-									className="h-11 w-full rounded-xl border border-[#D8E2F0] bg-white px-4 text-sm text-[#243A59] outline-none placeholder:text-[#95A7BF] focus:border-[#7BA0CF] focus:ring-2 focus:ring-[#D7E6F7]"
-								/>
-							</label>
 							<div className="space-y-1.5">
 								<span className="text-[11px] font-bold uppercase tracking-[0.14em] text-[#6A809E]">Copy Invite URL</span>
 								<div className="flex items-center gap-2">
@@ -640,7 +617,7 @@ export default function UsersPage() {
 									<button
 										type="button"
 										onClick={handleCopyInviteUrl}
-										className={`inline-flex h-11 min-w-[90px] items-center justify-center gap-2 rounded-xl px-5 text-sm font-semibold text-white shadow-[0_8px_14px_rgba(22,91,170,0.22)] transition-all ${
+										className={`inline-flex h-11 min-w-22.5 items-center justify-center gap-2 rounded-xl px-5 text-sm font-semibold text-white shadow-[0_8px_14px_rgba(22,91,170,0.22)] transition-all ${
 											inviteCopied
 											? 'bg-[#1A9A52] hover:bg-[#178044]'
 											: 'bg-[#165BAA] hover:bg-[#124B8D]'

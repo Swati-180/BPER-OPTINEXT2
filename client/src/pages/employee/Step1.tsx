@@ -3,11 +3,12 @@ import type { EmployeeSnapshot } from "./formTypes";
 
 interface StepProps {
   employee: EmployeeSnapshot;
+  windowStatus: any;
   onNext: () => void;
   onPrev: () => void;
 }
 
-export function Step1({ employee, onNext, onPrev }: StepProps) {
+export function Step1({ employee, windowStatus, onNext, onPrev }: StepProps) {
   const fieldClass = "space-y-1.5 rounded-lg border border-slate-200 bg-slate-50/70 px-4 py-3";
   const labelClass = "text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500";
   const valueClass = "text-[15px] font-medium text-slate-900";
@@ -20,9 +21,18 @@ export function Step1({ employee, onNext, onPrev }: StepProps) {
             <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500 mb-2">Verified profile snapshot</p>
             <h2 className="text-3xl sm:text-4xl font-semibold text-slate-900 tracking-tight">Employee Verification</h2>
           </div>
-          <p className="max-w-2xl text-sm text-slate-600 leading-relaxed">
-            Review your read-only profile before entering process data. These fields are pulled from master records and should match your institutional profile.
-          </p>
+          <div className="max-w-md">
+            {windowStatus && !windowStatus.isOpen ? (
+              <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-amber-800">
+                <p className="text-xs font-bold uppercase tracking-widest mb-1">Submission Window Closed</p>
+                <p className="text-sm font-medium">Submissions open on the 20th. {windowStatus.message}.</p>
+              </div>
+            ) : (
+              <p className="text-sm text-slate-600 leading-relaxed">
+                Review your read-only profile before entering process data. These fields are pulled from master records.
+              </p>
+            )}
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5 mb-10">
@@ -86,8 +96,13 @@ export function Step1({ employee, onNext, onPrev }: StepProps) {
           </button>
           <button
             type="button"
+            disabled={windowStatus && !windowStatus.isOpen}
             onClick={onNext}
-            className="bg-blue-700 hover:bg-blue-800 text-white font-semibold py-3 px-6 rounded-md transition-colors inline-flex items-center justify-center gap-2 shadow-sm"
+            className={`font-semibold py-3 px-6 rounded-md transition-colors inline-flex items-center justify-center gap-2 shadow-sm ${
+              windowStatus && !windowStatus.isOpen
+                ? "bg-slate-200 text-slate-400 cursor-not-allowed"
+                : "bg-blue-700 hover:bg-blue-800 text-white"
+            }`}
           >
             Confirm & Continue <ArrowRight size={18} />
           </button>

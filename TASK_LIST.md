@@ -1,68 +1,94 @@
-# Project Task List: OptiNext
+# OptiNext Master Task List & Roadmap
 
-## Phase 3: Finalize MongoDB Atlas data and master setup
-- [x] no direct UI feature here except handling loading/empty states where DB data is used later
-- [x] test API responses against real Atlas data
-- [x] confirm all pages receive real IDs and usable payload shapes
-- [x] verify schemas and relations work properly
-- [x] ensure departments, towers, settings, activities, users, and submissions are stored correctly
-- [x] verify standardHours/settings retrieval works
-- [x] seed required master activity/process data if missing
-- [x] verify Atlas connection
-- [x] verify collections are structured correctly
-- [x] verify required initial data exists and is usable
+## Phase 1-4: Core Platform & Foundation
+- [x] Basic Employee Portal Setup
+- [x] Basic Manager Portal Setup
+- [x] MongoDB Atlas Integration
+- [x] Role-Based Access Control (RBAC)
+- [x] BPER Form Wizard (Steps 1-3)
+- [x] Manage Users & Approval Flow
+- [x] Basic Dashboard Charts
 
-## Phase 4: Connect employee process and activity dropdowns to backend
-- [x] replace hardcoded dropdown options
-- [x] bind dropdown selection with fetched data
-- [x] show loading, no data, and error states
-- [x] maintain clean dependent dropdown logic if parent category changes
-- [x] show proper empty state if no activity/process data is available for the selected department
-- [x] connect employee form with activity-by-department API
-- [x] pass correct department IDs
-- [x] confirm fetched data format matches the UI structure
-- [x] verify selected activity IDs go correctly in submission payload
-- [x] confirm activity endpoints return consistent data
-- [x] adjust response format if frontend needs flatter or grouped data
-- [x] make sure activities are correctly filtered by department
-- [x] verify real department/activity records exist in Atlas
-- [x] confirm only relevant options are shown
+## Phase 5: Hardening & Business Logic (COMPLETED)
+- [x] **Submission Window Enforcement** (20th-31st)
+- [x] **Duplicate Submission Prevention** (By Month/Year)
+- [x] **Strict Frontend Validation** (Disable 'Next' if hours = 0 or fields empty)
+- [x] **Autosave "Saved √" Visual Indicator**
+- [x] **Dashboard Deadline Alert** (Live countdown to window closure)
+- [x] **Bug Fix**: Employee Login (Corrected `employee@bper.com` seed)
+- [x] **Bug Fix**: Reference ID "BPER-undefined-1" (Profile hydration fix)
+- [x] **Bug Fix**: 6x6 Analysis empty state (Database seeding)
+- [x] **Bug Fix**: Stats Overlapping in Manager Forms (Responsive CSS fix)
+- [x] **Bug Fix**: 6x6 Matrix Cryptic Headers (Added tooltips)
 
-## Phase 5: Connect employee WDT submission flow
-- [x] connect final submit button to real API
-- [x] show success/error messages
-- [x] show employee submission history
-- [x] show status labels clearly
-- [x] allow returned submissions to be revised
-- [ ] allow edit request flow where needed
-- [ ] add submission window visibility in dashboard and form
-- [ ] show submission deadline clearly
-- [ ] disable submit button when submission window is closed
-- [ ] show message when submissions are closed
-- [x] add autosave draft behavior in FormWizard/Step2 so data is not lost on refresh
-- [x] show draft save indicator like "Saved ✔"
-- [ ] strengthen Step2 and Step3 validation
-- [ ] validate hours > 0
-- [ ] validate required fields before submit
-- [ ] validate numeric fields properly
-- [x] map frontend form fields to backend WDT payload: department
-- [x] map frontend form fields to backend WDT payload: month
-- [x] map frontend form fields to backend WDT payload: year
-- [x] map frontend form fields to backend WDT payload: activities
-- [ ] map frontend form fields to backend WDT payload: overtimeHours
-- [x] connect employee history page to "my submissions"
-- [x] connect revision and edit request flows to APIs
-- [x] handle returned_for_revision, submitted, approved states correctly
-- [x] connect submission window API to dashboard/form behavior
-- [x] connect autosave draft API if draft endpoint is added
-- [x] confirm payload validation is correct
-- [x] confirm save/update logic works correctly for resubmissions
-- [ ] confirm reviewer assignment and standardHours logic works
-- [x] return frontend-friendly responses for submission status
-- [ ] add submission window support if not already available
-- [ ] add draft save support if not already available
-- [x] verify submission records are saved correctly in Atlas
-- [x] verify updates do not break old records
-- [ ] verify month/year-based duplicate logic works as expected
-- [ ] verify closed submission window prevents actual submission
-- [x] verify autosaved drafts restore correctly if user refreshes
+## Phase 6: AI Integration & Process Governance (PENDING)
+- [ ] **AI Mapping (Task 6)**
+    - [ ] add custom activity input flow in employee form
+    - [ ] show mapped suggestion to user
+    - [ ] show confidence or mapping result clearly
+    - [ ] connect custom input to AI mapping API
+    - [ ] backend: confirm AI mapping route returns usable response
+- [ ] **Manager Process Control (Task 12)**
+    - [ ] Build Taxonomy Management Dashboard
+    - [ ] Implement Team/Department level visibility rules in `/api/taxonomy`
+- [ ] **Audit Trail (Task 13)**
+    - [ ] Log status changes (Approve/Return) with timestamps
+    - [ ] Track AI mapping decisions and overrides
+- [ ] **Manager Reviews Enhancement (Task 7)**
+    - [x] Display real submission rows and statuses
+    - [x] Connect approve/return action routes
+    - [ ] Implement **"Grant Edit"** functionality
+
+## Phase 7: Advanced Analytics & Reporting (PENDING)
+- [ ] **Deep Reports (Task 9)**
+    - [ ] Replace static arrays in Report tabs with live API aggregation
+    - [ ] Connect multi-tab reports to live backend endpoints
+- [ ] **Fitment Module (Task 11)**
+    - [ ] Connect Fitment scoring UI to real backend results
+- [ ] **Analytics Polish (Task 8)**
+    - [ ] Ensure charts do not break when API data is empty or partial
+    - [ ] Render live summary counts across all dashboard cards
+
+## Phase 8: Live Reports Completion & Cleanup (COMPLETED)
+- [x] **Computed Reports API Layer**
+    - [x] Add dashboard, utilization, FTE summary, FTE consolidation summary, and fitment summary endpoints
+    - [x] Compute report payloads directly from MongoDB submissions and fitment data
+- [x] **Manager Report Security**
+    - [x] Enforce manager-only access for report routes
+    - [x] Verify employee requests return `403` on manager report endpoints
+- [x] **Manager Dashboard Refactor**
+    - [x] Replace hardcoded KPI cards and charts with live report data
+    - [x] Show submission window status on the dashboard
+    - [x] Refresh dashboard summaries after submissions and manager reviews
+- [x] **WDT Analytics Refactor**
+    - [x] Replace hardcoded chart/table values with utilization report data
+    - [x] Add loading, empty, and error-safe chart states
+    - [x] Refresh analytics after live submission updates
+- [x] **Employee 360 Removal**
+    - [x] Remove manager route and navigation links for Employee 360
+    - [x] Delete obsolete Employee 360 page implementation
+- [x] **Verification & Validation**
+    - [x] Add automated report verification script
+    - [x] Validate manager access, employee denial, and report consistency checks
+
+---
+
+## Technical Audit: Algorithms & Data Integrity
+
+### 1. Algorithm Overview
+| Framework | Logic / Algorithm | Status |
+| :--- | :--- | :--- |
+| **WDT (Work Distribution)** | Time-aggregation: Groups `hours` by `majorProcess` and `activityCategory`. | **Active** |
+| **6x6 Matrix Scoring** | Scoring logic: Mapping 12 criteria to consolidation strength. | **Active** |
+| **Submission Window** | Date-range validation: Enforces `20th <= day <= 31st`. | **Active** |
+| **NLP Mapping** | *Proposed: Vector embeddings (Cosine Similarity).* | **Draft** |
+
+### 2. Live Data vs. Mock Data Status
+| Page / Widget | Data Source | Reliability |
+| :--- | :--- | :--- |
+| **Employee Dashboard** | **LIVE** (Mongo Atlas) | High |
+| **Manager Submission Queue** | **LIVE** (Mongo Atlas) | High |
+| **6x6 Analysis Matrix** | **LIVE** (Mongo Atlas) | High |
+| **Fitment Analysis** | **MOCK** (Static State) | Development |
+| **Deep Reports / Utilization** | **HYBRID** (Calculated from Live but showing static exports) | Development |
+| **WDT Utilization Graphs** | **LIVE** (Computed from Submissions) | High |

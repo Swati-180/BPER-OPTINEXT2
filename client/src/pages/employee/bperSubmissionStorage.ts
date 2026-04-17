@@ -13,6 +13,8 @@ export interface BperReviewEvent {
 export interface BperSubmissionRecord {
   referenceId: string;
   submittedAt: string;
+  month: number;
+  year: number;
   status: BperSubmissionStatus;
   employee: EmployeeSnapshot;
   payload: WdtPayload;
@@ -26,6 +28,11 @@ export interface BperSubmissionRecord {
 const STORAGE_KEY = "bper.employee.submissions";
 const ACTIVE_UNDER_REVIEW_KEY = "bper.employee.activeUnderReviewRef";
 const DRAFT_KEY = "bper.employee.formDraft";
+
+function emitDataUpdatedEvent() {
+  if (typeof window === 'undefined') return;
+  window.dispatchEvent(new CustomEvent('bper:data-updated'));
+}
 
 export async function saveBperDraft(payload: WdtPayload | null) {
   if (typeof window === "undefined") return;
@@ -94,19 +101,25 @@ const seededRecords: BperSubmissionRecord[] = [
   },
 ];
 
-export function buildBperSubmission(payload: WdtPayload): BperSubmissionRecord {
+export function buildBperSubmission(payload: WdtPayload, profile?: EmployeeSnapshot): BperSubmissionRecord {
+  const emp = profile || payload.employee;
   const totalHours = payload.rows.reduce((sum, row) => sum + Number(row.timeTakenHoursPerMonth || 0), 0);
   const coreCount = payload.rows.filter((row) => row.activityCategory !== "support").length;
   const supportCount = payload.rows.filter((row) => row.activityCategory === "support").length;
-  const submittedAt = new Date().toISOString();
-  const referenceId = `BPER-${payload.employee.employeeId}-${Date.now().toString().slice(-5)}`;
+  const now = new Date();
+  const submittedAt = now.toISOString();
+  const month = now.getMonth() + 1;
+  const year = now.getFullYear();
+  const referenceId = `BPER-${emp.employeeId || "NEW"}-${Date.now().toString().slice(-5)}`;
 
   return {
     referenceId,
     submittedAt,
+    month,
+    year,
     status: "Under Review",
-    employee: payload.employee,
-    payload,
+    employee: emp,
+    payload: { ...payload, employee: emp },
     totalHours,
     coreCount,
     supportCount,
@@ -146,6 +159,7 @@ export async function saveBperSubmission(record: BperSubmissionRecord) {
       if (typeof window !== 'undefined') {
         window.localStorage.setItem(ACTIVE_UNDER_REVIEW_KEY, data.referenceId);
       }
+      emitDataUpdatedEvent();
       return data;
     }
   } catch (error) {
@@ -202,7 +216,9 @@ export async function applyManagerReviewToSubmission(input: {
     
     if (response.ok) {
       clearActiveUnderReviewReferenceId();
-      return await response.json();
+      const updated = await response.json();
+      emitDataUpdatedEvent();
+      return updated;
     }
   } catch (error) {
     console.error('Failed to update submission:', error);

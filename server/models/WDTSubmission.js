@@ -3,6 +3,8 @@ const mongoose = require('mongoose');
 const wdtSubmissionSchema = new mongoose.Schema({
   referenceId: { type: String, required: true, unique: true },
   submittedAt: { type: Date, default: Date.now },
+  month: { type: Number, required: true },
+  year: { type: Number, required: true },
   status: { type: String, enum: ['Under Review', 'Approved', 'Changes Requested'], default: 'Under Review' },
   employee: {
     employeeId: String,
