@@ -79,3 +79,64 @@ export function getFteConsolidationSummaryReport(department?: string) {
 export function getFitmentSummaryReport() {
   return apiGetJson<any>('/reports/fitment-summary');
 }
+
+// Phase 9: Deep Analysis Reports
+export function getFteAnalysisReport(department?: string) {
+  const query = department && department !== 'All Departments'
+    ? `?department=${encodeURIComponent(department)}`
+    : '';
+  return apiGetJson<any>(`/reports/fte-analysis${query}`);
+}
+
+export function getConsolidationAnalysisReport(department?: string) {
+  const query = department && department !== 'All Departments'
+    ? `?department=${encodeURIComponent(department)}`
+    : '';
+  return apiGetJson<any>(`/reports/consolidation-analysis${query}`);
+}
+
+export function getFitmentAnalysisReport() {
+  return apiGetJson<any>('/reports/fitment-analysis');
+}
+
+export function getUtilizationAnalysisReport(department?: string) {
+  const query = department && department !== 'All Departments'
+    ? `?department=${encodeURIComponent(department)}`
+    : '';
+  return apiGetJson<any>(`/reports/utilization-analysis${query}`);
+}
+
+// CSV Export Helper
+export function exportToCSV(data: any[], filename: string, headers?: string[]) {
+  if (!data || data.length === 0) {
+    console.error('No data to export');
+    return;
+  }
+
+  const keys = headers || Object.keys(data[0]);
+  const csv = [
+    keys.join(','),
+    ...data.map((row) =>
+      keys
+        .map((key) => {
+          const value = row[key];
+          if (value === null || value === undefined) return '';
+          const str = String(value);
+          return str.includes(',') || str.includes('"') || str.includes('\n')
+            ? `"${str.replace(/"/g, '""')}"`
+            : str;
+        })
+        .join(',')
+    ),
+  ].join('\n');
+
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `${filename}-${new Date().toISOString().split('T')[0]}.csv`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}

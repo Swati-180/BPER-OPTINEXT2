@@ -10,7 +10,8 @@ import {
   Menu, 
   Bell, 
   MessagesSquare,
-  UserCircle
+  UserCircle,
+  Briefcase
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { motion } from 'motion/react';
@@ -39,6 +40,7 @@ export default function ManagerLayout({ children, user, onLogout }: ManagerLayou
     { name: 'Forms', path: '/manager/forms', icon: FileText },
     { name: 'WDT Analytics', path: '/manager/wdt-analytics', icon: BarChart3 },
     { name: '6x6 Analysis', path: '/manager/6x6-analysis', icon: Grid3X3 },
+    { name: 'Deep Analysis', path: '/manager/deep-analysis', icon: Briefcase },
   ];
 
   const isSidebarExpanded = isSidebarOpen || isSidebarHovered;

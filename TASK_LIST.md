@@ -41,13 +41,50 @@
 
 ## Phase 7: Advanced Analytics & Reporting (PENDING)
 - [ ] **Deep Reports (Task 9)**
-    - [ ] Replace static arrays in Report tabs with live API aggregation
-    - [ ] Connect multi-tab reports to live backend endpoints
+    - [x] Replace static arrays in Report tabs with live API aggregation
+    - [x] Connect multi-tab reports to live backend endpoints
 - [ ] **Fitment Module (Task 11)**
     - [ ] Connect Fitment scoring UI to real backend results
 - [ ] **Analytics Polish (Task 8)**
     - [ ] Ensure charts do not break when API data is empty or partial
     - [ ] Render live summary counts across all dashboard cards
+
+## Phase 9: Deep Reports and Export-Ready Views (COMPLETED)
+- [x] **Deep Analysis Reports API Layer**
+    - [x] Add FTE analysis, Consolidation analysis, Fitment analysis, Utilization analysis endpoints
+    - [x] Return detailed tabs data for each analysis type
+- [x] **Frontend Deep Analysis Page (Consolidated)**
+    - [x] Create unified Deep Analysis page with 4 main tabs
+    - [x] FTE Analysis tab (4 sub-tabs) with CSV export
+    - [x] Consolidation Analysis tab (3 sub-tabs) with CSV export
+    - [x] Fitment Analysis tab (3 sub-tabs) with CSV export
+    - [x] Utilization Analysis tab (5 sub-tabs) with CSV export
+- [x] **Export Functionality**
+    - [x] Implement CSV export helper in API client
+    - [x] Wire export buttons to live report data
+    - [x] Support contextual headers and date-stamped filenames
+- [x] **Tab State Management**
+    - [x] Add loading states (Loader2 spinners) to all tabs
+    - [x] Add empty states for no-data scenarios
+    - [x] Add error states with retry logic
+    - [x] Department filters for scoped analysis
+- [x] **UI Consistency**
+    - [x] Match dashboard color scheme and typography
+    - [x] Standardize KPI card layouts
+    - [x] Consistent table styling across all sub-tabs
+    - [x] Responsive grid for mobile/tablet/desktop
+- [x] **Navigation & Routing**
+    - [x] Add single "Deep Analysis" menu item to sidebar
+    - [x] Register `/manager/deep-analysis` route in App.tsx
+    - [x] Auto-refresh via event listener and polling
+- [x] **Sidebar Optimization**
+    - [x] Consolidate 4 report pages into 1 page with main tabs
+    - [x] Reduce sidebar clutter from 9 items to 6 items
+    - [x] Use Briefcase icon for Deep Analysis menu item
+- [x] **Data Validation**
+    - [x] Verify tab data matches dashboard calculations
+    - [x] Verify export contains live data
+    - [x] Test loading/empty/error states on all sub-tabs
 
 ## Phase 8: Live Reports Completion & Cleanup (COMPLETED)
 - [x] **Computed Reports API Layer**
@@ -89,6 +126,9 @@
 | **Employee Dashboard** | **LIVE** (Mongo Atlas) | High |
 | **Manager Submission Queue** | **LIVE** (Mongo Atlas) | High |
 | **6x6 Analysis Matrix** | **LIVE** (Mongo Atlas) | High |
-| **Fitment Analysis** | **MOCK** (Static State) | Development |
-| **Deep Reports / Utilization** | **HYBRID** (Calculated from Live but showing static exports) | Development |
+| **FTE Analysis** | **LIVE** (API: `/reports/fte-analysis`) | High |
+| **Consolidation Analysis** | **LIVE** (API: `/reports/consolidation-analysis`) | High |
+| **Fitment Analysis** | **LIVE** (API: `/reports/fitment-analysis`) | High |
+| **Utilization Analysis** | **LIVE** (API: `/reports/utilization-analysis`) | High |
 | **WDT Utilization Graphs** | **LIVE** (Computed from Submissions) | High |
+| **Deep Report Exports** | **LIVE** (CSV from API data) | High |

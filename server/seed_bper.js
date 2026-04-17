@@ -7,7 +7,7 @@ const Taxonomy = require('./models/Taxonomy');
 const ProcessAnalysis = require('./models/ProcessAnalysis');
 const bcrypt = require('bcryptjs');
 
-dotenv.config({ path: './server/.env' });
+dotenv.config({ path: './.env' });
 
 const users = [
   {
@@ -228,6 +228,26 @@ async function seed() {
 
     await ProcessAnalysis.insertMany(analysisRecords);
     console.log('Inserted Process Analysis Data (6x6)');
+
+    // Insert Fitment data
+    const fitmentRecords = employees.map((emp, idx) => {
+      const scores = [45, 72, 88, 58, 92, 65, 78, 55, 81, 68];
+      const labels = ['TRAIN TO FIT', 'FIT', 'FIT', 'TRAIN TO FIT', 'FIT', 'TRAIN TO FIT', 'FIT', 'TRAIN TO FIT', 'FIT', 'TRAIN TO FIT'];
+      return {
+        employeeId: emp.employeeId,
+        name: emp.name,
+        designation: emp.designation,
+        band: emp.band,
+        department: emp.designation.split(' ')[0],
+        weightedScore: scores[idx % scores.length],
+        fitmentLabel: labels[idx % labels.length],
+        evaluatedAt: new Date(Date.now() - Math.random() * 90 * 24 * 60 * 60 * 1000), // within last 90 days
+        createdAt: new Date(Date.now() - Math.random() * 90 * 24 * 60 * 60 * 1000),
+      };
+    });
+
+    await Fitment.insertMany(fitmentRecords);
+    console.log('Inserted Fitment Data');
 
     console.log('Seeding Complete!');
     process.exit(0);

@@ -576,10 +576,389 @@ async function getFitmentSummaryReport(req, res) {
   }
 }
 
+// Detailed Analysis Endpoints (Phase 9: Deep Reports)
+
+async function getFteAnalysisReport(req, res) {
+  try {
+    const requestUser = await resolveRequestUser(req);
+    if (!ensureManager(requestUser.role, res)) return;
+
+    const submissions = await getScopedSubmissions(req);
+    const rows = flattenRows(submissions);
+
+    const totalHours = rows.reduce((sum, row) => sum + row.monthlyHours, 0);
+    const totalFte = totalHours / STANDARD_MONTHLY_HOURS;
+
+    // By Tower Detailed
+    const byTowerMap = new Map();
+    rows.forEach((row) => {
+      const current = byTowerMap.get(row.tower) || { tower: row.tower, hours: 0, activityCount: 0 };
+      current.hours += row.monthlyHours;
+      current.activityCount += 1;
+      byTowerMap.set(row.tower, current);
+    });
+
+    const byTowerDetail = Array.from(byTowerMap.values())
+      .map((item) => ({
+        tower: item.tower,
+        hours: Number(item.hours.toFixed(1)),
+        activityCount: item.activityCount,
+        fte: Number((item.hours / STANDARD_MONTHLY_HOURS).toFixed(2)),
+        utilizationPct: Number(Math.min(100, (item.hours / STANDARD_MONTHLY_HOURS) * 100).toFixed(1)),
+      }))
+      .sort((a, b) => b.fte - a.fte);
+
+    // By Department Detailed
+    const byDeptMap = new Map();
+    rows.forEach((row) => {
+      const current = byDeptMap.get(row.department) || { department: row.department, hours: 0, activityCount: 0 };
+      current.hours += row.monthlyHours;
+      current.activityCount += 1;
+      byDeptMap.set(row.department, current);
+    });
+
+    const byDepartmentDetail = Array.from(byDeptMap.values())
+      .map((item) => ({
+        department: item.department,
+        hours: Number(item.hours.toFixed(1)),
+        activityCount: item.activityCount,
+        fte: Number((item.hours / STANDARD_MONTHLY_HOURS).toFixed(2)),
+        utilizationPct: Number(Math.min(100, (item.hours / STANDARD_MONTHLY_HOURS) * 100).toFixed(1)),
+      }))
+      .sort((a, b) => b.fte - a.fte);
+
+    // All Activities Detail
+    const allActivities = rows
+      .map((row) => ({
+        name: row.subProcess,
+        tower: row.tower,
+        department: row.department,
+        process: row.process,
+        frequency: row.frequency,
+        monthlyHours: Number(row.monthlyHours.toFixed(1)),
+        fte: Number((row.monthlyHours / STANDARD_MONTHLY_HOURS).toFixed(2)),
+        activityCategory: row.activityCategory,
+      }))
+      .sort((a, b) => b.fte - a.fte);
+
+    res.json({
+      generatedAt: new Date().toISOString(),
+      summary: {
+        totalHours: Number(totalHours.toFixed(1)),
+        totalFte: Number(totalFte.toFixed(2)),
+        baselineHours: STANDARD_MONTHLY_HOURS,
+        totalActivities: rows.length,
+      },
+      tabs: {
+        byTower: byTowerDetail,
+        byDepartment: byDepartmentDetail,
+        allActivities,
+      },
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+}
+
+async function getConsolidationAnalysisReport(req, res) {
+  try {
+    const requestUser = await resolveRequestUser(req);
+    if (!ensureManager(requestUser.role, res)) return;
+
+    const submissions = await getScopedSubmissions(req);
+    const rows = flattenRows(submissions);
+
+    const candidateRows = rows.map((row) => {
+      const consolidate = buildConsolidationSignal(row);
+      const fte = row.monthlyHours / STANDARD_MONTHLY_HOURS;
+      return {
+        ...row,
+        consolidate,
+        fte,
+      };
+    });
+
+    const consolidateActivities = candidateRows.filter((row) => row.consolidate);
+    const savedFte = consolidateActivities.reduce((sum, row) => sum + row.fte * 0.35, 0);
+    const estimatedSavingsCr = savedFte * 0.1;
+
+    // By Department Detail
+    const byDeptMap = new Map();
+    candidateRows.forEach((row) => {
+      const current = byDeptMap.get(row.department) || {
+        department: row.department,
+        totalActivities: 0,
+        consolidateActivities: 0,
+        savedFte: 0,
+      };
+      current.totalActivities += 1;
+      if (row.consolidate) {
+        current.consolidateActivities += 1;
+        current.savedFte += row.fte * 0.35;
+      }
+      byDeptMap.set(row.department, current);
+    });
+
+    const byDepartmentDetail = Array.from(byDeptMap.values())
+      .map((item) => ({
+        department: item.department,
+        totalActivities: item.totalActivities,
+        consolidateActivities: item.consolidateActivities,
+        consolidationRatePct: Number(toPercent(item.consolidateActivities, item.totalActivities).toFixed(1)),
+        savedFte: Number(item.savedFte.toFixed(2)),
+        estimatedSavingsCr: Number((item.savedFte * 0.1).toFixed(2)),
+      }))
+      .sort((a, b) => b.savedFte - a.savedFte);
+
+    // All Consolidation Candidates Detail
+    const allCandidates = candidateRows
+      .map((row) => ({
+        activityName: row.subProcess,
+        tower: row.tower,
+        department: row.department,
+        process: row.process,
+        frequency: row.frequency,
+        monthlyHours: Number(row.monthlyHours.toFixed(1)),
+        fte: Number(row.fte.toFixed(2)),
+        savedFte: Number((row.fte * 0.35).toFixed(2)),
+        estimatedSavingsCr: Number((row.fte * 0.35 * 0.1).toFixed(2)),
+        consolidationSignal: row.consolidate ? 'Yes' : 'No',
+        comment: row.comments,
+      }))
+      .sort((a, b) => b.savedFte - a.savedFte);
+
+    res.json({
+      generatedAt: new Date().toISOString(),
+      summary: {
+        totalActivities: candidateRows.length,
+        consolidateActivities: consolidateActivities.length,
+        consolidationRatePct: Number(toPercent(consolidateActivities.length, candidateRows.length).toFixed(1)),
+        savedFte: Number(savedFte.toFixed(2)),
+        estimatedSavingsCr: Number(estimatedSavingsCr.toFixed(2)),
+      },
+      tabs: {
+        byDepartment: byDepartmentDetail,
+        allCandidates,
+      },
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+}
+
+async function getFitmentAnalysisReport(req, res) {
+  try {
+    const requestUser = await resolveRequestUser(req);
+    if (!ensureManager(requestUser.role, res)) return;
+
+    const [fitments, totalEmployees] = await Promise.all([
+      Fitment.find({}).sort({ weightedScore: -1 }).lean(),
+      User.countDocuments({ role: 'employee', isActive: true }),
+    ]);
+
+    const userMap = new Map(
+      (
+        await User.find({ role: 'employee' })
+          .select('employeeId name designation band department')
+          .lean()
+      ).map((u) => [u.employeeId, u])
+    );
+
+    const profiles = fitments.length;
+    const avgWeightedScore = profiles
+      ? Number((fitments.reduce((sum, item) => sum + safeNumber(item.weightedScore), 0) / profiles).toFixed(1))
+      : 0;
+
+    const labelBreakdown = {
+      fit: fitments.filter((item) => item.fitmentLabel === 'FIT').length,
+      trainToFit: fitments.filter((item) => item.fitmentLabel === 'TRAIN TO FIT').length,
+      unfit: fitments.filter((item) => item.fitmentLabel === 'UNFIT').length,
+    };
+
+    const scoreDistribution = [
+      { label: '0-39', min: 0, max: 39 },
+      { label: '40-64', min: 40, max: 64 },
+      { label: '65-79', min: 65, max: 79 },
+      { label: '80-100', min: 80, max: 100 },
+    ].map((bucket) => ({
+      label: bucket.label,
+      count: fitments.filter((item) => {
+        const score = safeNumber(item.weightedScore);
+        return score >= bucket.min && score <= bucket.max;
+      }).length,
+    }));
+
+    const profilesWithUser = fitments.map((item) => {
+      const user = userMap.get(item.employeeId) || {};
+      return {
+        employeeId: item.employeeId,
+        name: user.name || item.employeeId,
+        designation: user.designation || '',
+        band: user.band || '',
+        department: user.department || '',
+        weightedScore: safeNumber(item.weightedScore),
+        fitmentLabel: item.fitmentLabel || 'UNFIT',
+        lastEvaluatedAt: item.lastEvaluatedAt || item.updatedAt || item.createdAt,
+      };
+    });
+
+    // By Label Detail
+    const byLabelDetail = [
+      {
+        label: 'FIT',
+        profiles: profilesWithUser.filter((item) => item.fitmentLabel === 'FIT'),
+      },
+      {
+        label: 'TRAIN TO FIT',
+        profiles: profilesWithUser.filter((item) => item.fitmentLabel === 'TRAIN TO FIT'),
+      },
+      {
+        label: 'UNFIT',
+        profiles: profilesWithUser.filter((item) => item.fitmentLabel === 'UNFIT'),
+      },
+    ];
+
+    res.json({
+      generatedAt: new Date().toISOString(),
+      summary: {
+        profiles,
+        totalEmployees,
+        coveragePct: Number(toPercent(profiles, totalEmployees).toFixed(1)),
+        avgWeightedScore,
+        labelBreakdown,
+      },
+      charts: {
+        scoreDistribution,
+      },
+      tabs: {
+        byLabel: byLabelDetail,
+        allProfiles: profilesWithUser.sort((a, b) => b.weightedScore - a.weightedScore),
+      },
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+}
+
+async function getUtilizationAnalysisReport(req, res) {
+  try {
+    const requestUser = await resolveRequestUser(req);
+    if (!ensureManager(requestUser.role, res)) return;
+
+    const submissions = await getScopedSubmissions(req);
+    const rows = flattenRows(submissions);
+
+    const totalHours = rows.reduce((sum, row) => sum + row.monthlyHours, 0);
+    const totalSubmissions = submissions.length;
+
+    // By Frequency Detail
+    const byFreqMap = new Map();
+    rows.forEach((row) => {
+      const current = byFreqMap.get(row.frequency) || { frequency: row.frequency, hours: 0, activityCount: 0 };
+      current.hours += row.monthlyHours;
+      current.activityCount += 1;
+      byFreqMap.set(row.frequency, current);
+    });
+
+    const byFrequencyDetail = Array.from(byFreqMap.values())
+      .map((item) => ({
+        frequency: item.frequency,
+        hours: Number(item.hours.toFixed(1)),
+        activityCount: item.activityCount,
+        fte: Number((item.hours / STANDARD_MONTHLY_HOURS).toFixed(2)),
+      }))
+      .sort((a, b) => b.hours - a.hours);
+
+    // By Process Detail
+    const byProcessMap = new Map();
+    rows.forEach((row) => {
+      const key = row.subProcess || row.process;
+      const current = byProcessMap.get(key) || { process: key, hours: 0, activityCount: 0 };
+      current.hours += row.monthlyHours;
+      current.activityCount += 1;
+      byProcessMap.set(key, current);
+    });
+
+    const byProcessDetail = Array.from(byProcessMap.values())
+      .map((item) => ({
+        process: item.process,
+        hours: Number(item.hours.toFixed(1)),
+        activityCount: item.activityCount,
+        fte: Number((item.hours / STANDARD_MONTHLY_HOURS).toFixed(2)),
+      }))
+      .sort((a, b) => b.hours - a.hours);
+
+    // By Employee Detail
+    const byEmployeeMap = new Map();
+    rows.forEach((row) => {
+      const current = byEmployeeMap.get(row.employeeId) || {
+        employeeId: row.employeeId,
+        employeeName: row.employeeName,
+        department: row.department,
+        hours: 0,
+        activityCount: 0,
+      };
+      current.hours += row.monthlyHours;
+      current.activityCount += 1;
+      byEmployeeMap.set(row.employeeId, current);
+    });
+
+    const byEmployeeDetail = Array.from(byEmployeeMap.values())
+      .map((item) => ({
+        employeeId: item.employeeId,
+        employeeName: item.employeeName,
+        department: item.department,
+        hours: Number(item.hours.toFixed(1)),
+        fte: Number((item.hours / STANDARD_MONTHLY_HOURS).toFixed(2)),
+        activityCount: item.activityCount,
+      }))
+      .sort((a, b) => b.hours - a.hours);
+
+    // By Department Detail
+    const byDeptMap = new Map();
+    rows.forEach((row) => {
+      const current = byDeptMap.get(row.department) || { department: row.department, hours: 0, submissionRefs: new Set() };
+      current.hours += row.monthlyHours;
+      current.submissionRefs.add(row.referenceId);
+      byDeptMap.set(row.department, current);
+    });
+
+    const byDepartmentDetail = Array.from(byDeptMap.values())
+      .map((item) => ({
+        department: item.department,
+        hours: Number(item.hours.toFixed(1)),
+        fte: Number((item.hours / STANDARD_MONTHLY_HOURS).toFixed(2)),
+        submissionCount: item.submissionRefs.size,
+      }))
+      .sort((a, b) => b.hours - a.hours);
+
+    res.json({
+      generatedAt: new Date().toISOString(),
+      summary: {
+        totalHours: Number(totalHours.toFixed(1)),
+        totalSubmissions,
+        totalFte: Number((totalHours / STANDARD_MONTHLY_HOURS).toFixed(2)),
+      },
+      tabs: {
+        byFrequency: byFrequencyDetail,
+        byProcess: byProcessDetail,
+        byEmployee: byEmployeeDetail,
+        byDepartment: byDepartmentDetail,
+      },
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+}
+
 module.exports = {
   getDashboardReport,
   getUtilizationReport,
   getFteSummaryReport,
   getFteConsolidationSummaryReport,
   getFitmentSummaryReport,
+  getFteAnalysisReport,
+  getConsolidationAnalysisReport,
+  getFitmentAnalysisReport,
+  getUtilizationAnalysisReport,
 };

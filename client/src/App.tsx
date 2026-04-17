@@ -31,6 +31,7 @@ import ManagerUsers from './pages/manager/Users';
 import ManagerForms from './pages/manager/Forms';
 import ManagerWDTAnalytics from './pages/manager/WDTAnalytics';
 import ManagerSixBySixAnalysis from './pages/manager/SixBySixAnalysis';
+import DeepAnalysis from './pages/manager/DeepAnalysis';
 import PersonalProfile from './pages/manager/PersonalProfile';
 
 import Unauthorized from './pages/Unauthorized';
@@ -354,6 +355,7 @@ export default function App() {
                   <Route path="forms" element={<ManagerForms />} />
                   <Route path="wdt-analytics" element={<ManagerWDTAnalytics />} />
                   <Route path="6x6-analysis" element={<ManagerSixBySixAnalysis />} />
+                  <Route path="deep-analysis" element={<DeepAnalysis />} />
                   <Route path="my-profile" element={<PersonalProfile />} />
                   <Route path="*" element={<Navigate to="dashboard" replace />} />
                 </Routes>
