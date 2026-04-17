@@ -24,6 +24,9 @@ export interface WdtActivityRow {
   timeTakenHoursPerMonth: number;
   applicationsUsed: string;
   comments: string;
+  isAiMapped?: boolean;
+  aiConfidence?: number;
+  originalCustomInput?: string;
 }
 
 export interface WdtPayload {

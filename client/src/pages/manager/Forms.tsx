@@ -16,14 +16,7 @@ type PendingUserApproval = {
 	requestedRole: 'Employee';
 };
 
-const initialPendingUserApprovals: PendingUserApproval[] = [
-	{
-		id: 'demo-employee-approval',
-		name: 'Demo Employee',
-		email: 'employee.demo@bper.local',
-		requestedRole: 'Employee',
-	},
-];
+const initialPendingUserApprovals: PendingUserApproval[] = [];
 
 function reviewBadgeClass(status: BperSubmissionRecord['status']) {
 	if (status === 'Approved') return 'border-emerald-200 bg-emerald-100 text-emerald-800';
@@ -52,17 +45,34 @@ export default function FormsPage() {
 	const [allSubmissions, setAllSubmissions] = useState<BperSubmissionRecord[]>([]);
 	const [isLoading, setIsLoading] = useState(true);
 	const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
-	const [reviewStatus, setReviewStatus] = useState<'Approved' | 'Changes Requested'>('Approved');
+	const [reviewStatus, setReviewStatus] = useState<'Approved' | 'Changes Requested' | 'Grant Edit'>('Approved');
 	const [reviewComment, setReviewComment] = useState('');
+
+	const [isMutating, setIsMutating] = useState(false);
 
 	useEffect(() => {
 		async function init() {
 			setIsLoading(true);
 			try {
-				// Fetch Manager Profile
 				const profileRes = await apiFetch('/auth/me');
 				if (profileRes.ok) {
-					setManagerProfile(await profileRes.json());
+					const profileData = await profileRes.json();
+					setManagerProfile(profileData);
+					
+					// Fetch pending users if admin/manager
+					if (profileData.role === 'admin' || profileData.userType === 'manager') {
+						const usersRes = await apiFetch('/auth/users');
+						if (usersRes.ok) {
+							const users = await usersRes.json();
+							const pending = users.filter((u: any) => u.status === 'pending' || !u.isActive);
+							setPendingUserApprovals(pending.map((u: any) => ({
+								id: u._id,
+								name: u.name,
+								email: u.email,
+								requestedRole: u.requestedRole || 'Employee'
+							})));
+						}
+					}
 				}
 
 				// Fetch Submissions
@@ -122,12 +132,14 @@ export default function FormsPage() {
 		}
 	}, [canReviewSelected]);
 
-	function openReviewModal(status: 'Approved' | 'Changes Requested') {
+	function openReviewModal(status: 'Approved' | 'Changes Requested' | 'Grant Edit') {
 		setReviewStatus(status);
 		// Pre-fill with a summary of flags if any
 		if (status === 'Changes Requested' && flaggedCount > 0) {
 			const summary = selectedFlags.map(f => `Row ${f.rowIndex + 1}: ${f.note}`).join('\n');
 			setReviewComment(`Please address the following items:\n${summary}`);
+		} else if (status === 'Grant Edit') {
+			setReviewComment('Edit access is granted. Please finish updating your submission.');
 		} else {
 			setReviewComment('');
 		}
@@ -136,12 +148,22 @@ export default function FormsPage() {
 
 	async function submitReview() {
 		if (!selectedRecord || !managerProfile) return;
+		setIsMutating(true);
+		
+		const commentPrefix = flaggedCount > 0 && reviewStatus === 'Changes Requested' 
+			? `[System] Returned with ${flaggedCount} flags attached.\n` 
+			: '';
+			
+		const finalComment = reviewComment.trim() || (reviewStatus === 'Approved' ? 'Submission approved.' : reviewStatus === 'Changes Requested' ? 'Changes requested.' : 'Edit access granted.');
+			
 		await applyManagerReviewToSubmission({
 			referenceId: selectedRecord.referenceId,
 			status: reviewStatus,
-			comment: reviewComment.trim() || (reviewStatus === 'Approved' ? 'Submission approved.' : 'Changes requested.'),
+			comment: commentPrefix + finalComment,
 			managerName: managerProfile.name,
 		});
+		
+		setIsMutating(false);
 		refreshQueue();
 	}
 
@@ -165,8 +187,27 @@ export default function FormsPage() {
 		setFlagRowIndex(null);
 	}
 
-	function resolvePendingUserApproval(id: string) {
-		setPendingUserApprovals((prev) => prev.filter((item) => item.id !== id));
+	async function resolvePendingUserApproval(id: string, activate: boolean) {
+		try {
+			setIsMutating(true);
+			await apiFetch('/auth/users/bulk-update', {
+				method: 'POST',
+				body: JSON.stringify({
+					userIds: [id],
+					action: activate ? 'activate' : 'deactivate',
+					role: activate ? 'employee' : undefined
+				})
+			});
+			if (activate) {
+				// We also need to set their status to active! We can do it broadly or let backend handle it, 
+				// The authController sets isActive: true on activate
+			}
+			setPendingUserApprovals((prev) => prev.filter((item) => item.id !== id));
+		} catch (error) {
+			console.error("Failed to approve user", error);
+		} finally {
+			setIsMutating(false);
+		}
 	}
 
 	return (
@@ -362,6 +403,13 @@ export default function FormsPage() {
 											<div className="flex flex-wrap items-center justify-end gap-2.5">
 												<button
 													type="button"
+													onClick={() => openReviewModal('Grant Edit')}
+													className="rounded-xl border border-[#CFDBEB] bg-white px-4 py-2.5 text-sm font-semibold text-[#374F70] hover:bg-[#F7FAFF]"
+												>
+													Grant Edit
+												</button>
+												<button
+													type="button"
 													onClick={() => openReviewModal('Changes Requested')}
 													className="rounded-xl border border-[#CFDBEB] bg-white px-4 py-2.5 text-sm font-semibold text-[#374F70] hover:bg-[#F7FAFF]"
 												>
@@ -405,7 +453,7 @@ export default function FormsPage() {
 						</div>
 						<div className="p-6">
 							<p className="text-sm text-[#4D6380]">
-								You are about to {reviewStatus === 'Approved' ? 'approve' : 'request changes for'} <strong>{selectedRecord?.employee.name}'s</strong> submission.
+								You are about to {reviewStatus === 'Approved' ? 'approve' : reviewStatus === 'Changes Requested' ? 'request changes for' : 'grant edit access to'} <strong>{selectedRecord?.employee.name}'s</strong> submission.
 							</p>
 							<div className="mt-4">
 								<label className="text-[11px] font-bold uppercase tracking-[0.14em] text-[#8FA4BE]">
@@ -427,11 +475,13 @@ export default function FormsPage() {
 								</button>
 								<button
 									onClick={submitReview}
+									disabled={isMutating}
 									className={`flex-1 rounded-xl py-2.5 text-sm font-semibold text-white ${
-										reviewStatus === 'Approved' ? 'bg-[#031F45] hover:bg-[#062B5F]' : 'bg-[#E92D2D] hover:bg-[#CF2424]'
+										isMutating ? 'opacity-70 cursor-not-allowed bg-slate-500 hover:bg-slate-500' :
+										reviewStatus === 'Approved' ? 'bg-[#031F45] hover:bg-[#062B5F]' : reviewStatus === 'Grant Edit' ? 'bg-[#D98326] hover:bg-[#C97218]' : 'bg-[#E92D2D] hover:bg-[#CF2424]'
 									}`}
 								>
-									Confirm {reviewStatus}
+									{isMutating ? <span className="flex items-center justify-center gap-2"><Loader2 className="h-4 w-4 animate-spin" /> Processing...</span> : `Confirm ${reviewStatus}`}
 								</button>
 							</div>
 						</div>
@@ -475,16 +525,18 @@ export default function FormsPage() {
 											<div className="flex justify-end gap-2">
 												<button
 													type="button"
-													onClick={() => resolvePendingUserApproval(item.id)}
-													className="inline-flex items-center gap-1 rounded-lg bg-[#0D9E67] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#0B8758]"
+													disabled={isMutating}
+													onClick={() => resolvePendingUserApproval(item.id, true)}
+													className="inline-flex items-center gap-1 rounded-lg bg-[#0D9E67] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#0B8758] disabled:opacity-50"
 												>
 													<Check className="h-3.5 w-3.5" />
 													Approve
 												</button>
 												<button
 													type="button"
-													onClick={() => resolvePendingUserApproval(item.id)}
-													className="inline-flex items-center gap-1 rounded-lg bg-[#EB2020] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#CF1C1C]"
+													disabled={isMutating}
+													onClick={() => resolvePendingUserApproval(item.id, false)}
+													className="inline-flex items-center gap-1 rounded-lg bg-[#EB2020] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#CF1C1C] disabled:opacity-50"
 												>
 													<X className="h-3.5 w-3.5" />
 													Reject

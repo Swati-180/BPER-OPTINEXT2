@@ -5,10 +5,11 @@ type CriteriaValue = 'H' | 'M' | 'L';
 type AnalysisTab = 'overview' | 'matrix' | 'distribution';
 
 type ProcessRow = {
+	_id?: string;
 	process: string;
 	department: Department;
 	type: string;
-	criteria: CriteriaValue[];
+	criteria: CriteriaValue[] | string[];
 	score: number;
 	consolidated: boolean;
 };
@@ -30,7 +31,9 @@ export default function SixBySixAnalysisPage() {
 	const [activeTab, setActiveTab] = useState<AnalysisTab>('overview');
 	const [departmentFilter, setDepartmentFilter] = useState<'All Departments' | Department>('All Departments');
 	const [processData, setProcessData] = useState<ProcessRow[]>([]);
+	const [draftRows, setDraftRows] = useState<ProcessRow[]>([]);
 	const [isLoading, setIsLoading] = useState(true);
+	const [isSaving, setIsSaving] = useState(false);
 
 	useEffect(() => {
 		const fetchData = async () => {
@@ -45,6 +48,7 @@ export default function SixBySixAnalysisPage() {
 				const data = await response.json();
 				if (response.ok) {
 					setProcessData(data);
+					setDraftRows(data);
 				}
 			} catch (error) {
 				console.error('Failed to fetch 6x6 data:', error);
@@ -57,7 +61,42 @@ export default function SixBySixAnalysisPage() {
 
 	const departments = useMemo(() => ['All Departments', 'F&A', 'HR', 'Logistics', 'SCM'] as const, []);
 
-	const filteredRows = processData;
+	const filteredRows = draftRows;
+
+	const handleCriteriaToggle = (processId: string, colIndex: number) => {
+		setDraftRows(prev => prev.map(row => {
+			if (row.process !== processId) return row;
+			const currentVal = row.criteria[colIndex];
+			const nextVal = currentVal === '-' ? 'H' : currentVal === 'H' ? 'M' : currentVal === 'M' ? 'L' : '-';
+			const newCriteria = [...row.criteria];
+			newCriteria[colIndex] = nextVal as CriteriaValue;
+			
+			// Compute score locally for immediate UI update (matches backend Mongoose hook logically)
+			const newScore = newCriteria.filter(v => v === 'H').length;
+			return { ...row, criteria: newCriteria, score: newScore, consolidated: newScore >= 6 };
+		}));
+	};
+
+	const saveChanges = async () => {
+		setIsSaving(true);
+		try {
+			const token = localStorage.getItem('bper.auth.token');
+			const response = await fetch('http://localhost:5000/api/analysis/six-by-six', {
+				method: 'PUT',
+				headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+				body: JSON.stringify({ rows: draftRows })
+			});
+			if (response.ok) {
+				const saved = await response.json();
+				// Ideally refetch or just sync
+				setProcessData(draftRows);
+			}
+		} catch (error) {
+			console.error('Failed to save scores:', error);
+		} finally {
+			setIsSaving(false);
+		}
+	};
 
 	const departmentStats = useMemo(() => {
 		const map = new Map<Department, { consolidated: number; notConsolidated: number }>();
@@ -151,10 +190,21 @@ export default function SixBySixAnalysisPage() {
 					</select>
 				</div>
 
-				<div className="mt-3 inline-flex rounded-xl border border-[#DDE7F3] bg-[#F8FBFF] p-1">
-					<TabButton label="Overview" active={activeTab === 'overview'} onClick={() => setActiveTab('overview')} />
-					<TabButton label="6x6 Matrix" active={activeTab === 'matrix'} onClick={() => setActiveTab('matrix')} />
-					<TabButton label="Score Distribution" active={activeTab === 'distribution'} onClick={() => setActiveTab('distribution')} />
+				<div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+					<div className="inline-flex rounded-xl border border-[#DDE7F3] bg-[#F8FBFF] p-1">
+						<TabButton label="Overview" active={activeTab === 'overview'} onClick={() => setActiveTab('overview')} />
+						<TabButton label="6x6 Matrix" active={activeTab === 'matrix'} onClick={() => setActiveTab('matrix')} />
+						<TabButton label="Score Distribution" active={activeTab === 'distribution'} onClick={() => setActiveTab('distribution')} />
+					</div>
+					{activeTab === 'matrix' && draftRows !== processData && (
+						<button
+							onClick={saveChanges}
+							disabled={isSaving}
+							className="rounded-lg bg-[#031F45] px-4 py-2 text-sm font-semibold text-white hover:bg-[#062B5F] disabled:opacity-50"
+						>
+							{isSaving ? 'Saving...' : 'Save Matrix Scores'}
+						</button>
+					)}
 				</div>
 			</section>
 
@@ -272,11 +322,11 @@ export default function SixBySixAnalysisPage() {
 						</p>
 					</div>
 
-					<div className="overflow-x-auto">
-						<table className="w-full border-collapse text-left" style={{ minWidth: '1120px' }}>
+					<div className="overflow-x-auto relative shadow-md sm:rounded-lg">
+						<table className="w-full border-collapse text-left min-w-max">
 							<thead>
 								<tr className="bg-[#F5F8FD] text-xs font-bold text-[#617289] border-b border-[#E3EAF4]">
-									<th className="px-3 py-2.5">Process</th>
+									<th className="px-3 py-2.5 sticky left-0 z-20 bg-[#F5F8FD] shadow-[1px_0_0_#E3EAF4]">Process</th>
 									{PERFORMANCE_LABELS.map((label) => (
 										<th key={`p-${label}`} className="px-2 py-2.5 text-center text-[#2860D3]">{label}</th>
 									))}
@@ -297,24 +347,28 @@ export default function SixBySixAnalysisPage() {
 								) : (
 									filteredRows.map((item) => (
 										<tr key={item.process} className="border-b border-[#E8EEF7] last:border-b-0">
-											<td className="px-3 py-3">
+											<td className="px-3 py-3 sticky left-0 z-10 bg-white shadow-[1px_0_0_#E3EAF4]">
 												<p className="max-w-82 truncate text-xs font-semibold text-[#1E304B]">{item.process}</p>
 												<p className="text-xs text-[#7086A1]">{item.department}</p>
 											</td>
 
 											{item.criteria.map((value, index) => (
 												<td key={`${item.process}-${index}`} className="px-2 py-2.5 text-center">
-													<span
-														className={`inline-flex h-7 w-7 items-center justify-center rounded-md text-[11px] font-bold ${
+													<button
+														type="button"
+														onClick={() => handleCriteriaToggle(item.process, index)}
+														className={`inline-flex h-7 w-7 items-center justify-center rounded-md text-[11px] font-bold transition-all hover:ring-2 hover:ring-offset-1 hover:ring-[#E3EAF4] ${
 															value === 'H'
 																? 'bg-emerald-100 text-emerald-700'
 																: value === 'M'
 																	? 'bg-amber-100 text-amber-700'
-																	: 'bg-red-100 text-red-700'
+																	: value === 'L'
+																		? 'bg-red-100 text-red-700'
+																		: 'bg-slate-100 text-slate-400'
 														}`}
 													>
 														{value}
-													</span>
+													</button>
 												</td>
 											))}
 

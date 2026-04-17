@@ -181,7 +181,7 @@ export function clearActiveUnderReviewReferenceId() {
 
 export async function applyManagerReviewToSubmission(input: {
   referenceId: string;
-  status: "Approved" | "Changes Requested";
+  status: "Approved" | "Changes Requested" | "Grant Edit";
   comment: string;
   managerName?: string;
 }) {

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
-import { ArrowLeft, ArrowRight, CircleHelp, Plus, Trash2 } from "lucide-react";
+import { ArrowLeft, ArrowRight, CircleHelp, Plus, Trash2, Sparkles } from "lucide-react";
 import type { WdtActivityRow, WdtPayload, EmployeeSnapshot } from "./formTypes";
 
 type EditorKind = "single" | "multi" | "number" | "select";
@@ -72,6 +72,8 @@ export function Step2({ employee, payload, onNext, onPrev, onPayloadChange }: St
   const [editor, setEditor] = useState<EditorState | null>(null);
   const [editorDraft, setEditorDraft] = useState("");
   const [taxonomy, setTaxonomy] = useState<TaxonomyItem[]>([]);
+  const [mapSuggestion, setMapSuggestion] = useState<any>(null);
+  const [isMapping, setIsMapping] = useState(false);
 
   useEffect(() => {
     async function fetchTaxonomy() {
@@ -200,6 +202,57 @@ export function Step2({ employee, payload, onNext, onPrev, onPayloadChange }: St
       updateRow(editor.rowIndex, editor.field, editorDraft);
     }
     setEditor(null);
+    setMapSuggestion(null);
+  };
+
+  const triggerMapping = async (text: string) => {
+    if (!text.trim()) return;
+    setIsMapping(true);
+    setMapSuggestion(null);
+    try {
+      const token = localStorage.getItem('bper.auth.token');
+      const res = await fetch('http://localhost:5000/api/taxonomy/map', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ text, context: "subProcess" })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.mapped) setMapSuggestion(data);
+      }
+    } catch (err) {
+      console.error('Failed to map activity:', err);
+    } finally {
+      setIsMapping(false);
+    }
+  };
+
+  const applyMapping = () => {
+    if (!editor || !mapSuggestion) return;
+    
+    // Auto-fill related fields in the same row
+    if (mapSuggestion.suggestion.majorProcess) {
+       updateRow(editor.rowIndex, "majorProcess", mapSuggestion.suggestion.majorProcess);
+    }
+    if (mapSuggestion.suggestion.process) {
+       updateRow(editor.rowIndex, "process", mapSuggestion.suggestion.process);
+    }
+    
+    // Update the custom text to the mapped suggestion to keep it standardized
+    setEditorDraft(mapSuggestion.suggestion.subProcess);
+    
+    // Set AI Mapping Flags (must update them sequentially via setRows manually to ensure we catch all at once)
+    setRows(prev => prev.map((r, idx) => idx === editor.rowIndex ? {
+        ...r,
+        isAiMapped: true,
+        aiConfidence: mapSuggestion.confidence,
+        originalCustomInput: editorDraft // save what they typed initially
+    } : r));
+
+    setMapSuggestion(null);
   };
 
   return (
@@ -594,12 +647,64 @@ export function Step2({ employee, payload, onNext, onPrev, onPayloadChange }: St
 
               <div className="px-6 py-6 space-y-4">
                 {editor.kind === "multi" ? (
-                  <textarea
-                    value={editorDraft}
-                    onChange={(event) => setEditorDraft(event.target.value)}
-                    placeholder={editor.placeholder}
-                    className="w-full min-h-44 rounded-xl border border-slate-300 bg-white px-4 py-3 text-base text-slate-800 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-                  />
+                  <div className="space-y-4">
+                    <textarea
+                      value={editorDraft}
+                      onChange={(event) => setEditorDraft(event.target.value)}
+                      placeholder={editor.placeholder}
+                      className="w-full min-h-44 rounded-xl border border-slate-300 bg-white px-4 py-3 text-base text-slate-800 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                    />
+                    {editor.field === "subProcess" && (
+                      <div className="rounded-xl border border-blue-100 bg-blue-50/40 p-4">
+                        <div className="flex items-center justify-between mb-3">
+                           <div>
+                             <h4 className="text-sm font-semibold text-blue-900 flex items-center gap-1.5"><Sparkles size={16} className="text-blue-600" /> AI Auto-Mapping</h4>
+                             <p className="text-xs text-blue-700/80 mt-0.5">Find standardized process matches for your custom input.</p>
+                           </div>
+                           <button
+                             type="button"
+                             disabled={isMapping || !editorDraft.trim()}
+                             onClick={() => triggerMapping(editorDraft)}
+                             className="rounded-lg bg-white border border-blue-200 px-3 py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-50 hover:border-blue-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                           >
+                             {isMapping ? "Analyzing..." : "Map Custom Input"}
+                           </button>
+                        </div>
+                        {mapSuggestion && (
+                          <div className="mt-3 rounded-lg bg-white border border-blue-100 p-3 shadow-sm animate-in fade-in zoom-in-95 duration-200">
+                             <div className="flex justify-between items-start mb-2">
+                               <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Suggested Match</span>
+                               <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${mapSuggestion.confidence > 70 ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                                 {mapSuggestion.confidence}% Confidence
+                               </span>
+                             </div>
+                             <div className="text-sm font-medium text-slate-800">
+                               {mapSuggestion.suggestion.majorProcess} <span className="text-slate-400 mx-1">/</span> {mapSuggestion.suggestion.process}
+                             </div>
+                             <div className="text-xs text-slate-500 mt-1">
+                               Matches: "{mapSuggestion.suggestion.subProcess}"
+                             </div>
+                             <div className="mt-3 pt-3 border-t border-slate-100 flex gap-2">
+                               <button
+                                 type="button"
+                                 onClick={applyMapping}
+                                 className="flex-1 rounded border border-blue-200 bg-blue-50 py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-100 transition-colors"
+                               >
+                                 Accept Suggestion
+                               </button>
+                               <button
+                                 type="button"
+                                 onClick={() => setMapSuggestion(null)}
+                                 className="flex-1 rounded border border-slate-200 bg-white py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition-colors"
+                               >
+                                 Keep Custom Flow
+                               </button>
+                             </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 ) : editor.kind === "number" ? (
                   <input
                     type="number"
@@ -653,7 +758,10 @@ export function Step2({ employee, payload, onNext, onPrev, onPayloadChange }: St
               <div className="px-6 py-4 border-t border-slate-100 bg-slate-50 flex items-center justify-end gap-3">
                 <button
                   type="button"
-                  onClick={() => setEditor(null)}
+                  onClick={() => {
+                    setEditor(null);
+                    setMapSuggestion(null);
+                  }}
                   className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100"
                 >
                   Cancel

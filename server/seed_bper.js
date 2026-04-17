@@ -199,11 +199,16 @@ async function seed() {
     console.log('Generated Random WDT Submissions');
 
     console.log('Seeding Complete!');
-    process.exit(0);
+    if (require.main === module) process.exit(0);
   } catch (err) {
     console.error('Seeding Failed:', err);
-    process.exit(1);
+    if (require.main === module) process.exit(1);
+    throw err;
   }
 }
 
-seed();
+if (require.main === module) {
+  seed();
+}
+
+module.exports = { seed, taxonomyData, users };
