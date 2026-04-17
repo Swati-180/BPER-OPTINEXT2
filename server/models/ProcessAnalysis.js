@@ -1,5 +1,13 @@
 const mongoose = require('mongoose');
 
+function computeScore(criteria = []) {
+  return criteria.reduce((total, value) => {
+    if (value === 'H') return total + 1;
+    if (value === 'M') return total + 0.5;
+    return total;
+  }, 0);
+}
+
 const processAnalysisSchema = new mongoose.Schema({
   process: { type: String, required: true },
   department: { type: String, required: true },
@@ -10,17 +18,24 @@ const processAnalysisSchema = new mongoose.Schema({
   lastUpdatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
 }, { timestamps: true });
 
+function applyComputedFields(record) {
+  if (!record) return;
+  if (Array.isArray(record.criteria) && record.criteria.length > 0) {
+    record.score = computeScore(record.criteria);
+  }
+  if (typeof record.consolidated !== 'boolean') {
+    record.consolidated = Number(record.score || 0) >= 8;
+  }
+}
+
 // Auto-calculate score if missing
 processAnalysisSchema.pre('save', function(next) {
-  if (this.criteria && this.criteria.length > 0) {
-    // Basic scoring logic: H=2, M=1, L=0
-    let total = 0;
-    this.criteria.forEach(val => {
-      if (val === 'H') total += 1;
-      // You can implement your specific 6x6 score logic here
-    });
-    this.score = total;
-  }
+  applyComputedFields(this);
+  next();
+});
+
+processAnalysisSchema.pre('insertMany', function(next, docs) {
+  (docs || []).forEach((doc) => applyComputedFields(doc));
   next();
 });
 

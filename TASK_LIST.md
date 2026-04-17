@@ -49,6 +49,28 @@
     - [ ] Ensure charts do not break when API data is empty or partial
     - [ ] Render live summary counts across all dashboard cards
 
+## Phase 8: Live Reports Completion & Cleanup (COMPLETED)
+- [x] **Computed Reports API Layer**
+    - [x] Add dashboard, utilization, FTE summary, FTE consolidation summary, and fitment summary endpoints
+    - [x] Compute report payloads directly from MongoDB submissions and fitment data
+- [x] **Manager Report Security**
+    - [x] Enforce manager-only access for report routes
+    - [x] Verify employee requests return `403` on manager report endpoints
+- [x] **Manager Dashboard Refactor**
+    - [x] Replace hardcoded KPI cards and charts with live report data
+    - [x] Show submission window status on the dashboard
+    - [x] Refresh dashboard summaries after submissions and manager reviews
+- [x] **WDT Analytics Refactor**
+    - [x] Replace hardcoded chart/table values with utilization report data
+    - [x] Add loading, empty, and error-safe chart states
+    - [x] Refresh analytics after live submission updates
+- [x] **Employee 360 Removal**
+    - [x] Remove manager route and navigation links for Employee 360
+    - [x] Delete obsolete Employee 360 page implementation
+- [x] **Verification & Validation**
+    - [x] Add automated report verification script
+    - [x] Validate manager access, employee denial, and report consistency checks
+
 ---
 
 ## Technical Audit: Algorithms & Data Integrity

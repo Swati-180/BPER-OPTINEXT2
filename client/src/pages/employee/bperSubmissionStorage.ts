@@ -29,6 +29,11 @@ const STORAGE_KEY = "bper.employee.submissions";
 const ACTIVE_UNDER_REVIEW_KEY = "bper.employee.activeUnderReviewRef";
 const DRAFT_KEY = "bper.employee.formDraft";
 
+function emitDataUpdatedEvent() {
+  if (typeof window === 'undefined') return;
+  window.dispatchEvent(new CustomEvent('bper:data-updated'));
+}
+
 export async function saveBperDraft(payload: WdtPayload | null) {
   if (typeof window === "undefined") return;
   if (!payload) {
@@ -154,6 +159,7 @@ export async function saveBperSubmission(record: BperSubmissionRecord) {
       if (typeof window !== 'undefined') {
         window.localStorage.setItem(ACTIVE_UNDER_REVIEW_KEY, data.referenceId);
       }
+      emitDataUpdatedEvent();
       return data;
     }
   } catch (error) {
@@ -210,7 +216,9 @@ export async function applyManagerReviewToSubmission(input: {
     
     if (response.ok) {
       clearActiveUnderReviewReferenceId();
-      return await response.json();
+      const updated = await response.json();
+      emitDataUpdatedEvent();
+      return updated;
     }
   } catch (error) {
     console.error('Failed to update submission:', error);

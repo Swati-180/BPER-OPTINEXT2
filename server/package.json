@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node index.js",
     "dev": "nodemon index.js",
-    "seed": "node seed_bper.js"
+    "seed": "node seed_bper.js",
+    "verify:reports": "node verify_reports.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
