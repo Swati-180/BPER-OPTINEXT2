@@ -2,11 +2,15 @@ const ProcessAnalysis = require('../models/ProcessAnalysis');
 const WDTSubmission = require('../models/WDTSubmission');
 
 function computeScore(criteria = []) {
-  return criteria.reduce((total, value) => {
-    if (value === 'H') return total + 1;
-    if (value === 'M') return total + 0.5;
-    return total;
-  }, 0);
+  if (!criteria || criteria.length === 0) return 0;
+  
+  // PRD: Group 1 (Performance - first 6) looking for 'H'
+  const performanceScore = criteria.slice(0, 6).filter(val => val === 'H').length;
+  
+  // PRD: Group 2 (Characteristics - next 6) looking for 'L'
+  const characteristicScore = criteria.slice(6, 12).filter(val => val === 'L').length;
+  
+  return performanceScore + characteristicScore;
 }
 
 function normalizeAnalysisRecord(record) {
@@ -17,7 +21,7 @@ function normalizeAnalysisRecord(record) {
   return {
     ...record,
     score,
-    consolidated: typeof record.consolidated === 'boolean' ? record.consolidated : score >= 8,
+    consolidated: typeof record.consolidated === 'boolean' ? record.consolidated : score >= 7,
   };
 }
 

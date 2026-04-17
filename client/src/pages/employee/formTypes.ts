@@ -21,6 +21,7 @@ export interface WdtActivityRow {
   subProcess: string;
   frequency: string;
   volumesMonthly: number;
+  timePerTransactionMinutes: number;
   timeTakenHoursPerMonth: number;
   applicationsUsed: string;
   comments: string;

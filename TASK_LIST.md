@@ -115,20 +115,21 @@
 ### 1. Algorithm Overview
 | Framework | Logic / Algorithm | Status |
 | :--- | :--- | :--- |
-| **WDT (Work Distribution)** | Time-aggregation: Groups `hours` by `majorProcess` and `activityCategory`. | **Active** |
-| **6x6 Matrix Scoring** | Scoring logic: Mapping 12 criteria to consolidation strength. | **Active** |
+| **WDT (Work Distribution)** | PRD Logic: `Hours = (Vol * Min) / 60`, `FTE = Hrs/160`, `Util = Total/160` | **Active** |
+| **6x6 Matrix Scoring** | PRD Logic: Binary scoring (H in Group1, L in Group2). Threshold >= 7. | **Active** |
 | **Submission Window** | Date-range validation: Enforces `20th <= day <= 31st`. | **Active** |
-| **NLP Mapping** | *Proposed: Vector embeddings (Cosine Similarity).* | **Draft** |
+| **NLP Mapping** | Semantic matching using taxonomy vector search. | **In Progress** |
 
 ### 2. Live Data vs. Mock Data Status
 | Page / Widget | Data Source | Reliability |
 | :--- | :--- | :--- |
 | **Employee Dashboard** | **LIVE** (Mongo Atlas) | High |
 | **Manager Submission Queue** | **LIVE** (Mongo Atlas) | High |
-| **6x6 Analysis Matrix** | **LIVE** (Mongo Atlas) | High |
+| **6x6 Analysis Matrix** | **LIVE** (PRD Scoring Logic) | High |
 | **FTE Analysis** | **LIVE** (API: `/reports/fte-analysis`) | High |
 | **Consolidation Analysis** | **LIVE** (API: `/reports/consolidation-analysis`) | High |
 | **Fitment Analysis** | **LIVE** (API: `/reports/fitment-analysis`) | High |
 | **Utilization Analysis** | **LIVE** (API: `/reports/utilization-analysis`) | High |
-| **WDT Utilization Graphs** | **LIVE** (Computed from Submissions) | High |
+| **WDT Utilization Graphs** | **LIVE** (PRD Volume Logic) | High |
 | **Deep Report Exports** | **LIVE** (CSV from API data) | High |
+| **Invite & Onboarding** | **LIVE** (Token-based URL) | High |

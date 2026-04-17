@@ -26,25 +26,31 @@ app.use('/api/fitment', fitmentRoutes);
 app.use('/api/taxonomy', taxonomyRoutes);
 app.use('/api/reports', reportRoutes);
 
-const { MongoMemoryServer } = require('mongodb-memory-server');
-const { seed } = require('./seed_bper');
-
 async function startServer() {
   let mongoUri = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/bper';
 
   try {
-    console.log(`Attempting to connect to MongoDB at: ${mongoUri}`);
-    await mongoose.connect(mongoUri, { serverSelectionTimeoutMS: 2000 });
-    console.log('Connected to MongoDB');
+    console.log(`Connecting to primary MongoDB...`);
+    await mongoose.connect(mongoUri, { serverSelectionTimeoutMS: 5000 });
+    console.log('Connected to MongoDB successfully.');
   } catch (err) {
-    console.log('Could not connect to provided MongoDB. Falling back to In-Memory MongoDB...');
-    const mongoServer = await MongoMemoryServer.create();
-    mongoUri = mongoServer.getUri();
-    process.env.MONGODB_URI = mongoUri; // Set for seed script
-    await mongoose.connect(mongoUri);
-    console.log('Connected to In-Memory MongoDB.');
-    console.log('Seeding the newly created in-memory database...');
-    await seed();
+    console.log('Primary MongoDB connection failed. Attempting In-Memory fallback...');
+    try {
+      const { MongoMemoryServer } = require('mongodb-memory-server');
+      const mongoServer = await MongoMemoryServer.create();
+      mongoUri = mongoServer.getUri();
+      process.env.MONGODB_URI = mongoUri; 
+      await mongoose.connect(mongoUri);
+      console.log('Connected to In-Memory MongoDB.');
+      
+      const { seed } = require('./seed_bper');
+      console.log('Seeding in-memory database...');
+      await seed();
+    } catch (fallbackErr) {
+      console.error('CRITICAL: Could not connect to primary DB and mongodb-memory-server is not available.');
+      console.error('Please check your MONGODB_URI in .env or run "npm install" in the server directory.');
+      process.exit(1);
+    }
   }
 
   const PORT = process.env.PORT || 5000;
