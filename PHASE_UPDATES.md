@@ -55,3 +55,79 @@
 2. Employee access blocked on manager reports: **PASS (403)**
 3. Dashboard/utilization submission-count consistency: **PASS**
 4. Direct DB parity: **Conditionally supported** (runs when `MONGODB_URI` is configured)
+
+---
+
+## Phase 9: Deep Reports and Export-Ready Views
+**Status: COMPLETED**
+- **New Deep Analysis Report Endpoints**:
+  - `/api/reports/fte-analysis` — Detailed FTE breakdown by tower, department, and all activities
+  - `/api/reports/consolidation-analysis` — Consolidation opportunities with department-level and candidate-level detail
+  - `/api/reports/fitment-analysis` — Full fitment profile analysis by label and all profiles
+  - `/api/reports/utilization-analysis` — Comprehensive utilization breakdown by frequency, process, employee, and department
+
+- **Frontend Deep Report Pages** (Phase 9 specific pages):
+  - **FTE Analysis**: 4 tabs (Overview, By Tower, By Department, All Activities) with live data and CSV export
+  - **Consolidation Analysis**: 3 tabs (Overview, By Department, Consolidation Candidates) with savings calculations and export
+  - **Fitment Analysis**: 3 tabs (Overview, By Label, All Profiles) with employee fitment assessments and export
+  - **Utilization Analysis**: 5 tabs (Overview, By Frequency, By Process, By Employee, By Department) with detailed breakdowns and export
+
+- **Export Functionality**:
+  - Added live CSV export helper (`exportToCSV`) in API client
+  - All deep report tabs support CSV export with live data (no static arrays)
+  - Export buttons appear on each tab with context-aware headers
+  - Files are named with report type and current date for easy organization
+
+- **Consistent Tab States & UX**:
+  - All tabs include loading spinners (Loader2 icon) during data fetch
+  - Empty state messages when no data available for applied filters
+  - Error states with retry buttons for failed API calls
+  - Department filter dropdown on applicable pages (FTE, Consolidation, Utilization) for scoped analysis
+  - Real-time refresh via event listener ("bper:data-updated") and 30-second polling
+
+- **UI/Layout Consistency**:
+  - All deep reports follow manager dashboard color scheme (#0F2649, #1E5EAB, etc.)
+  - KPI cards (4 per page) use standardized metric display
+  - Tab buttons with active/inactive states
+  - Table styling consistent across all pages (headers, borders, hover effects)
+  - Responsive grid layout for mobile/tablet/desktop
+
+- **Data Integrity**:
+  - Report data matches dashboard calculations (FTE from hours, consolidation signals from comments/hours, etc.)
+  - Pagination not needed for Phase 9 (data includes top items and full details)
+  - Safe number rendering with fallback values
+  - Department filtering applied server-side for accurate aggregations
+
+- **Manager Sidebar Integration**:
+  - Consolidated 4 separate report pages into unified "Deep Analysis" page at `/manager/deep-analysis`
+  - Sidebar now shows single "Deep Analysis" menu item (Briefcase icon) instead of 4 separate items
+  - Main tabs within page: FTE Analysis, Consolidation, Fitment Analysis, Utilization
+  - Each main tab contains sub-tabs for specific breakdowns
+  - Reduces sidebar clutter from 9 items down to 6 items (Dashboard, Users, Forms, WDT Analytics, 6x6 Analysis, Deep Analysis)
+
+- **Testing & Validation**:
+  - All 4 new endpoints tested with live MongoDB data
+  - Export outputs verified to contain actual data (not empty/static)
+  - Tab data consistency checked against dashboard report calculations
+  - Loading/empty/error states tested on each tab
+  - Manager role-based access confirmed (employee access blocked with 403)
+
+- **UI Enhancement - Modern Enterprise Design** (Latest):
+  - **Card Styling**: Updated all section containers to use rounded-2xl borders with shadow-[0_6px_18px_rgba(16,42,80,0.08)]
+  - **KPI Cards**: Enhanced with rounded-2xl, border-[#D9E4F2], shadow effects, and hover animations
+  - **Tab Navigation**: Modern button styling with active state (bg-[#165BAA] text-white, shadow) and inactive state (bg-[#F7FAFE] with border)
+  - **Department Filter**: Styled as modern card with improved select input focus states and transitions
+  - **Tabs Container**: Moved to white card with border/shadow for visual hierarchy
+  - **Error States**: Modern red styling (bg-[#FEE5E5], border-[#FACAC9]) with proper icon and button styling
+  - **Loading States**: Improved centering and spacing with Loader2 spinner
+  - **Empty States**: Consistent styling with light background and helpful messaging
+  - **Typography**: Enhanced hierarchy with proper font sizes, weights, and color hierarchy matching Dashboard patterns
+  - **Spacing**: Consistent p-5 md:p-6 padding with gap-4 in grids for better visual balance
+  - **Colors**: Maintained brand palette (#0F2649, #165BAA, #637F9F, #F7FAFE) throughout
+  - **Animations**: Added animate-in fade-in duration-500 for smooth content transitions
+  - **Sub-tabs**: All sub-tab sections updated with modern button styling and card containers
+  - **Overall Visual Polish**: Page now matches Dashboard.tsx and WDTAnalytics.tsx enterprise aesthetic standards
+  
+  - **Responsive Design**: Grid layouts use xl:grid-cols-4 for desktop, md:grid-cols-2 for tablet, single column for mobile
+  - **Consistent State Handling**: All error/loading/empty states use modern styling patterns
+  - **Button Consistency**: Export buttons styled with modern bg-[#165BAA], shadow, and hover effects
