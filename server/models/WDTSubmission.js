@@ -27,7 +27,10 @@ const wdtSubmissionSchema = new mongoose.Schema({
       volumesMonthly: Number,
       timeTakenHoursPerMonth: Number,
       applicationsUsed: String,
-      comments: String
+      comments: String,
+      isAiMapped: Boolean,
+      aiConfidence: Number,
+      originalCustomInput: String
     }]
   },
   totalHours: { type: Number },

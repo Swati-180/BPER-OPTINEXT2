@@ -144,9 +144,9 @@ const bulkUpdateUsers = async (req, res) => {
     const { userIds, action, role } = req.body;
     const query = { _id: { $in: userIds } };
     if (action === 'deactivate') {
-      await User.updateMany(query, { $set: { isActive: false } });
+      await User.updateMany(query, { $set: { isActive: false, status: 'deactivated' } });
     } else if (action === 'activate') {
-      await User.updateMany(query, { $set: { isActive: true } });
+      await User.updateMany(query, { $set: { isActive: true, status: 'active' } });
     } else if (action === 'change_role') {
       await User.updateMany(query, { $set: { role } });
     }
