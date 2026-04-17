@@ -1,11 +1,11 @@
-import { useMemo, useState, type FormEvent } from 'react';
+import { useState, type FormEvent } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { AlertCircle, ArrowRight, Loader2, MailCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { acceptInvite, findInviteByToken, type AppAuthUser } from '../lib/authStorage';
+import { type AppAuthUser } from '../lib/authStorage';
 
 interface InviteSignupProps {
   onLogin: (user: AppAuthUser) => void;
@@ -14,15 +14,15 @@ interface InviteSignupProps {
 export default function InviteSignupPage({ onLogin }: InviteSignupProps) {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const token = searchParams.get('token')?.trim() ?? '';
-  const orgParam = searchParams.get('org')?.trim() ?? 'QGGlobal';
-  const inviteType = searchParams.get('type')?.trim() ?? '';
-  const isEmployeeInvite = searchParams.get('invite') === 'true' || inviteType === 'employee';
 
-  const invite = useMemo(() => (token ? findInviteByToken(token) : null), [token]);
+  const roleParam = searchParams.get('role')?.trim().toLowerCase();
+  const orgParam = searchParams.get('org')?.trim() ?? '';
+  const isEmployeeInvite = roleParam === 'employee' && orgParam.length > 0;
+  const isBlockedEmployeeSignup = roleParam === 'employee' && !orgParam;
+
   const [fullName, setFullName] = useState('');
-  const [email, setEmail] = useState(invite?.email ?? '');
-  const [organization, setOrganization] = useState(orgParam);
+  const [email, setEmail] = useState('');
+  const [organization, setOrganization] = useState(isEmployeeInvite ? orgParam : '');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
@@ -32,8 +32,8 @@ export default function InviteSignupPage({ onLogin }: InviteSignupProps) {
     event.preventDefault();
     setError('');
 
-    if (!invite) {
-      setError('This invite is invalid or expired. Please ask your manager to send a new invite.');
+    if (isBlockedEmployeeSignup) {
+      setError('Employee signup is allowed only via invite URL with organization details.');
       return;
     }
 
@@ -42,8 +42,8 @@ export default function InviteSignupPage({ onLogin }: InviteSignupProps) {
       return;
     }
 
-    if (email.trim().toLowerCase() !== invite.email.toLowerCase()) {
-      setError('The email must match the invited address.');
+    if (!organization.trim()) {
+      setError('Organization is required.');
       return;
     }
 
@@ -60,16 +60,15 @@ export default function InviteSignupPage({ onLogin }: InviteSignupProps) {
     setIsLoading(true);
     
     try {
-      const response = await fetch('http://localhost:5000/api/auth/register', {
+      const response = await fetch('http://localhost:5000/api/auth/signup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: fullName.trim(),
-          email: invite.email,
+          email: email.trim().toLowerCase(),
           password,
-          role: 'employee',
-          userType: 'employee',
-          organization,
+          role: isEmployeeInvite ? 'employee' : 'manager',
+          organization: organization.trim(),
         })
       });
 
@@ -79,13 +78,12 @@ export default function InviteSignupPage({ onLogin }: InviteSignupProps) {
         throw new Error(data.message || 'Signup failed');
       }
 
-      acceptInvite(invite.token);
       const nextUser: AppAuthUser = {
         name: fullName.trim(),
-        email: invite.email,
-        role: 'employee',
-        source: 'invite',
-        inviteToken: invite.token,
+        email: email.trim().toLowerCase(),
+        role: (isEmployeeInvite ? 'employee' : 'manager'),
+        organization: organization.trim(),
+        source: isEmployeeInvite ? 'invite' : 'normal',
       };
 
       if (typeof window !== 'undefined') {
@@ -93,7 +91,7 @@ export default function InviteSignupPage({ onLogin }: InviteSignupProps) {
       }
 
       onLogin(nextUser);
-      navigate('/employee/dashboard', { replace: true });
+      navigate(nextUser.role === 'manager' ? '/choose-portal' : '/employee-portal', { replace: true });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An unexpected error occurred');
     } finally {
@@ -101,20 +99,20 @@ export default function InviteSignupPage({ onLogin }: InviteSignupProps) {
     }
   };
 
-  if (!invite) {
+  if (isBlockedEmployeeSignup) {
     return (
       <div className="min-h-screen bg-[#EAF2FB] px-4 py-10 flex items-center justify-center">
         <div className="w-full max-w-xl rounded-3xl border border-[#D9E4F2] bg-white p-6 shadow-[0_8px_24px_rgba(16,42,80,0.08)]">
           <div className="flex items-center gap-3 text-[#1E5EAB]">
             <MailCheck className="h-5 w-5" />
-            <p className="text-sm font-bold uppercase tracking-[0.18em]">Invite Sign Up</p>
+            <p className="text-sm font-bold uppercase tracking-[0.18em]">Sign Up</p>
           </div>
-          <h1 className="mt-3 text-3xl font-bold text-[#102846]">Invite not found</h1>
+          <h1 className="mt-3 text-3xl font-bold text-[#102846]">Invite link required</h1>
           <p className="mt-2 text-sm text-[#607A9A]">
-            The invite link is invalid or has already been replaced. Please contact your manager for a new invite.
+            Employee signup is available only through an invite URL that includes your organization.
           </p>
-          <Button className="mt-5" onClick={() => navigate('/')}>
-            Back to portal selection
+          <Button className="mt-5" onClick={() => navigate('/auth/login')}>
+            Back to login
             <ArrowRight className="ml-2 h-4 w-4" />
           </Button>
         </div>
@@ -126,19 +124,21 @@ export default function InviteSignupPage({ onLogin }: InviteSignupProps) {
     <div className="min-h-screen bg-[#EAF2FB] px-4 py-10 flex items-center justify-center">
       <div className="w-full max-w-2xl">
         <div className="mb-5 text-center">
-          <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-[#5E7EA6]">BPER Invite</p>
-          <h1 className="mt-2 text-4xl font-bold tracking-tight text-[#102846]">Complete your employee signup</h1>
+          <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-[#5E7EA6]">BPER Platform</p>
+          <h1 className="mt-2 text-4xl font-bold tracking-tight text-[#102846]">{isEmployeeInvite ? 'Complete your employee signup' : 'Create your manager account'}</h1>
           <p className="mt-2 text-sm text-[#607A9A]">
-            Your manager invited you to the employee portal. Manager access is not shown for invited accounts.
+            {isEmployeeInvite
+              ? 'Your invite URL has prefilled your role and organization for secure onboarding.'
+              : 'Sign up to access manager workflows and portal navigation.'}
           </p>
         </div>
 
         <div className="rounded-3xl border border-[#D9E4F2] bg-white p-6 shadow-[0_8px_24px_rgba(16,42,80,0.08)]">
           <div className="mb-5 rounded-2xl border border-[#DCE6F3] bg-[#F6FAFF] p-4 text-sm text-[#4E6787]">
-            <p className="font-semibold text-[#102846]">Invited email</p>
-            <p className="mt-1">{invite.email}</p>
+            <p className="font-semibold text-[#102846]">Account role</p>
+            <p className="mt-1 capitalize">{isEmployeeInvite ? 'employee' : 'manager'}</p>
             <p className="mt-4 font-semibold text-[#102846]">Organization</p>
-            <p className="mt-1">{organization}</p>
+            <p className="mt-1">{organization || 'Set during signup'}</p>
             {isEmployeeInvite && (
               <p className="mt-4 rounded-xl bg-[#E8F0FF] p-3 text-xs text-[#3656A8]">
                 This is an invited employee signup link. Your account will be created as an employee user for {organization}.
@@ -180,6 +180,20 @@ export default function InviteSignupPage({ onLogin }: InviteSignupProps) {
               />
             </div>
 
+            <div className="md:col-span-2 space-y-1.5">
+              <Label htmlFor="organization" className="text-[11px] font-bold uppercase tracking-wider text-[#667C99]">
+                Organization
+              </Label>
+              <Input
+                id="organization"
+                value={organization}
+                onChange={(event) => setOrganization(event.target.value)}
+                disabled={isEmployeeInvite}
+                placeholder="Enter organization name"
+                className="h-11 bg-[#F8FAFC] border-[#E2E8F0] disabled:opacity-100 disabled:text-[#243A59]"
+              />
+            </div>
+
             <div className="space-y-1.5">
               <Label htmlFor="password" className="text-[11px] font-bold uppercase tracking-wider text-[#667C99]">
                 Password
@@ -209,7 +223,7 @@ export default function InviteSignupPage({ onLogin }: InviteSignupProps) {
             </div>
 
             <div className="md:col-span-2 flex flex-col gap-3 sm:flex-row sm:justify-end pt-2">
-              <Button type="button" variant="outline" onClick={() => navigate('/')}>Back</Button>
+              <Button type="button" variant="outline" onClick={() => navigate('/auth/login')}>Back</Button>
               <Button type="submit" disabled={isLoading} className="bg-[#165BAA] hover:bg-[#124B8D]">
                 {isLoading ? (
                   <>
@@ -218,7 +232,7 @@ export default function InviteSignupPage({ onLogin }: InviteSignupProps) {
                   </>
                 ) : (
                   <>
-                    Continue to Employee Portal
+                    {isEmployeeInvite ? 'Continue to Employee Portal' : 'Continue to Portal Selection'}
                     <ArrowRight className="ml-2 h-4 w-4" />
                   </>
                 )}

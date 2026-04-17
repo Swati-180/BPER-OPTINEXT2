@@ -3,15 +3,15 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useEffect, useMemo, useState, type FormEvent } from 'react';
-import { BrowserRouter, Routes, Route, Navigate, useNavigate, useParams } from 'react-router-dom';
+import { useState, type FormEvent } from 'react';
+import { BrowserRouter, Routes, Route, Navigate, Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { motion, AnimatePresence } from 'motion/react';
-import { AlertCircle, Loader2, Eye, EyeOff, ArrowRight, ShieldCheck, UserRound } from 'lucide-react';
+import { AlertCircle, Loader2, Eye, EyeOff } from 'lucide-react';
 
 // Layouts & Components
 import EmployeeLayout from './layouts/EmployeeLayout';
@@ -31,16 +31,12 @@ import ManagerUsers from './pages/manager/Users';
 import ManagerForms from './pages/manager/Forms';
 import ManagerWDTAnalytics from './pages/manager/WDTAnalytics';
 import ManagerSixBySixAnalysis from './pages/manager/SixBySixAnalysis';
-import ManagerEmployee360 from './pages/manager/Employee360';
+import ManagerEmployee360 from './pages/manager/Profile';
+import PersonalProfile from './pages/manager/PersonalProfile';
 
 import Unauthorized from './pages/Unauthorized';
 import { clearActiveUnderReviewReferenceId } from './pages/employee/bperSubmissionStorage';
 import { clearAuthUser, loadAuthUser, saveAuthUser, type AppAuthUser, type PortalRole } from './lib/authStorage';
-
-const DEMO_CREDENTIALS = {
-  employee: { name: 'QG Employee', email: 'employee@bper.com', password: 'Employee@123', role: 'employee' },
-  manager: { name: 'QG Admin', email: 'admin@BPER.com', password: 'Admin@123', role: 'manager' }
-};
 
 const LOGIN_SESSION_KEY = 'bper.session.loginAt';
 
@@ -71,24 +67,12 @@ interface FormErrors {
 
 function LoginPage({ onLogin }: { onLogin: (user: AppAuthUser) => void }) {
   const navigate = useNavigate();
-  const params = useParams();
-  const fixedRole = params.portal === 'employee' || params.portal === 'manager' ? params.portal : null;
-  const [role, setRole] = useState<PortalRole>(fixedRole ?? 'employee');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [errors, setErrors] = useState<FormErrors>({});
   const [generalError, setGeneralError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-
-  useEffect(() => {
-    if (fixedRole) {
-      setRole(fixedRole);
-      const creds = fixedRole === 'employee' ? DEMO_CREDENTIALS.employee : DEMO_CREDENTIALS.manager;
-      setEmail(creds.email);
-      setPassword(creds.password);
-    }
-  }, [fixedRole]);
 
   const validate = (): boolean => {
     const newErrors: FormErrors = {};
@@ -104,15 +88,6 @@ function LoginPage({ onLogin }: { onLogin: (user: AppAuthUser) => void }) {
     }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
-  };
-
-  const handleRoleChange = (value: string) => {
-    setRole(value);
-    const creds = value === 'employee' ? DEMO_CREDENTIALS.employee : DEMO_CREDENTIALS.manager;
-    setEmail(creds.email);
-    setPassword(creds.password);
-    setErrors({});
-    setGeneralError(null);
   };
 
   const handleLogin = async (e: FormEvent) => {
@@ -138,6 +113,7 @@ function LoginPage({ onLogin }: { onLogin: (user: AppAuthUser) => void }) {
         name: data.user.name,
         email: data.user.email,
         role: data.user.role as PortalRole,
+        organization: data.user.organization || '',
         source: 'normal',
       };
 
@@ -152,16 +128,13 @@ function LoginPage({ onLogin }: { onLogin: (user: AppAuthUser) => void }) {
       
       saveAuthUser(nextUser);
       onLogin(nextUser);
+      navigate(nextUser.role === 'manager' ? '/choose-portal' : '/employee-portal', { replace: true });
     } catch (err: any) {
       setGeneralError(err.message || 'Invalid credentials. Please check your email and password.');
     } finally {
       setIsLoading(false);
     }
   };
-
-  if (!fixedRole && params.portal && params.portal !== 'employee' && params.portal !== 'manager') {
-    return <Navigate to="/" replace />;
-  }
 
   return (
     <div className="h-screen w-full flex flex-col items-center justify-center bg-[#165BAA]/5 p-4 overflow-hidden">
@@ -183,11 +156,6 @@ function LoginPage({ onLogin }: { onLogin: (user: AppAuthUser) => void }) {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4 px-8 pb-6">
-            {fixedRole && (
-              <div className="rounded-xl border border-[#D8E4F2] bg-[#F6FAFF] px-4 py-3 text-sm text-[#4A607C]">
-                You selected the <span className="font-bold text-[#1A3556]">{fixedRole === 'employee' ? 'Employee' : 'Manager'}</span> portal.
-              </div>
-            )}
             <AnimatePresence mode="wait">
               {generalError && (
                 <motion.div
@@ -205,23 +173,6 @@ function LoginPage({ onLogin }: { onLogin: (user: AppAuthUser) => void }) {
               )}
             </AnimatePresence>
             <form onSubmit={handleLogin} className="space-y-4">
-              {!fixedRole && (
-                <div className="space-y-1.5">
-                  <Label htmlFor="role" className="text-[11px] font-bold uppercase tracking-wider text-[#666666]">
-                    Demo Role (Testing)
-                  </Label>
-                  <select
-                    id="role"
-                    value={role}
-                    onChange={(event) => handleRoleChange(event.target.value)}
-                    className="h-11 w-full rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] px-3 text-sm text-[#1A3556] outline-none focus:border-[#165BAA] focus:ring-2 focus:ring-[#165BAA]/20"
-                  >
-                    <option value="employee">Demo Employee</option>
-                    <option value="manager">Demo Manager</option>
-                  </select>
-                  <p className="text-[10px] text-[#94A3B8]">Use this to enter without backend API.</p>
-                </div>
-              )}
               <div className="space-y-1.5">
                 <Label htmlFor="email" className="text-[11px] font-bold uppercase tracking-wider text-[#666666]">
                   Work Email
@@ -286,21 +237,31 @@ function LoginPage({ onLogin }: { onLogin: (user: AppAuthUser) => void }) {
                   'Sign In'
                 )}
               </Button>
+
+              <p className="text-center text-sm text-[#7A7A7A]">
+                Don&apos;t Have An Account?{' '}
+                <Link to="/auth/signup" className="font-semibold text-[#3C45C6] hover:underline">
+                  Register Now.
+                </Link>
+              </p>
             </form>
           </CardContent>
         </Card>
-        <div className="mt-6 text-center space-y-1">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-[#94A3B8]">
-            Demo Credentials
-          </p>
-          <div className="flex flex-col gap-0.5 text-[10px] text-[#64748B] font-medium">
-            <p>Employee: {DEMO_CREDENTIALS.employee.email} / {DEMO_CREDENTIALS.employee.password}</p>
-            <p>Manager: {DEMO_CREDENTIALS.manager.email} / {DEMO_CREDENTIALS.manager.password}</p>
-          </div>
-        </div>
       </motion.div>
     </div>
   );
+}
+
+function ManagerChoosePortalRoute({ user }: { user: AppAuthUser | null }) {
+  if (!user) {
+    return <Navigate to="/auth/login" replace />;
+  }
+
+  if (user.role !== 'manager') {
+    return <Navigate to="/employee-portal" replace />;
+  }
+
+  return <PortalSelectionPage />;
 }
 
 export default function App() {
@@ -331,32 +292,43 @@ export default function App() {
         {/* Public Routes */}
         <Route 
           path="/" 
-          element={
-            user ? (
-              <Navigate to={user.role === 'manager' ? '/manager/dashboard' : '/employee/dashboard'} replace />
-            ) : (
-              <PortalSelectionPage />
-            )
-          } 
+          element={<Navigate to="/auth/login" replace />} 
         />
         <Route 
-          path="/login/:portal" 
+          path="/auth/login" 
+          element={<LoginPage onLogin={handleLogin} />} 
+        />
+        <Route path="/auth/signup" element={<InviteSignupPage onLogin={handleLogin} />} />
+        <Route path="/choose-portal" element={<ManagerChoosePortalRoute user={user} />} />
+        <Route
+          path="/employee-portal"
           element={
             user ? (
-              <Navigate to={user.role === 'manager' ? '/manager/dashboard' : '/employee/dashboard'} replace />
+              user.role === 'employee' || user.role === 'manager'
+                ? <Navigate to="/employee/dashboard" replace />
+                : <Navigate to="/auth/login" replace />
             ) : (
-              <LoginPage onLogin={handleLogin} />
+              <Navigate to="/auth/login" replace />
             )
-          } 
+          }
         />
-        <Route path="/invite-signup" element={<InviteSignupPage onLogin={handleLogin} />} />
+        <Route
+          path="/manager-portal"
+          element={
+            user ? (
+              user.role === 'manager' ? <Navigate to="/manager/dashboard" replace /> : <Navigate to="/employee-portal" replace />
+            ) : (
+              <Navigate to="/auth/login" replace />
+            )
+          }
+        />
         <Route path="/unauthorized" element={<Unauthorized />} />
 
         {/* Employee Routes */}
         <Route
           path="/employee/*"
           element={
-            <ProtectedRoute user={user} allowedRole="employee">
+            <ProtectedRoute user={user} allowedRoles={["employee", "manager"]}>
               <EmployeeLayout user={user} onLogout={handleLogout}>
                 <Routes>
                   <Route path="dashboard" element={<EmployeeDashboard />} />
@@ -383,7 +355,8 @@ export default function App() {
                   <Route path="forms" element={<ManagerForms />} />
                   <Route path="wdt-analytics" element={<ManagerWDTAnalytics />} />
                   <Route path="6x6-analysis" element={<ManagerSixBySixAnalysis />} />
-                  <Route path="employee-360" element={<ManagerEmployee360 />} />
+                  <Route path="profile/:employeeId" element={<ManagerEmployee360 />} />
+                  <Route path="my-profile" element={<PersonalProfile />} />
                   <Route path="*" element={<Navigate to="dashboard" replace />} />
                 </Routes>
               </ManagerLayout>

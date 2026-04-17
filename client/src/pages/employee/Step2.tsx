@@ -141,6 +141,27 @@ export function Step2({ employee, payload, onNext, onPrev, onPayloadChange }: St
     [supportEntries]
   );
 
+  const [validationError, setValidationError] = useState("");
+
+  const isStepValid = useMemo(() => {
+    return rows.every(row => 
+      row.majorProcess?.trim() && 
+      row.process?.trim() && 
+      row.subProcess?.trim() && 
+      row.frequency?.trim() && 
+      Number(row.timeTakenHoursPerMonth) > 0
+    );
+  }, [rows]);
+
+  const handleNext = () => {
+    if (!isStepValid) {
+      setValidationError("Please ensure all rows have Major Process, Process, Sub-Process, Frequency, and Time Taken > 0.");
+      return;
+    }
+    setValidationError("");
+    onNext();
+  };
+
   const updateRow = (index: number, field: keyof WdtActivityRow, value: string | number) => {
     setRows((prev) =>
       prev.map((row, rowIndex) => (rowIndex === index ? { ...row, [field]: value } : row))
@@ -543,6 +564,12 @@ export function Step2({ employee, payload, onNext, onPrev, onPayloadChange }: St
           </div>
         </div>
 
+        {validationError && (
+          <div className="mt-4 p-3 rounded-md bg-red-50 border border-red-200 text-red-700 text-sm font-medium animate-in fade-in slide-in-from-top-1">
+            {validationError}
+          </div>
+        )}
+
         <div className="mt-7 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <button
             type="button"
@@ -553,8 +580,12 @@ export function Step2({ employee, payload, onNext, onPrev, onPayloadChange }: St
           </button>
           <button
             type="button"
-            onClick={onNext}
-            className="bg-blue-700 hover:bg-blue-800 text-white font-semibold py-3 px-6 rounded-md shadow-md transition-colors inline-flex items-center gap-2"
+            onClick={handleNext}
+            className={`font-semibold py-3 px-6 rounded-md shadow-md transition-all inline-flex items-center gap-2 ${
+              isStepValid 
+                ? "bg-blue-700 hover:bg-blue-800 text-white" 
+                : "bg-slate-200 text-slate-500 cursor-not-allowed"
+            }`}
           >
             Next: Review and Submit <ArrowRight size={18} />
           </button>

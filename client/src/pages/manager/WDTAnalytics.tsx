@@ -1,4 +1,5 @@
 import { useMemo, useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { BarChart3, BriefcaseBusiness, Clock3, Filter, Layers3, UserRound } from 'lucide-react';
 import { formatDateISO, loadBperSubmissions, type BperSubmissionRecord } from '../employee/bperSubmissionStorage';
 
@@ -24,6 +25,7 @@ function getStatusClass(status: BperSubmissionRecord['status']) {
 }
 
 export default function WDTAnalyticsPage() {
+	const navigate = useNavigate();
 	const [departmentFilter, setDepartmentFilter] = useState<DepartmentFilter>('All Departments');
 	const [submissions, setSubmissions] = useState<BperSubmissionRecord[]>([]);
 	const [isLoading, setIsLoading] = useState(true);
@@ -313,7 +315,15 @@ export default function WDTAnalyticsPage() {
 								recentRecords.map((record) => (
 									<tr key={record.referenceId} className="border-b border-[#E8EEF7] last:border-b-0">
 										<td className="px-5 py-3.5 text-sm font-semibold text-[#1A5CA8]">{record.referenceId}</td>
-										<td className="px-5 py-3.5 text-sm text-[#1A3556]">{record.employee.name}</td>
+										<td className="px-5 py-3.5 text-sm text-[#1A3556]">
+											<button
+												type="button"
+												onClick={() => navigate(`/manager/profile/${record.employee.employeeId}`)}
+												className="font-semibold text-[#1A5CA8] hover:underline"
+											>
+												{record.employee.name}
+											</button>
+										</td>
 										<td className="px-5 py-3.5 text-sm text-[#4F6785]">{record.employee.department}</td>
 										<td className="px-5 py-3.5 text-sm font-semibold text-[#0E2646]">{record.totalHours.toFixed(1)}</td>
 										<td className="px-5 py-3.5">

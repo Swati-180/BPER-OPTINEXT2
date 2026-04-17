@@ -14,13 +14,8 @@ const userSchema = new mongoose.Schema({
   supervisorTitle: { type: String, default: '' },
   role: {
     type: String,
-    enum: ['admin', 'tower_lead', 'supervisor', 'employee', 'manager'],
-    default: 'employee'
-  },
-  userType: {
-    type: String,
     enum: ['manager', 'employee'],
-    default: 'manager'
+    default: 'employee'
   },
   organization: { type: String, default: '' },
   isActive: { type: Boolean, default: true },
