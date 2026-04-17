@@ -2,7 +2,6 @@ import { useMemo, useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight, BookOpenCheck, CircleHelp, ClipboardCheck, FilePenLine, Loader2 } from 'lucide-react';
 import { apiFetch } from '../../lib/api';
-import { demoEmployeeProfile } from './demoEmployeeData';
 import {
   type BperSubmissionRecord,
   formatDateISO,

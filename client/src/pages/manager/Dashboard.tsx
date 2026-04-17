@@ -44,6 +44,7 @@ function getStatusClass(status: BperSubmissionRecord['status']) {
 
 export default function Dashboard() {
   const [submissions, setSubmissions] = useState<BperSubmissionRecord[]>([]);
+  const [employeeCount, setEmployeeCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -53,6 +54,19 @@ export default function Dashboard() {
         const data = await loadBperSubmissions();
         // Show all team submissions for the manager dashboard
         setSubmissions(data || []);
+
+        const token = localStorage.getItem('bper.auth.token');
+        const usersResponse = await fetch('http://localhost:5000/api/auth/users', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        if (usersResponse.ok) {
+          const users = await usersResponse.json();
+          const count = Array.isArray(users)
+            ? users.filter((user: any) => user.role === 'employee').length
+            : 0;
+          setEmployeeCount(count);
+        }
       } catch (err) {
         console.error('Loader error:', err);
       } finally {
@@ -162,7 +176,7 @@ export default function Dashboard() {
         </div>
 
         <div className="mt-3 grid grid-cols-1 gap-2.5 sm:grid-cols-2 xl:grid-cols-5">
-          <KpiCard icon={Users} label="Total Employees" value={String(new Set(submissions.map(s => s.employee.employeeId)).size)} helper="Active in cycle" />
+          <KpiCard icon={Users} label="Total Employees" value={String(employeeCount || new Set(submissions.map(s => s.employee.employeeId)).size)} helper="Registered employee accounts" />
           <KpiCard icon={FileCheck2} label="Forms Submitted" value={String(statusCounts.total)} helper="Quarterly cycle records" />
           <KpiCard icon={Clock3} label="Pending Review" value={String(statusCounts.pending)} helper={statusCounts.pending > 0 ? 'Needs manager action' : 'No active queue'} />
           <KpiCard icon={Check} label="Approved" value={String(statusCounts.approved)} helper={statusCounts.approved > 0 ? 'Review closed' : 'Awaiting approval'} />

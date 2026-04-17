@@ -24,7 +24,7 @@ export async function apiFetch(endpoint: string, options: RequestInit = {}) {
       localStorage.removeItem('bper.auth.user');
       
       if (typeof window !== 'undefined') {
-        window.location.href = '/'; 
+        window.location.href = '/auth/login'; 
       }
       throw new Error('Unauthorized');
     }

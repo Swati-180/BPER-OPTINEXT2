@@ -5,17 +5,21 @@ interface ProtectedRouteProps {
   children: ReactNode;
   user: any;
   allowedRole?: string;
+  allowedRoles?: string[];
 }
 
-export default function ProtectedRoute({ children, user, allowedRole }: ProtectedRouteProps) {
+export default function ProtectedRoute({ children, user, allowedRole, allowedRoles }: ProtectedRouteProps) {
   const location = useLocation();
 
   if (!user) {
     // Redirect to login if not authenticated
-    return <Navigate to="/" state={{ from: location }} replace />;
+    return <Navigate to="/auth/login" state={{ from: location }} replace />;
   }
 
-  if (allowedRole && user.role !== allowedRole) {
+  const hasSingleRoleAccess = allowedRole ? user.role === allowedRole : true;
+  const hasMultiRoleAccess = allowedRoles && allowedRoles.length > 0 ? allowedRoles.includes(user.role) : true;
+
+  if (!hasSingleRoleAccess || !hasMultiRoleAccess) {
     // Redirect to unauthorized if role doesn't match
     return <Navigate to="/unauthorized" replace />;
   }

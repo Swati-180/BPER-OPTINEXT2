@@ -6,6 +6,7 @@ export interface AppAuthUser {
   name: string;
   email: string;
   role: PortalRole;
+  organization?: string;
   source: AuthSource;
   inviteToken?: string;
 }
@@ -119,8 +120,8 @@ export function acceptInvite(token: string) {
   return accepted;
 }
 
-export function getInviteSignupLink(token: string, organization = 'QGGlobal') {
+export function getInviteSignupLink(organization = 'QGGlobal') {
   const encodedOrg = encodeURIComponent(organization);
-  if (typeof window === 'undefined') return `/invite-signup?token=${token}&org=${encodedOrg}&type=employee&invite=true`;
-  return `${window.location.origin}/invite-signup?token=${token}&org=${encodedOrg}&type=employee&invite=true`;
+  if (typeof window === 'undefined') return `/auth/signup?org=${encodedOrg}&role=employee`;
+  return `${window.location.origin}/auth/signup?org=${encodedOrg}&role=employee`;
 }
