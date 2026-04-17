@@ -12,7 +12,7 @@ const processAnalysisSchema = new mongoose.Schema({
   process: { type: String, required: true },
   department: { type: String, required: true },
   type: { type: String, required: true },
-  criteria: [{ type: String, enum: ['H', 'M', 'L'] }],
+  criteria: [{ type: String, enum: ['H', 'M', 'L', '-'] }],
   score: { type: Number },
   consolidated: { type: Boolean, default: false },
   lastUpdatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
