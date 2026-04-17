@@ -1,17 +1,24 @@
-import { useMemo, useState, useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
+  AlertCircle,
   ArrowRight,
   Check,
   Clock3,
   FileCheck2,
   Loader2,
   TrendingUp,
-  UserRound,
   Users,
   X,
 } from 'lucide-react';
-import { demoEmployeeProfile } from '../employee/demoEmployeeData';
-import { formatDateISO, loadBperSubmissions, type BperSubmissionRecord } from '../employee/bperSubmissionStorage';
+import {
+  getDashboardReport,
+  getFteConsolidationSummaryReport,
+  getFteSummaryReport,
+  getFitmentSummaryReport,
+} from '../../lib/api';
+import { formatDateISO } from '../employee/bperSubmissionStorage';
+
+type Trend = 'up' | 'steady' | 'down';
 
 type ActivityInsight = {
   name: string;
@@ -19,142 +26,203 @@ type ActivityInsight = {
   monthlyHours: number;
   fte: number;
   consolidate: boolean;
-  trend: 'up' | 'steady' | 'down';
+  trend: Trend;
 };
 
-const STANDARD_MONTHLY_HOURS = 160;
+type DashboardReport = {
+  generatedAt?: string;
+  submissionWindow?: {
+    isOpen?: boolean;
+    message?: string;
+    daysUntilNext?: number;
+  };
+  summary?: {
+    totalEmployees?: number;
+    totalSubmissions?: number;
+    pendingReview?: number;
+    approved?: number;
+    avgUtilizationPct?: number;
+    totalFte?: number;
+  };
+  charts?: {
+    towerFte?: Array<{ tower: string; fte: number }>;
+    teamUtilization?: Array<{ label: string; utilizationPct: number }>;
+    topActivities?: ActivityInsight[];
+    submissionStatusSegments?: Array<{
+      key: string;
+      label: string;
+      count: number;
+      percent: number;
+    }>;
+  };
+  tables?: {
+    recentSubmissions?: Array<{
+      referenceId: string;
+      employee: { name: string; employeeId: string };
+      totalHours: number;
+      status: 'Under Review' | 'Approved' | 'Changes Requested';
+      submittedAt: string;
+    }>;
+  };
+};
 
-const fallbackActivityRows = [
-  { name: 'Validate Vendor Invoice', tower: 'Accounts Payable', monthlyHours: 68, consolidate: true, trend: 'steady' as const },
-  { name: 'Execute Weekly Payment Batch', tower: 'Accounts Payable', monthlyHours: 32, consolidate: false, trend: 'down' as const },
-  { name: 'Payroll Audits', tower: 'Payroll', monthlyHours: 28, consolidate: false, trend: 'steady' as const },
-  { name: 'Employee Onboarding', tower: 'People Ops', monthlyHours: 24, consolidate: true, trend: 'up' as const },
-  { name: 'Vendor Aging Review', tower: 'Accounts Payable', monthlyHours: 18, consolidate: true, trend: 'up' as const },
-];
+type FteSummaryReport = {
+  charts?: {
+    byTower?: Array<{ tower: string; fte: number }>;
+  };
+};
+
+type FteConsolidationReport = {
+  summary?: {
+    totalActivities?: number;
+    savedFte?: number;
+    estimatedSavingsCr?: number;
+  };
+};
+
+type FitmentSummaryReport = {
+  summary?: {
+    coveragePct?: number;
+    avgWeightedScore?: number;
+  };
+};
 
 function toPercent(value: number) {
-  return `${value.toFixed(1)}%`;
+  return `${Number.isFinite(value) ? value.toFixed(1) : '0.0'}%`;
 }
 
-function getStatusClass(status: BperSubmissionRecord['status']) {
+function safeNumber(value: unknown, fallback = 0) {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : fallback;
+}
+
+function getStatusClass(status: 'Under Review' | 'Approved' | 'Changes Requested') {
   if (status === 'Approved') return 'bg-emerald-100 text-emerald-700 border-emerald-200';
   if (status === 'Changes Requested') return 'bg-amber-100 text-amber-700 border-amber-200';
   return 'bg-blue-100 text-blue-700 border-blue-200';
 }
 
 export default function Dashboard() {
-  const [submissions, setSubmissions] = useState<BperSubmissionRecord[]>([]);
-  const [employeeCount, setEmployeeCount] = useState(0);
+  const [dashboard, setDashboard] = useState<DashboardReport | null>(null);
+  const [fteSummary, setFteSummary] = useState<FteSummaryReport | null>(null);
+  const [fteConsolidation, setFteConsolidation] = useState<FteConsolidationReport | null>(null);
+  const [fitmentSummary, setFitmentSummary] = useState<FitmentSummaryReport | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  async function loadReports() {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const [dashboardData, fteSummaryData, consolidationData, fitmentData] = await Promise.all([
+        getDashboardReport(),
+        getFteSummaryReport(),
+        getFteConsolidationSummaryReport(),
+        getFitmentSummaryReport(),
+      ]);
+
+      setDashboard(dashboardData);
+      setFteSummary(fteSummaryData);
+      setFteConsolidation(consolidationData);
+      setFitmentSummary(fitmentData);
+    } catch (err: any) {
+      setError(err?.message || 'Failed to load dashboard reports.');
+    } finally {
+      setIsLoading(false);
+    }
+  }
 
   useEffect(() => {
-    async function init() {
-      setIsLoading(true);
-      try {
-        const data = await loadBperSubmissions();
-        // Show all team submissions for the manager dashboard
-        setSubmissions(data || []);
-
-        const token = localStorage.getItem('bper.auth.token');
-        const usersResponse = await fetch('http://localhost:5000/api/auth/users', {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-
-        if (usersResponse.ok) {
-          const users = await usersResponse.json();
-          const count = Array.isArray(users)
-            ? users.filter((user: any) => user.role === 'employee').length
-            : 0;
-          setEmployeeCount(count);
-        }
-      } catch (err) {
-        console.error('Loader error:', err);
-      } finally {
-        setIsLoading(false);
-      }
-    }
-    init();
+    loadReports();
   }, []);
 
-  const latestSubmission = submissions[0] ?? null;
+  useEffect(() => {
+    const refreshOnDataUpdate = () => {
+      loadReports();
+    };
 
-  const activityInsights = useMemo(() => {
-    const allRows = submissions.flatMap((submission) =>
-      submission.payload.rows.map((row) => {
-        const name = row.subProcess?.trim() || row.process?.trim() || row.majorProcess?.trim() || 'Unspecified Activity';
-        const tower = row.majorProcess?.trim() || demoEmployeeProfile.primaryTower;
-        const monthlyHours = Number(row.timeTakenHoursPerMonth || 0);
-        const comment = (row.comments || '').toLowerCase();
+    const refreshInterval = window.setInterval(() => {
+      loadReports();
+    }, 30000);
 
-        return {
-          name,
-          tower,
-          monthlyHours,
-          consolidate:
-            comment.includes('automation') ||
-            comment.includes('rpa') ||
-            comment.includes('repeat') ||
-            monthlyHours >= 26,
-          trend: monthlyHours >= 40 ? 'up' : monthlyHours <= 20 ? 'down' : 'steady',
-        };
-      })
-    );
+    window.addEventListener('bper:data-updated', refreshOnDataUpdate as EventListener);
 
-    const source = allRows.length >= 3 ? allRows : fallbackActivityRows;
+    return () => {
+      window.clearInterval(refreshInterval);
+      window.removeEventListener('bper:data-updated', refreshOnDataUpdate as EventListener);
+    };
+  }, []);
 
-    return source
-      .map((row) => ({
-        ...row,
-        fte: row.monthlyHours / STANDARD_MONTHLY_HOURS,
-      }))
-      .sort((a, b) => b.fte - a.fte)
-      .slice(0, 5);
-  }, [submissions]);
+  const summary = dashboard?.summary || {};
+  const windowStatus = dashboard?.submissionWindow;
 
   const towerDistribution = useMemo(() => {
-    const map = new Map<string, number>();
+    const byTower = fteSummary?.charts?.byTower;
+    if (Array.isArray(byTower) && byTower.length > 0) return byTower;
+    return Array.isArray(dashboard?.charts?.towerFte) ? dashboard?.charts?.towerFte : [];
+  }, [dashboard?.charts?.towerFte, fteSummary?.charts?.byTower]);
 
-    activityInsights.forEach((activity) => {
-      map.set(activity.tower, (map.get(activity.tower) || 0) + activity.fte);
-    });
+  const maxTowerFte = towerDistribution.length > 0 ? Math.max(...towerDistribution.map((t) => safeNumber(t.fte, 0))) : 1;
 
-    return Array.from(map.entries())
-      .map(([tower, fte]) => ({ tower, fte }))
-      .sort((a, b) => b.fte - a.fte);
-  }, [activityInsights]);
-
-  const totalFte = towerDistribution.reduce((sum, item) => sum + item.fte, 0);
-
-  const statusCounts = useMemo(() => {
-    const approved = submissions.filter((item) => item.status === 'Approved').length;
-    const pending = submissions.filter((item) => item.status === 'Under Review').length;
-    const changes = submissions.filter((item) => item.status === 'Changes Requested').length;
-
-    return { approved, pending, changes, total: submissions.length };
-  }, [submissions]);
+  const topActivities = useMemo(() => {
+    return Array.isArray(dashboard?.charts?.topActivities) ? dashboard!.charts!.topActivities! : [];
+  }, [dashboard]);
 
   const statusSegments = useMemo(() => {
-    const total = Math.max(1, statusCounts.total);
-    const approvedPct = (statusCounts.approved / total) * 100;
-    const pendingPct = (statusCounts.pending / total) * 100;
-    const draftPct = (statusCounts.changes / total) * 100;
+    const segments = Array.isArray(dashboard?.charts?.submissionStatusSegments)
+      ? dashboard!.charts!.submissionStatusSegments!
+      : [];
 
-    return { approvedPct, pendingPct, draftPct };
-  }, [statusCounts]);
+    const approved = segments.find((s) => s.key === 'approved');
+    const pending = segments.find((s) => s.key === 'pending');
+    const changes = segments.find((s) => s.key === 'changesRequested');
 
-  const avgUtilization = Math.min(100, totalFte * 100);
-  const consolidateCount = activityInsights.filter((item) => item.consolidate).length;
-  const savedFte = activityInsights
-    .filter((item) => item.consolidate)
-    .reduce((sum, item) => sum + item.fte * 0.35, 0);
-  const estimatedSavingsCr = savedFte * 0.1;
+    return {
+      approvedPct: safeNumber(approved?.percent),
+      pendingPct: safeNumber(pending?.percent),
+      changesPct: safeNumber(changes?.percent),
+      approvedCount: safeNumber(approved?.count),
+      pendingCount: safeNumber(pending?.count),
+      changesCount: safeNumber(changes?.count),
+    };
+  }, [dashboard]);
 
-  const maxTowerFte = towerDistribution[0]?.fte || 1;
+  const teamUtilization = useMemo(() => {
+    return Array.isArray(dashboard?.charts?.teamUtilization) ? dashboard!.charts!.teamUtilization! : [];
+  }, [dashboard]);
+
+  const recentSubmissions = useMemo(() => {
+    return Array.isArray(dashboard?.tables?.recentSubmissions) ? dashboard!.tables!.recentSubmissions! : [];
+  }, [dashboard]);
+
+  const consolidatedSummary = fteConsolidation?.summary || {};
+  const fitmentCoverage = safeNumber(fitmentSummary?.summary?.coveragePct);
 
   if (isLoading) {
     return (
       <div className="flex h-screen items-center justify-center bg-[#165BAA]/5">
         <Loader2 className="h-10 w-10 animate-spin text-[#165BAA]" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="rounded-2xl border border-red-200 bg-red-50 p-5 text-red-700">
+        <div className="flex items-start gap-3">
+          <AlertCircle className="mt-0.5 h-5 w-5" />
+          <div>
+            <p className="text-sm font-semibold">Unable to load dashboard reports</p>
+            <p className="mt-1 text-xs">{error}</p>
+            <button
+              type="button"
+              onClick={loadReports}
+              className="mt-3 rounded-lg border border-red-300 bg-white px-3 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-100"
+            >
+              Retry
+            </button>
+          </div>
+        </div>
       </div>
     );
   }
@@ -166,25 +234,36 @@ export default function Dashboard() {
           <div>
             <h1 className="text-2xl font-bold text-[#0F2649]">Manager Dashboard</h1>
             <p className="mt-1 text-xs text-[#637F9F]">
-              Enterprise command center for {demoEmployeeProfile.name} ({demoEmployeeProfile.band} {demoEmployeeProfile.title}) with FTE-based workload intelligence.
+              Live enterprise summary and analytics computed from submitted WDT records.
             </p>
           </div>
 
-          <div className="inline-flex items-center rounded-xl border border-[#D6E2F0] bg-[#F7FAFE] px-3 py-1.5 text-[11px] font-semibold text-[#5F7898]">
-            Last Updated: {formatDateISO(latestSubmission?.submittedAt ?? new Date().toISOString())}
+          <div className="flex flex-col gap-1.5 text-[11px] font-semibold md:items-end">
+            <span className="inline-flex items-center rounded-xl border border-[#D6E2F0] bg-[#F7FAFE] px-3 py-1.5 text-[#5F7898]">
+              Last Updated: {formatDateISO(dashboard?.generatedAt || new Date().toISOString())}
+            </span>
+            <span
+              className={`inline-flex items-center rounded-xl border px-3 py-1.5 ${
+                windowStatus?.isOpen
+                  ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                  : 'border-amber-200 bg-amber-50 text-amber-700'
+              }`}
+            >
+              Submission Window: {windowStatus?.message || 'Unavailable'}
+            </span>
           </div>
         </div>
 
         <div className="mt-3 grid grid-cols-1 gap-2.5 sm:grid-cols-2 xl:grid-cols-5">
-          <KpiCard icon={Users} label="Total Employees" value={String(employeeCount || new Set(submissions.map(s => s.employee.employeeId)).size)} helper="Registered employee accounts" />
-          <KpiCard icon={FileCheck2} label="Forms Submitted" value={String(statusCounts.total)} helper="Quarterly cycle records" />
-          <KpiCard icon={Clock3} label="Pending Review" value={String(statusCounts.pending)} helper={statusCounts.pending > 0 ? 'Needs manager action' : 'No active queue'} />
-          <KpiCard icon={Check} label="Approved" value={String(statusCounts.approved)} helper={statusCounts.approved > 0 ? 'Review closed' : 'Awaiting approval'} />
+          <KpiCard icon={Users} label="Total Employees" value={String(safeNumber(summary.totalEmployees))} helper="Active employee accounts" />
+          <KpiCard icon={FileCheck2} label="Forms Submitted" value={String(safeNumber(summary.totalSubmissions))} helper="Records in current report scope" />
+          <KpiCard icon={Clock3} label="Pending Review" value={String(safeNumber(summary.pendingReview))} helper={safeNumber(summary.pendingReview) > 0 ? 'Needs manager action' : 'No active queue'} />
+          <KpiCard icon={Check} label="Approved" value={String(safeNumber(summary.approved))} helper={safeNumber(summary.approved) > 0 ? 'Review completed' : 'Awaiting approvals'} />
           <KpiCard
             icon={TrendingUp}
             label="Avg Utilization"
-            value={toPercent(avgUtilization)}
-            helper={`${totalFte.toFixed(2)} FTE from ${STANDARD_MONTHLY_HOURS}h baseline`}
+            value={toPercent(safeNumber(summary.avgUtilizationPct))}
+            helper={`${safeNumber(summary.totalFte).toFixed(2)} FTE from 160h baseline`}
             highlight
           />
         </div>
@@ -193,27 +272,31 @@ export default function Dashboard() {
       <section className="grid grid-cols-1 gap-3.5 xl:grid-cols-[2fr_1fr]">
         <article className="rounded-2xl border border-[#D9E4F2] bg-white p-3.5 shadow-[0_5px_14px_rgba(16,42,80,0.06)]">
           <h3 className="text-xl font-bold text-[#102846]">FTE Distribution by Tower</h3>
-          <p className="mt-1 text-xs text-[#617C9E]">Workforce allocation computed from activity monthly effort</p>
+          <p className="mt-1 text-xs text-[#617C9E]">Live FTE split from monthly activity effort</p>
 
           <div className="mt-4 space-y-2.5">
-            {towerDistribution.map((tower) => (
-              <div key={tower.tower} className="grid grid-cols-[130px_1fr_auto] items-center gap-2.5">
-                <p className="text-xs font-semibold text-[#5E7594] leading-tight">{tower.tower}</p>
-                <div className="h-7 rounded-lg bg-[#EEF4FC] overflow-hidden border border-[#DFE9F7]">
-                  <div
-                    className="h-full rounded-lg bg-[#2367AE]"
-                    style={{ width: `${Math.max(10, (tower.fte / maxTowerFte) * 100)}%` }}
-                  />
+            {towerDistribution.length === 0 ? (
+              <EmptyBlock label="No tower-level FTE data available." />
+            ) : (
+              towerDistribution.map((tower) => (
+                <div key={tower.tower} className="grid grid-cols-[130px_1fr_auto] items-center gap-2.5">
+                  <p className="text-xs font-semibold text-[#5E7594] leading-tight">{tower.tower}</p>
+                  <div className="h-7 rounded-lg bg-[#EEF4FC] overflow-hidden border border-[#DFE9F7]">
+                    <div
+                      className="h-full rounded-lg bg-[#2367AE]"
+                      style={{ width: `${Math.max(10, (safeNumber(tower.fte) / maxTowerFte) * 100)}%` }}
+                    />
+                  </div>
+                  <p className="text-lg font-bold text-[#244161]">{safeNumber(tower.fte).toFixed(2)}</p>
                 </div>
-                <p className="text-lg font-bold text-[#244161]">{tower.fte.toFixed(2)}</p>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         </article>
 
         <article className="rounded-2xl border border-[#D9E4F2] bg-white p-3.5 shadow-[0_5px_14px_rgba(16,42,80,0.06)]">
           <h3 className="text-xl font-bold text-[#102846]">Submission Status</h3>
-          <p className="mt-1 text-xs text-[#617C9E]">Quarterly compliance overview</p>
+          <p className="mt-1 text-xs text-[#617C9E]">Current review progress</p>
 
           <div className="mt-4 flex justify-center">
             <div
@@ -224,15 +307,15 @@ export default function Dashboard() {
             >
               <div className="absolute inset-6 rounded-full border border-[#E3ECF9] bg-white flex flex-col items-center justify-center">
                 <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-[#768EAA]">Total Submissions</p>
-                <p className="text-3xl font-bold text-[#102846]">{statusCounts.total}</p>
+                <p className="text-3xl font-bold text-[#102846]">{safeNumber(summary.totalSubmissions)}</p>
               </div>
             </div>
           </div>
 
           <div className="mt-4 space-y-2">
-            <StatusRow label="Approved" value={statusSegments.approvedPct} colorClass="bg-[#1E65AF]" />
-            <StatusRow label="Pending" value={statusSegments.pendingPct} colorClass="bg-[#3F82E5]" />
-            <StatusRow label="Draft / Not Started" value={statusSegments.draftPct} colorClass="bg-[#C8D3E1]" />
+            <StatusRow label="Approved" value={statusSegments.approvedPct} colorClass="bg-[#1E65AF]" count={statusSegments.approvedCount} />
+            <StatusRow label="Pending" value={statusSegments.pendingPct} colorClass="bg-[#3F82E5]" count={statusSegments.pendingCount} />
+            <StatusRow label="Changes Requested" value={statusSegments.changesPct} colorClass="bg-[#C8D3E1]" count={statusSegments.changesCount} />
           </div>
         </article>
       </section>
@@ -240,8 +323,8 @@ export default function Dashboard() {
       <section className="grid grid-cols-1 gap-3.5 xl:grid-cols-[2fr_1.2fr]">
         <article className="rounded-2xl border border-[#D9E4F2] bg-white shadow-[0_5px_14px_rgba(16,42,80,0.06)] overflow-hidden">
           <div className="flex items-center justify-between border-b border-[#E4ECF7] px-4 py-3">
-            <h3 className="text-xl font-bold text-[#102846]">Top 5 Activities by FTE</h3>
-            <span className="text-xs font-semibold uppercase tracking-[0.14em] text-[#8AA0BA]">Aggregated Team Workload</span>
+            <h3 className="text-xl font-bold text-[#102846]">Top Activities by FTE</h3>
+            <span className="text-xs font-semibold uppercase tracking-[0.14em] text-[#8AA0BA]">Live Aggregation</span>
           </div>
 
           <div className="overflow-x-auto">
@@ -251,34 +334,42 @@ export default function Dashboard() {
                   <th className="px-4 py-2.5">Activity Name</th>
                   <th className="px-4 py-2.5">Tower</th>
                   <th className="px-4 py-2.5 text-right">FTE</th>
-                  <th className="px-4 py-2.5 text-center">Trend (5D)</th>
+                  <th className="px-4 py-2.5 text-center">Trend</th>
                   <th className="px-4 py-2.5 text-center">Consolidate</th>
                 </tr>
               </thead>
               <tbody>
-                {activityInsights.map((activity) => (
-                  <tr key={`${activity.name}-${activity.tower}`} className="border-b border-[#E8EEF7] last:border-b-0">
-                    <td className="px-4 py-3 text-xs font-semibold text-[#1C334E]">{activity.name}</td>
-                    <td className="px-4 py-3 text-xs text-[#4E6787]">{activity.tower}</td>
-                    <td className="px-4 py-3 text-right text-xs font-bold text-[#1E5EA9]">{activity.fte.toFixed(2)}</td>
-                    <td className="px-4 py-3">
-                      <TrendSpark trend={activity.trend} />
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex justify-center">
-                        {activity.consolidate ? (
-                          <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
-                            <Check className="h-4 w-4" />
-                          </span>
-                        ) : (
-                          <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-slate-200 text-slate-500">
-                            <X className="h-4 w-4" />
-                          </span>
-                        )}
-                      </div>
+                {topActivities.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="px-4 py-7 text-center text-xs text-[#6E86A3]">
+                      No activity data available.
                     </td>
                   </tr>
-                ))}
+                ) : (
+                  topActivities.map((activity) => (
+                    <tr key={`${activity.name}-${activity.tower}`} className="border-b border-[#E8EEF7] last:border-b-0">
+                      <td className="px-4 py-3 text-xs font-semibold text-[#1C334E]">{activity.name}</td>
+                      <td className="px-4 py-3 text-xs text-[#4E6787]">{activity.tower}</td>
+                      <td className="px-4 py-3 text-right text-xs font-bold text-[#1E5EA9]">{safeNumber(activity.fte).toFixed(2)}</td>
+                      <td className="px-4 py-3">
+                        <TrendSpark trend={activity.trend || 'steady'} />
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex justify-center">
+                          {activity.consolidate ? (
+                            <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
+                              <Check className="h-4 w-4" />
+                            </span>
+                          ) : (
+                            <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-slate-200 text-slate-500">
+                              <X className="h-4 w-4" />
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
@@ -287,12 +378,17 @@ export default function Dashboard() {
         <article className="rounded-2xl border border-[#D9E4F2] bg-white p-3.5 shadow-[0_5px_14px_rgba(16,42,80,0.06)]">
           <div className="flex items-center justify-between">
             <h3 className="text-xl font-bold text-[#102846]">Team Utilization Overview</h3>
-            <span className="rounded-md bg-[#EEF4FB] px-2.5 py-1 text-xs font-semibold text-[#6E86A3]">Weekly Avg</span>
+            <span className="rounded-md bg-[#EEF4FB] px-2.5 py-1 text-xs font-semibold text-[#6E86A3]">Live</span>
           </div>
 
           <div className="mt-3.5 space-y-3">
-            <UtilizationRow label={demoEmployeeProfile.department} value={Math.min(99, avgUtilization + 12)} />
-            <UtilizationRow label="Accounts Payable" value={Math.min(99, avgUtilization + 6)} />
+            {teamUtilization.length === 0 ? (
+              <EmptyBlock label="No utilization data available." compact />
+            ) : (
+              teamUtilization.slice(0, 5).map((item) => (
+                <UtilizationRow key={item.label} label={item.label} value={safeNumber(item.utilizationPct)} />
+              ))
+            )}
           </div>
 
           <button
@@ -311,23 +407,26 @@ export default function Dashboard() {
           <div>
             <h3 className="text-3xl font-bold leading-tight text-white">Consolidation Summary</h3>
             <p className="mt-2 text-sm leading-relaxed text-[#BFD9FF]">
-              Based on workload trends, QG User1 has optimization potential through selective process consolidation and automation-ready activities.
+              Estimated from live activity patterns and fitment coverage.
             </p>
           </div>
 
           <div className="grid grid-cols-3 gap-3">
-            <InsightMetric label="Total Activities" value={String(activityInsights.length)} />
-            <InsightMetric label="Saved FTE" value={savedFte.toFixed(2)} />
-            <InsightMetric label="Cost Saving" value={`₹${estimatedSavingsCr.toFixed(2)}Cr`} emphasize />
+            <InsightMetric label="Total Activities" value={String(safeNumber(consolidatedSummary.totalActivities))} />
+            <InsightMetric label="Saved FTE" value={safeNumber(consolidatedSummary.savedFte).toFixed(2)} />
+            <InsightMetric label="Cost Saving" value={`INR ${safeNumber(consolidatedSummary.estimatedSavingsCr).toFixed(2)} Cr`} emphasize />
           </div>
 
-          <button
-            type="button"
-            className="inline-flex w-fit items-center justify-center gap-2 rounded-lg border border-white/20 bg-white px-4 py-2.5 text-sm font-semibold text-[#09274D] hover:bg-[#EAF2FF] xl:justify-self-end"
-          >
-            View Full Report
-            <ArrowRight className="h-4 w-4" />
-          </button>
+          <div className="grid gap-2 xl:justify-self-end">
+            <button
+              type="button"
+              className="inline-flex w-fit items-center justify-center gap-2 rounded-lg border border-white/20 bg-white px-4 py-2.5 text-sm font-semibold text-[#09274D] hover:bg-[#EAF2FF]"
+            >
+              View Full Report
+              <ArrowRight className="h-4 w-4" />
+            </button>
+            <p className="text-right text-xs text-[#BFD9FF]">Fitment Coverage: {fitmentCoverage.toFixed(1)}%</p>
+          </div>
         </div>
       </section>
 
@@ -349,14 +448,14 @@ export default function Dashboard() {
               </tr>
             </thead>
             <tbody>
-              {submissions.length === 0 ? (
+              {recentSubmissions.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="px-4 py-7 text-center text-xs text-[#6E86A3]">
-                    No submissions available for QG User1.
+                    No submissions available.
                   </td>
                 </tr>
               ) : (
-                submissions.slice(0, 4).map((submission) => (
+                recentSubmissions.slice(0, 6).map((submission) => (
                   <tr key={submission.referenceId} className="border-b border-[#E8EEF7] last:border-b-0">
                     <td className="px-4 py-3 text-xs font-semibold text-[#1A5CA8]">{submission.referenceId}</td>
                     <td className="px-4 py-3 text-xs text-[#1A3556]">{submission.employee.name}</td>
@@ -365,7 +464,7 @@ export default function Dashboard() {
                         {submission.status}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-right text-xs font-semibold text-[#0E2646]">{submission.totalHours.toFixed(1)}</td>
+                    <td className="px-4 py-3 text-right text-xs font-semibold text-[#0E2646]">{safeNumber(submission.totalHours).toFixed(1)}</td>
                     <td className="px-4 py-3 text-xs text-[#4F6785]">{formatDateISO(submission.submittedAt)}</td>
                   </tr>
                 ))
@@ -411,19 +510,21 @@ function KpiCard({
   );
 }
 
-function StatusRow({ label, value, colorClass }: { label: string; value: number; colorClass: string }) {
+function StatusRow({ label, value, colorClass, count }: { label: string; value: number; colorClass: string; count: number }) {
   return (
     <div className="flex items-center justify-between text-xs font-medium text-[#36506F]">
       <div className="flex items-center gap-2.5">
         <span className={`h-3 w-3 rounded-full ${colorClass}`} />
         {label}
       </div>
-      <span className="font-bold text-[#5C7698]">{Math.round(value)}%</span>
+      <span className="font-bold text-[#5C7698]">
+        {Math.round(value)}% ({count})
+      </span>
     </div>
   );
 }
 
-function TrendSpark({ trend }: { trend: 'up' | 'steady' | 'down' }) {
+function TrendSpark({ trend }: { trend: Trend }) {
   const stroke = trend === 'up' ? '#16A34A' : trend === 'down' ? '#64748B' : '#64748B';
   const d = trend === 'up' ? 'M4 16 L16 12 L28 12 L40 10 L52 9' : trend === 'down' ? 'M4 9 L16 10 L28 11 L40 13 L52 13' : 'M4 12 L16 12 L28 12 L40 12 L52 12';
 
@@ -455,6 +556,14 @@ function InsightMetric({ label, value, emphasize }: { label: string; value: stri
     <div>
       <p className="text-xs font-bold uppercase tracking-[0.12em] text-[#74B9FF]">{label}</p>
       <p className={`text-3xl font-bold ${emphasize ? 'text-[#58F0B8]' : 'text-[#E6F2FF]'}`}>{value}</p>
+    </div>
+  );
+}
+
+function EmptyBlock({ label, compact }: { label: string; compact?: boolean }) {
+  return (
+    <div className={`rounded-xl border border-dashed border-[#DCE6F3] text-center text-sm text-[#8BA0BA] ${compact ? 'py-5' : 'py-8'}`}>
+      {label}
     </div>
   );
 }

@@ -35,3 +35,47 @@ export async function apiFetch(endpoint: string, options: RequestInit = {}) {
     throw error;
   }
 }
+
+export async function apiGetJson<T>(endpoint: string): Promise<T> {
+  const response = await apiFetch(endpoint);
+  const data = await response.json().catch(() => null);
+
+  if (!response.ok) {
+    const message = data?.message || `Request failed with status ${response.status}`;
+    throw new Error(message);
+  }
+
+  return data as T;
+}
+
+export function getDashboardReport(department?: string) {
+  const query = department && department !== 'All Departments'
+    ? `?department=${encodeURIComponent(department)}`
+    : '';
+  return apiGetJson<any>(`/reports/dashboard${query}`);
+}
+
+export function getUtilizationReport(department?: string) {
+  const query = department && department !== 'All Departments'
+    ? `?department=${encodeURIComponent(department)}`
+    : '';
+  return apiGetJson<any>(`/reports/utilization${query}`);
+}
+
+export function getFteSummaryReport(department?: string) {
+  const query = department && department !== 'All Departments'
+    ? `?department=${encodeURIComponent(department)}`
+    : '';
+  return apiGetJson<any>(`/reports/fte-summary${query}`);
+}
+
+export function getFteConsolidationSummaryReport(department?: string) {
+  const query = department && department !== 'All Departments'
+    ? `?department=${encodeURIComponent(department)}`
+    : '';
+  return apiGetJson<any>(`/reports/fte-consolidation-summary${query}`);
+}
+
+export function getFitmentSummaryReport() {
+  return apiGetJson<any>('/reports/fitment-summary');
+}

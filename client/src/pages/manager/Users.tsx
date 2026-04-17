@@ -1,5 +1,4 @@
 import { useMemo, useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { Check, Copy, Link2, MailPlus, Search, UserPlus, X } from 'lucide-react';
 import { apiFetch } from '../../lib/api';
 import { getInviteSignupLink, loadAuthUser } from '../../lib/authStorage';
@@ -70,7 +69,6 @@ const initialCreateUserForm: CreateUserFormState = {
 };
 
 export default function UsersPage() {
-	const navigate = useNavigate();
 	const [userRows, setUserRows] = useState<UserRow[]>([]);
 	const [isLoading, setIsLoading] = useState(true);
 	const [query, setQuery] = useState('');
@@ -353,13 +351,9 @@ export default function UsersPage() {
 															.join('')}
 													</div>
 													<div>
-														<button
-															type="button"
-															onClick={() => navigate(`/manager/profile/${user.employeeId}`)}
-															className="text-[16px] font-bold leading-tight text-[#1A2E4D] hover:text-[#165BAA] cursor-pointer"
-														>
+														<p className="text-[16px] font-bold leading-tight text-[#1A2E4D]">
 															{user.name}
-														</button>
+														</p>
 														<p className="mt-0.5 text-xs text-[#6A82A0]">{user.designation}</p>
 													</div>
 												</div>

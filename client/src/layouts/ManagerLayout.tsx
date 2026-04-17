@@ -6,7 +6,6 @@ import {
   FileText, 
   BarChart3, 
   Grid3X3, 
-  UserSearch,
   LogOut, 
   Menu, 
   Bell, 
