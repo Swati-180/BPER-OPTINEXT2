@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { AlertCircle, ArrowRight, Loader2, MailCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -239,6 +239,15 @@ export default function InviteSignupPage({ onLogin }: InviteSignupProps) {
               </Button>
             </div>
           </form>
+
+          <div className="mt-8 border-t border-slate-100 pt-6 text-center">
+            <p className="text-sm text-[#607A9A]">
+              Already part of the organization?{' '}
+              <Link to="/auth/login/employee" className="font-bold text-[#165BAA] hover:underline">
+                Log in here
+              </Link>
+            </p>
+          </div>
         </div>
       </div>
     </div>

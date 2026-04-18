@@ -200,7 +200,12 @@ export default function BPERForm() {
   };
 
   const handleSaveDraft = () => {
-    // Demo mode: preserve action hook without backend draft persistence.
+    if (payload) {
+      saveBperDraft(payload);
+      setShowSavedIndicator(true);
+      setTimeout(() => setShowSavedIndicator(false), 2000);
+      alert('Draft saved successfully! You can resume this form later.');
+    }
   };
 
   const closeSuccessOverlay = () => {

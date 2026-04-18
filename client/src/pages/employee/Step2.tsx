@@ -77,6 +77,12 @@ export function Step2({ employee, payload, onNext, onPrev, onPayloadChange }: St
   const [isMapping, setIsMapping] = useState(false);
 
   useEffect(() => {
+    if (payload?.rows?.length) {
+      setRows(payload.rows);
+    }
+  }, [payload]);
+
+  useEffect(() => {
     async function fetchTaxonomy() {
       try {
         const token = localStorage.getItem('bper.auth.token');

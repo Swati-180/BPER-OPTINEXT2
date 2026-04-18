@@ -10,7 +10,7 @@ const mapActivity = async (req, res) => {
       return res.status(400).json({ message: 'Input text too short for analysis.' });
     }
 
-    // 1. Fetch active taxonomy
+    // 1. Fetch active taxonomy with tags
     const query = { isActive: true };
     if (department && department !== 'All Departments') {
       query.$or = [{ department }, { department: { $exists: false } }, { department: null }];
@@ -21,33 +21,59 @@ const mapActivity = async (req, res) => {
       return res.json({ mapped: false, confidence: 0 });
     }
 
-    // 2. Build candidates
-    const candidates = [];
+    // 2. Build candidates and calculate scores
+    const stopwords = new Set(['the', 'and', 'a', 'of', 'for', 'with', 'to', 'in', 'on', 'at', 'by', 'an', 'is']);
+    const inputWords = text.toLowerCase().split(/\W+/).filter(w => w.length > 2 && !stopwords.has(w));
+    
+    const scoredCandidates = [];
     allTaxonomy.forEach(item => {
+      const itemTags = (item.tags || []).map(t => t.toLowerCase());
+      
       item.subProcesses.forEach(sub => {
-        candidates.push({
+        const subWords = sub.toLowerCase().split(/\W+/).filter(w => w.length > 2 && !stopwords.has(w));
+        
+        // Baseline: String Similarity
+        const baseline = stringSimilarity.compareTwoStrings(text.toLowerCase(), sub.toLowerCase());
+        
+        // Boost 1: Word Overlap (Intersection)
+        const overlap = inputWords.filter(w => subWords.includes(w)).length;
+        const overlapBonus = overlap > 0 ? (overlap / Math.max(inputWords.length, 1)) * 0.4 : 0;
+        
+        // Boost 2: Tag Matching
+        const tagMatch = inputWords.some(w => itemTags.includes(w));
+        const tagBonus = tagMatch ? 0.2 : 0;
+        
+        const finalConfidence = Math.min(99, Math.round((baseline * 0.4 + overlapBonus + tagBonus) * 100));
+        
+        scoredCandidates.push({
           majorProcess: item.majorProcess,
           process: item.process,
           subProcess: sub,
-          // Weighted search string
-          searchString: `${item.process} ${sub}`.toLowerCase()
+          confidence: finalConfidence
         });
       });
     });
 
-    // 3. Find Best Match using string-similarity
-    const matches = stringSimilarity.findBestMatch(text.toLowerCase(), candidates.map(c => c.searchString));
-    const best = candidates[matches.bestMatchIndex];
-    let confidence = Math.round(matches.bestMatch.rating * 100);
+    // 3. Sort and filter
+    scoredCandidates.sort((a, b) => b.confidence - a.confidence);
+    const best = scoredCandidates[0];
+    const alternatives = scoredCandidates
+      .slice(1, 4)
+      .filter(c => c.confidence > 25 && c.subProcess !== best.subProcess);
 
-    // AI Boost: If there is a very high word overlap, boost confidence
-    const inputWords = text.toLowerCase().split(/\W+/);
-    const matchWords = best.subProcess.toLowerCase().split(/\W+/);
-    const overlap = inputWords.filter(w => w.length > 2 && matchWords.includes(w)).length;
-    if (overlap >= 2) confidence = Math.max(confidence, 75);
+    // 4. Audit Log
+    if (best.confidence > 50) {
+      await logAction({
+        req,
+        action: 'NLP_MAPPING_MATCH',
+        targetType: 'Taxonomy',
+        targetId: 'NLP_ENGINE',
+        description: `Mapped "${text.substring(0, 50)}..." to ${best.subProcess} (${best.confidence}%)`
+      });
+    }
 
-    if (confidence < 25) {
-      return res.json({ mapped: false, confidence });
+    if (best.confidence < 25) {
+      return res.json({ mapped: false, confidence: best.confidence });
     }
 
     res.json({
@@ -57,7 +83,13 @@ const mapActivity = async (req, res) => {
         process: best.process,
         subProcess: best.subProcess
       },
-      confidence: Math.min(confidence, 99)
+      alternatives: alternatives.map(a => ({
+        majorProcess: a.majorProcess,
+        process: a.process,
+        subProcess: a.subProcess,
+        confidence: a.confidence
+      })),
+      confidence: best.confidence
     });
 
   } catch (err) {
