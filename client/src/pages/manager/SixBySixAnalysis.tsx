@@ -55,7 +55,7 @@ export default function SixBySixAnalysisPage() {
 			setIsLoading(true);
 			try {
 				const token = localStorage.getItem('bper.auth.token');
-				const response = await fetch(`http://localhost:5000/api/analysis/six-by-six?department=${departmentFilter}`, {
+				const response = await fetch(`http://localhost:5000/api/analysis/six-by-six?department=${encodeURIComponent(departmentFilter)}`, {
 					headers: {
 						'Authorization': `Bearer ${token}`
 					}
@@ -86,9 +86,17 @@ export default function SixBySixAnalysisPage() {
 			const newCriteria = [...row.criteria];
 			newCriteria[colIndex] = nextVal as CriteriaValue;
 			
-			// Compute score locally for immediate UI update (matches backend Mongoose hook logically)
-			const newScore = newCriteria.filter(v => v === 'H').length;
-			return { ...row, criteria: newCriteria, score: newScore, consolidated: newScore >= 6 };
+			// PRD Algorithm: +1 for H in Performance (idx 0-5), +1 for L in Characteristics (idx 6-11)
+			const performanceScore = newCriteria.slice(0, 6).filter(v => v === 'H').length;
+			const characteristicScore = newCriteria.slice(6, 12).filter(v => v === 'L').length;
+			const newScore = performanceScore + characteristicScore;
+			
+			return { 
+				...row, 
+				criteria: newCriteria, 
+				score: newScore, 
+				consolidated: newScore >= 7 
+			};
 		}));
 	};
 

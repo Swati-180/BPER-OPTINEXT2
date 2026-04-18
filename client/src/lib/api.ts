@@ -18,7 +18,7 @@ export async function apiFetch(endpoint: string, options: RequestInit = {}) {
     const response = await fetch(`${BASE_URL}${endpoint}`, { ...options, headers });
     
     // Global Security Audit: Handle Expired Tokens
-    if (response.status === 401 || response.status === 403) {
+    if (response.status === 401) {
       console.warn('Session expired or unauthorized. Clearing session and redirecting.');
       localStorage.removeItem('bper.auth.token');
       localStorage.removeItem('bper.auth.user');

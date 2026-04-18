@@ -80,7 +80,8 @@ export function Step2({ employee, payload, onNext, onPrev, onPayloadChange }: St
     async function fetchTaxonomy() {
       try {
         const token = localStorage.getItem('bper.auth.token');
-        const res = await fetch('http://localhost:5000/api/taxonomy/processes', {
+        const deptParam = employee.department ? `?department=${encodeURIComponent(employee.department)}` : '';
+        const res = await fetch(`http://localhost:5000/api/taxonomy/processes${deptParam}`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         if (res.ok) {

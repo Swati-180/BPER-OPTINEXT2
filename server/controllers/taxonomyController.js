@@ -1,89 +1,111 @@
 const Taxonomy = require('../models/Taxonomy');
-
-// Basic string similarity function (Levenshtein based distance or simple token match)
-function calculateSimilarity(str1, str2) {
-  if (!str1 || !str2) return 0;
-  const s1 = str1.toLowerCase().split(/\W+/);
-  const s2 = str2.toLowerCase().split(/\W+/);
-  
-  let matchCount = 0;
-  s1.forEach(word => {
-    if (word.length > 2 && s2.includes(word)) matchCount++;
-  });
-  
-  const maxLength = Math.max(s1.length, s2.length);
-  return maxLength === 0 ? 0 : matchCount / maxLength;
-}
+const stringSimilarity = require('string-similarity');
+const { logAction } = require('../utils/auditLogger');
 
 const mapActivity = async (req, res) => {
   try {
-    const { text, context } = req.body;
-    
-    if (!text) {
-      return res.status(400).json({ message: 'Text input is required for mapping.' });
+    const { text, department } = req.body;
+
+    if (!text || text.trim().length < 3) {
+      return res.status(400).json({ message: 'Input text too short for analysis.' });
     }
 
-    const allTaxonomy = await Taxonomy.find({ isActive: true });
-    
-    let bestMatch = null;
-    let highestScore = 0;
+    // 1. Fetch active taxonomy
+    const query = { isActive: true };
+    if (department && department !== 'All Departments') {
+      query.$or = [{ department }, { department: { $exists: false } }, { department: null }];
+    }
+    const allTaxonomy = await Taxonomy.find(query).lean();
 
-    for (const item of allTaxonomy) {
-      for (const sub of item.subProcesses) {
-        // give it slightly randomized score simulation based on real matches
-        const sim = calculateSimilarity(text, sub);
-        
-        // Also compare with process name to give weight
-        const processSim = calculateSimilarity(text, item.process);
-        const totalSim = (sim * 0.7) + (processSim * 0.3);
-
-        if (totalSim > highestScore) {
-          highestScore = totalSim;
-          bestMatch = {
-            majorProcess: item.majorProcess,
-            process: item.process,
-            subProcess: sub
-          };
-        }
-      }
+    if (!allTaxonomy.length) {
+      return res.json({ mapped: false, confidence: 0 });
     }
 
-    // Convert score to a percentage confidence (e.g. 0 to 99)
-    // Add artificial boost to make demonstration feel like AI is actually working if there's any match
-    let confidence = 0;
-    if (highestScore > 0) {
-      confidence = Math.min(Math.round((highestScore * 100) + 40), 99);
-    } else {
-      // simulate random very low confidence fallback
-      confidence = Math.floor(Math.random() * 20) + 10;
-      // pick a random one as suggestion if no match found just to show something
-      if (allTaxonomy.length > 0) {
-        const fallbackTaxonomy = allTaxonomy[0];
-        bestMatch = {
-          majorProcess: fallbackTaxonomy.majorProcess,
-          process: fallbackTaxonomy.process,
-          subProcess: fallbackTaxonomy.subProcesses[0] || 'Handling Input'
-        };
-      }
-    }
-
-    // If completely no match found, fallback suggestion
-    if (!bestMatch) {
-      return res.json({
-        mapped: false,
-        suggestion: null,
-        confidence: 0
+    // 2. Build candidates
+    const candidates = [];
+    allTaxonomy.forEach(item => {
+      item.subProcesses.forEach(sub => {
+        candidates.push({
+          majorProcess: item.majorProcess,
+          process: item.process,
+          subProcess: sub,
+          // Weighted search string
+          searchString: `${item.process} ${sub}`.toLowerCase()
+        });
       });
+    });
+
+    // 3. Find Best Match using string-similarity
+    const matches = stringSimilarity.findBestMatch(text.toLowerCase(), candidates.map(c => c.searchString));
+    const best = candidates[matches.bestMatchIndex];
+    let confidence = Math.round(matches.bestMatch.rating * 100);
+
+    // AI Boost: If there is a very high word overlap, boost confidence
+    const inputWords = text.toLowerCase().split(/\W+/);
+    const matchWords = best.subProcess.toLowerCase().split(/\W+/);
+    const overlap = inputWords.filter(w => w.length > 2 && matchWords.includes(w)).length;
+    if (overlap >= 2) confidence = Math.max(confidence, 75);
+
+    if (confidence < 25) {
+      return res.json({ mapped: false, confidence });
     }
 
     res.json({
       mapped: true,
-      suggestion: bestMatch,
-      confidence
+      suggestion: {
+        majorProcess: best.majorProcess,
+        process: best.process,
+        subProcess: best.subProcess
+      },
+      confidence: Math.min(confidence, 99)
     });
+
+  } catch (err) {
+    console.error('NLP Error:', err);
+    res.status(500).json({ message: err.message });
+  }
+};
+
+const createTaxonomy = async (req, res) => {
+  try {
+    const { majorProcess, process, subProcesses, department } = req.body;
+    
+    // Check for existing to update or create simple one
+    let entry = await Taxonomy.findOne({ majorProcess, process });
+    const isNew = !entry;
+    const prevSubProcesses = entry ? [...entry.subProcesses] : [];
+    
+    if (entry) {
+      // Merge sub-processes
+      const existingSubs = entry.subProcesses || [];
+      const nextSubs = [...new Set([...existingSubs, ...subProcesses])];
+      entry.subProcesses = nextSubs;
+      await entry.save();
+    } else {
+      entry = await Taxonomy.create({
+        majorProcess,
+        process,
+        subProcesses,
+        department,
+        isActive: true
+      });
+    }
+
+    // AUDIT LOG
+    await logAction({
+        req,
+        action: 'TAXONOMY_SAVED',
+        targetType: 'Taxonomy',
+        targetId: entry._id,
+        description: `${isNew ? 'Created' : 'Updated'} taxonomy entry for ${majorProcess} / ${process}`,
+        prev: isNew ? null : { subProcesses: prevSubProcesses },
+        next: { subProcesses: entry.subProcesses }
+    });
+    
+    res.status(201).json(entry);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
 };
 
-module.exports = { mapActivity };
+module.exports = { mapActivity, createTaxonomy };

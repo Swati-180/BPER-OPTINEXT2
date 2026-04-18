@@ -38,7 +38,7 @@ async function resolveRequestUser(req) {
 }
 
 function ensureManager(role, res) {
-  if (role !== 'manager') {
+  if (role !== 'manager' && role !== 'admin') {
     res.status(403).json({ message: 'Manager access required for reports.' });
     return false;
   }
@@ -951,6 +951,21 @@ async function getUtilizationAnalysisReport(req, res) {
   }
 }
 
+async function getAuditLogs(req, res) {
+  try {
+    const requestUser = await resolveRequestUser(req);
+    if (requestUser.role !== 'admin') {
+      return res.status(403).json({ message: 'Global administrator access required for audit logs.' });
+    }
+
+    const AuditLog = require('../models/AuditLog');
+    const logs = await AuditLog.find({}).sort({ createdAt: -1 }).limit(100).lean();
+    res.json(logs);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+}
+
 module.exports = {
   getDashboardReport,
   getUtilizationReport,
@@ -961,4 +976,5 @@ module.exports = {
   getConsolidationAnalysisReport,
   getFitmentAnalysisReport,
   getUtilizationAnalysisReport,
+  getAuditLogs,
 };

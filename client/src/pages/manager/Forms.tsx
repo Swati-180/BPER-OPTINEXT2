@@ -115,6 +115,7 @@ export default function FormsPage() {
 	const flaggedCount = selectedFlags.length;
 	const totalHours = selectedRows.reduce((sum, row) => sum + Number(row.timeTakenHoursPerMonth || 0), 0);
 	const canReviewSelected = Boolean(selectedRecord && activeTab === 'pending' && selectedRecord.status === 'Under Review');
+	const canUnlockSelected = Boolean(selectedRecord && activeTab === 'history' && selectedRecord.status === 'Approved');
 	const latestReviewComment = selectedRecord?.reviewHistory[0]?.comment ?? '';
 
 	function refreshQueue() {
@@ -422,6 +423,21 @@ export default function FormsPage() {
 												>
 													<Check className="h-4 w-4" />
 													Complete Review
+												</button>
+											</div>
+										) : canUnlockSelected ? (
+											<div className="flex flex-wrap items-center justify-end gap-2.5">
+												<div className="flex-1 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700">
+													<span className="font-semibold">Review Completed:</span>{' '}
+													Approved
+													{latestReviewComment ? ` · ${latestReviewComment}` : ''}
+												</div>
+												<button
+													type="button"
+													onClick={() => openReviewModal('Grant Edit')}
+													className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-sm font-semibold text-amber-700 hover:bg-amber-100"
+												>
+													Unlock / Grant Edit
 												</button>
 											</div>
 										) : (

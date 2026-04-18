@@ -10,6 +10,7 @@ const {
   getConsolidationAnalysisReport,
   getFitmentAnalysisReport,
   getUtilizationAnalysisReport,
+  getAuditLogs,
 } = require('../controllers/reportsController');
 
 const router = express.Router();
@@ -26,5 +27,6 @@ router.get('/fte-analysis', verifyToken, getFteAnalysisReport);
 router.get('/consolidation-analysis', verifyToken, getConsolidationAnalysisReport);
 router.get('/fitment-analysis', verifyToken, getFitmentAnalysisReport);
 router.get('/utilization-analysis', verifyToken, getUtilizationAnalysisReport);
+router.get('/audit-logs', verifyToken, getAuditLogs);
 
 module.exports = router;
