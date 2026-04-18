@@ -32,6 +32,7 @@ import ManagerForms from './pages/manager/Forms';
 import ManagerWDTAnalytics from './pages/manager/WDTAnalytics';
 import ManagerSixBySixAnalysis from './pages/manager/SixBySixAnalysis';
 import DeepAnalysis from './pages/manager/DeepAnalysis';
+import ProcessManagementPage from './pages/manager/ProcessManagementPage';
 import TaxonomyManagement from './pages/manager/TaxonomyManagement';
 import AuditLogs from './pages/manager/AuditLogs';
 import PersonalProfile from './pages/manager/PersonalProfile';
@@ -358,6 +359,7 @@ export default function App() {
                   <Route path="wdt-analytics" element={<ManagerWDTAnalytics />} />
                   <Route path="6x6-analysis" element={<ManagerSixBySixAnalysis />} />
                   <Route path="deep-analysis" element={<DeepAnalysis />} />
+                                    <Route path="process-management" element={<ProcessManagementPage />} />
                   <Route path="taxonomy" element={<TaxonomyManagement />} />
                   <Route path="audit-logs" element={<AuditLogs />} />
                   <Route path="my-profile" element={<PersonalProfile />} />
