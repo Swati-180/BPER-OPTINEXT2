@@ -498,10 +498,26 @@ async function getFitmentSummaryReport(req, res) {
     const requestUser = await resolveRequestUser(req);
     if (!ensureManager(requestUser.role, res)) return;
 
-    const [fitments, totalEmployees] = await Promise.all([
-      Fitment.find({}).sort({ weightedScore: -1 }).lean(),
-      User.countDocuments({ role: 'employee', isActive: true }),
-    ]);
+    const { department } = req.query;
+    let employeeIdsScope = null;
+    
+    if (department && department !== 'All Departments') {
+      employeeIdsScope = await WDTSubmission.distinct('employee.employeeId', { 'employee.department': department });
+    }
+
+    const fitmentQuery = {};
+    if (employeeIdsScope) {
+      fitmentQuery.employeeId = { $in: employeeIdsScope };
+    }
+
+    const fitments = await Fitment.find(fitmentQuery).sort({ weightedScore: -1 }).lean();
+    
+    let totalEmployees = 0;
+    if (employeeIdsScope) {
+      totalEmployees = employeeIdsScope.length;
+    } else {
+      totalEmployees = await User.countDocuments({ role: 'employee', isActive: true });
+    }
 
     const userMap = new Map(
       (

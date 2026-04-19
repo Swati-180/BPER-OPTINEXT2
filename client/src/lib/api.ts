@@ -76,8 +76,27 @@ export function getFteConsolidationSummaryReport(department?: string) {
   return apiGetJson<any>(`/reports/fte-consolidation-summary${query}`);
 }
 
-export function getFitmentSummaryReport() {
-  return apiGetJson<any>('/reports/fitment-summary');
+export function getFitmentSummaryReport(department?: string) {
+  const query = department && department !== 'All Departments'
+    ? `?department=${encodeURIComponent(department)}`
+    : '';
+  return apiGetJson<any>(`/reports/fitment-summary${query}`);
+}
+
+export function getEmployeeFitment(employeeId: string) {
+  return apiGetJson<any>(`/fitment/${encodeURIComponent(employeeId)}`);
+}
+
+export async function updateEmployeeFitment(employeeId: string, parameters: any[]) {
+  const response = await apiFetch('/fitment', {
+    method: 'POST',
+    body: JSON.stringify({ employeeId, parameters })
+  });
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.message || 'Failed to save fitment profile');
+  }
+  return data;
 }
 
 // Phase 9: Deep Analysis Reports
