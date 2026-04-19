@@ -39,8 +39,9 @@ const initialRows: WdtActivityRow[] = [
     process: "Invoice Processing",
     subProcess: "Validation and Posting",
     frequency: "Daily",
-    volumesMonthly: 10000,
-    timeTakenHoursPerMonth: 1,
+    volumesMonthly: 1000,
+    timePerTransactionMinutes: 5,
+    timeTakenHoursPerMonth: 83.3,
     applicationsUsed: "SAP",
     comments: "",
   },
@@ -76,10 +77,17 @@ export function Step2({ employee, payload, onNext, onPrev, onPayloadChange }: St
   const [isMapping, setIsMapping] = useState(false);
 
   useEffect(() => {
+    if (payload?.rows?.length) {
+      setRows(payload.rows);
+    }
+  }, [payload]);
+
+  useEffect(() => {
     async function fetchTaxonomy() {
       try {
         const token = localStorage.getItem('bper.auth.token');
-        const res = await fetch('http://localhost:5000/api/taxonomy/processes', {
+        const deptParam = employee.department ? `?department=${encodeURIComponent(employee.department)}` : '';
+        const res = await fetch(`http://localhost:5000/api/taxonomy/processes${deptParam}`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         if (res.ok) {
@@ -151,7 +159,8 @@ export function Step2({ employee, payload, onNext, onPrev, onPayloadChange }: St
       row.process?.trim() && 
       row.subProcess?.trim() && 
       row.frequency?.trim() && 
-      Number(row.timeTakenHoursPerMonth) > 0
+      Number(row.volumesMonthly) > 0 &&
+      Number(row.timePerTransactionMinutes) > 0
     );
   }, [rows]);
 
@@ -166,7 +175,19 @@ export function Step2({ employee, payload, onNext, onPrev, onPayloadChange }: St
 
   const updateRow = (index: number, field: keyof WdtActivityRow, value: string | number) => {
     setRows((prev) =>
-      prev.map((row, rowIndex) => (rowIndex === index ? { ...row, [field]: value } : row))
+      prev.map((row, rowIndex) => {
+        if (rowIndex !== index) return row;
+        const nextRow = { ...row, [field]: value };
+        
+        // Auto-calculate hours if volume or time per trans changed
+        if (field === "volumesMonthly" || field === "timePerTransactionMinutes") {
+          const vol = Number(nextRow.volumesMonthly) || 0;
+          const min = Number(nextRow.timePerTransactionMinutes) || 0;
+          nextRow.timeTakenHoursPerMonth = (vol * min) / 60;
+        }
+        
+        return nextRow;
+      })
     );
   };
 
@@ -180,6 +201,7 @@ export function Step2({ employee, payload, onNext, onPrev, onPayloadChange }: St
         subProcess: "",
         frequency: "",
         volumesMonthly: 0,
+        timePerTransactionMinutes: 0,
         timeTakenHoursPerMonth: 0,
         applicationsUsed: "",
         comments: "",
@@ -197,6 +219,7 @@ export function Step2({ employee, payload, onNext, onPrev, onPayloadChange }: St
         subProcess: "",
         frequency: "",
         volumesMonthly: 0,
+        timePerTransactionMinutes: 0,
         timeTakenHoursPerMonth: 0,
         applicationsUsed: "",
         comments: "",
@@ -298,20 +321,27 @@ export function Step2({ employee, payload, onNext, onPrev, onPayloadChange }: St
                       tooltip="Represents how frequently the activity / sub process is carried out."
                     />
                   </th>
-                  <th className="py-3 px-3 text-center w-32">
+                  <th className="py-3 px-3 text-center w-28">
                     <HeaderWithTooltip
-                      title="Volumes(Monthly)"
+                      title="Vol/Mo"
                       required
                       centered
                       tooltip="Number of requests received and processed for the sub process in a month."
                     />
                   </th>
-                  <th className="py-3 px-3 text-center w-32">
+                  <th className="py-3 px-3 text-center w-28">
                     <HeaderWithTooltip
-                      title="Time Taken(h/m)"
+                      title="Min/Trans"
                       required
                       centered
-                      tooltip="The number of hours required in a month to finish the activity. In case of annual / half yearly / quarterly activities, monthly average to be calculated (total / 12; total / 6; total / 3) and entered."
+                      tooltip="Time taken per single transaction/item in minutes."
+                    />
+                  </th>
+                  <th className="py-3 px-3 text-center w-28">
+                    <HeaderWithTooltip
+                      title="Total Hrs"
+                      centered
+                      tooltip="Automatically calculated: (Vol * Min) / 60. Represents monthly effort."
                     />
                   </th>
                   <th className="py-3 px-3 w-32">
@@ -408,8 +438,8 @@ export function Step2({ employee, payload, onNext, onPrev, onPayloadChange }: St
                           openEditor({
                             rowIndex,
                             field: "volumesMonthly",
-                            label: "Volumes (Monthly)",
-                            description: "Enter monthly transaction volume for this process.",
+                            label: "Monthly Volume",
+                            description: "Number of units or requests processed per month.",
                             kind: "number",
                             placeholder: "e.g. 100",
                           })
@@ -418,20 +448,25 @@ export function Step2({ employee, payload, onNext, onPrev, onPayloadChange }: St
                     </td>
                     <td className="py-3 px-2 text-center">
                       <CellPreview
-                        value={String(row.timeTakenHoursPerMonth)}
+                        value={String(row.timePerTransactionMinutes)}
                         placeholder="0"
                         mono
                         onClick={() =>
                           openEditor({
                             rowIndex,
-                            field: "timeTakenHoursPerMonth",
-                            label: "Time Taken (Hours / Month)",
-                            description: "Enter the estimated monthly effort in hours.",
+                            field: "timePerTransactionMinutes",
+                            label: "Time Per Trans (Min)",
+                            description: "Average minutes taken to complete one transaction.",
                             kind: "number",
-                            placeholder: "e.g. 12.5",
+                            placeholder: "e.g. 15",
                           })
                         }
                       />
+                    </td>
+                    <td className="py-3 px-2 text-center bg-slate-50/30">
+                      <div className="text-sm font-bold text-blue-800 tabular-nums">
+                        {((Number(row.volumesMonthly) * Number(row.timePerTransactionMinutes)) / 60).toFixed(1)}h
+                      </div>
                     </td>
                     <td className="py-3 px-2">
                       <CellPreview
@@ -511,7 +546,8 @@ export function Step2({ employee, payload, onNext, onPrev, onPayloadChange }: St
                 <tr className="bg-slate-50/80 text-[11px] font-semibold text-slate-500 tracking-[0.18em] uppercase border-y border-slate-200">
                   <th className="py-3 px-3 w-[30%]">Activity Description</th>
                   <th className="py-3 px-3 text-center w-28">Vol/Mo</th>
-                  <th className="py-3 px-3 text-center w-40">Time Taken (Hrs/Month)</th>
+                  <th className="py-3 px-3 text-center w-28">Min/Trans</th>
+                  <th className="py-3 px-3 text-center w-28">Total Hrs</th>
                   <th className="py-3 px-3 w-[25%]">Comments</th>
                   <th className="py-3 pr-2 w-10"></th>
                 </tr>
@@ -555,20 +591,25 @@ export function Step2({ employee, payload, onNext, onPrev, onPayloadChange }: St
                     </td>
                     <td className="py-3 px-2 text-center">
                       <CellPreview
-                        value={String(row.timeTakenHoursPerMonth)}
+                        value={String(row.timePerTransactionMinutes)}
                         placeholder="0"
                         mono
                         onClick={() =>
                           openEditor({
                             rowIndex,
-                            field: "timeTakenHoursPerMonth",
-                            label: "Time Taken (Hours / Month)",
-                            description: "Enter monthly effort for this support activity.",
+                            field: "timePerTransactionMinutes",
+                            label: "Time Per Trans (Min)",
+                            description: "Minutes per transaction for this support activity.",
                             kind: "number",
-                            placeholder: "e.g. 20",
+                            placeholder: "e.g. 15",
                           })
                         }
                       />
+                    </td>
+                    <td className="py-3 px-2 text-center bg-slate-50/20">
+                      <div className="text-sm font-bold text-slate-700 tabular-nums">
+                        {((Number(row.volumesMonthly) * Number(row.timePerTransactionMinutes)) / 60).toFixed(1)}h
+                      </div>
                     </td>
                     <td className="py-3 px-2">
                       <CellPreview

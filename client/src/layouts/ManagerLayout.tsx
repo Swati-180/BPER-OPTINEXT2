@@ -1,7 +1,7 @@
 import { ReactNode, useMemo, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { 
-  LayoutDashboard, 
+  LayoutDashboard,
   Users, 
   FileText, 
   BarChart3, 
@@ -12,7 +12,9 @@ import {
   MessagesSquare,
   UserCircle,
   Briefcase,
-  Activity
+  LayoutGrid,
+  ShieldCheck,
+  Zap
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { motion } from 'motion/react';
@@ -42,7 +44,9 @@ export default function ManagerLayout({ children, user, onLogout }: ManagerLayou
     { name: 'WDT Analytics', path: '/manager/wdt-analytics', icon: BarChart3 },
     { name: '6x6 Analysis', path: '/manager/6x6-analysis', icon: Grid3X3 },
     { name: 'Deep Analysis', path: '/manager/deep-analysis', icon: Briefcase },
-    { name: 'Fitment Analytics', path: '/manager/fitment', icon: Activity },
+    { name: 'Process Management', path: '/manager/process-management', icon: Zap },
+    { name: 'Taxonomy', path: '/manager/taxonomy', icon: LayoutGrid },
+    { name: 'Audit Trail', path: '/manager/audit-logs', icon: ShieldCheck },
   ];
 
   const isSidebarExpanded = isSidebarOpen || isSidebarHovered;
@@ -123,7 +127,9 @@ export default function ManagerLayout({ children, user, onLogout }: ManagerLayou
               className="overflow-hidden whitespace-nowrap"
             >
               <p className="text-sm font-semibold truncate text-white/90">{user.name}</p>
-              <p className="text-[10px] text-white/40 uppercase tracking-wider font-bold">Manager</p>
+              <p className="text-[10px] text-white/40 uppercase tracking-wider font-bold">
+                {user.role === 'admin' ? 'Administrator' : 'Manager'}
+              </p>
             </motion.div>
           </div>
         </div>

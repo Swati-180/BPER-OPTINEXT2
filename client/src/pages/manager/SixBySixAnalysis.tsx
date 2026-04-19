@@ -15,21 +15,21 @@ type ProcessRow = {
 };
 
 const PERFORMANCE_LABELS: Record<string, string> = {
-  'ML': 'Manual Labour Intensity',
-  'R': 'Repeatability',
-  'V': 'Volume Variability',
-  'M': 'Maturity',
-  'S': 'Standardization',
-  'E': 'Exception Handling'
+  'ML': 'Multiple Locations',
+  'R': 'Routine',
+  'V': 'Volumes',
+  'M': 'Manpower',
+  'S': 'SOPs',
+  'E': 'ERP/Tech'
 };
 
 const CHARACTERISTIC_LABELS: Record<string, string> = {
-  'S': 'Stability',
-  'C': 'Complexity',
-  'C2': 'Connectivity',
-  'P': 'Predictability',
+  'S': 'Sensitivity',
+  'Cr': 'Criticality',
+  'Co': 'Controls',
+  'P': 'Proximity',
   'R': 'Regulatory',
-  'S2': 'Scalability'
+  'Sk': 'Skill'
 };
 
 
@@ -55,7 +55,7 @@ export default function SixBySixAnalysisPage() {
 			setIsLoading(true);
 			try {
 				const token = localStorage.getItem('bper.auth.token');
-				const response = await fetch(`http://localhost:5000/api/analysis/six-by-six?department=${departmentFilter}`, {
+				const response = await fetch(`http://localhost:5000/api/analysis/six-by-six?department=${encodeURIComponent(departmentFilter)}`, {
 					headers: {
 						'Authorization': `Bearer ${token}`
 					}
@@ -86,9 +86,17 @@ export default function SixBySixAnalysisPage() {
 			const newCriteria = [...row.criteria];
 			newCriteria[colIndex] = nextVal as CriteriaValue;
 			
-			// Compute score locally for immediate UI update (matches backend Mongoose hook logically)
-			const newScore = newCriteria.filter(v => v === 'H').length;
-			return { ...row, criteria: newCriteria, score: newScore, consolidated: newScore >= 6 };
+			// PRD Algorithm: +1 for H in Performance (idx 0-5), +1 for L in Characteristics (idx 6-11)
+			const performanceScore = newCriteria.slice(0, 6).filter(v => v === 'H').length;
+			const characteristicScore = newCriteria.slice(6, 12).filter(v => v === 'L').length;
+			const newScore = performanceScore + characteristicScore;
+			
+			return { 
+				...row, 
+				criteria: newCriteria, 
+				score: newScore, 
+				consolidated: newScore >= 7 
+			};
 		}));
 	};
 
@@ -346,7 +354,7 @@ export default function SixBySixAnalysisPage() {
 										<th key={`p-${label}`} title={fullName} className="px-2 py-2.5 text-center text-[#2860D3] cursor-help border-x border-[#F0F4F9]">{label}</th>
 									))}
 									{Object.entries(CHARACTERISTIC_LABELS).map(([label, fullName], index) => (
-										<th key={`c-${label}-${index}`} title={fullName} className="px-2 py-2.5 text-center text-[#7A39DB] cursor-help border-x border-[#F0F4F9]">{label.slice(0, 1)}</th>
+										<th key={`c-${label}-${index}`} title={fullName} className="px-2 py-2.5 text-center text-[#7A39DB] cursor-help border-x border-[#F0F4F9]">{label}</th>
 									))}
 									<th className="px-3 py-2.5 text-center">Score</th>
 									<th className="px-3 py-2.5 text-center">Cons</th>

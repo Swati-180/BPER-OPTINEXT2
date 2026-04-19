@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
+const { logAction } = require('../utils/auditLogger');
 
 const requestAccess = async (req, res) => {
   return res.status(410).json({ message: 'Request access flow is deprecated. Use /api/auth/signup.' });
@@ -150,6 +151,17 @@ const bulkUpdateUsers = async (req, res) => {
     } else if (action === 'change_role') {
       await User.updateMany(query, { $set: { role } });
     }
+
+    // AUDIT LOG
+    await logAction({
+        req,
+        action: action === 'deactivate' ? 'USER_DEACTIVATED' : action === 'activate' ? 'USER_ACTIVATED' : 'USER_ROLE_CHANGED',
+        targetType: 'User',
+        targetId: userIds.join(','),
+        description: `Bulk ${action} for ${userIds.length} users. ${role ? 'New role: ' + role : ''}`,
+        next: { userIds, action, role }
+    });
+
     return res.json({ message: 'Bulk update successful.' });
   } catch (err) {
     return res.status(500).json({ message: err.message });

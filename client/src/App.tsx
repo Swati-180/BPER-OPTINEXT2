@@ -19,6 +19,7 @@ import ManagerLayout from './layouts/ManagerLayout';
 import ProtectedRoute from './components/ProtectedRoute';
 import PortalSelectionPage from './pages/PortalSelection';
 import InviteSignupPage from './pages/InviteSignup';
+import EmployeeLoginPage from './pages/EmployeeLogin';
 
 // Pages
 import EmployeeDashboard from './pages/employee/Dashboard';
@@ -32,7 +33,9 @@ import ManagerForms from './pages/manager/Forms';
 import ManagerWDTAnalytics from './pages/manager/WDTAnalytics';
 import ManagerSixBySixAnalysis from './pages/manager/SixBySixAnalysis';
 import DeepAnalysis from './pages/manager/DeepAnalysis';
-import ManagerFitmentAnalytics from './pages/manager/FitmentAnalytics';
+import ProcessManagementPage from './pages/manager/ProcessManagementPage';
+import TaxonomyManagement from './pages/manager/TaxonomyManagement';
+import AuditLogs from './pages/manager/AuditLogs';
 import PersonalProfile from './pages/manager/PersonalProfile';
 
 import Unauthorized from './pages/Unauthorized';
@@ -124,12 +127,12 @@ function LoginPage({ onLogin }: { onLogin: (user: AppAuthUser) => void }) {
       }
       
       if (nextUser.role === 'employee') {
-        clearActiveUnderReviewReferenceId();
+        throw new Error('This portal is for Managers only. Employees must login using their dedicated URL.');
       }
       
       saveAuthUser(nextUser);
       onLogin(nextUser);
-      navigate(nextUser.role === 'manager' ? '/choose-portal' : '/employee-portal', { replace: true });
+      navigate('/choose-portal', { replace: true });
     } catch (err: any) {
       setGeneralError(err.message || 'Invalid credentials. Please check your email and password.');
     } finally {
@@ -258,7 +261,7 @@ function ManagerChoosePortalRoute({ user }: { user: AppAuthUser | null }) {
     return <Navigate to="/auth/login" replace />;
   }
 
-  if (user.role !== 'manager') {
+  if (user.role !== 'manager' && user.role !== 'admin') {
     return <Navigate to="/employee-portal" replace />;
   }
 
@@ -299,6 +302,10 @@ export default function App() {
           path="/auth/login" 
           element={<LoginPage onLogin={handleLogin} />} 
         />
+        <Route 
+          path="/auth/login/employee" 
+          element={<EmployeeLoginPage onLogin={handleLogin} />} 
+        />
         <Route path="/auth/signup" element={<InviteSignupPage onLogin={handleLogin} />} />
         <Route path="/choose-portal" element={<ManagerChoosePortalRoute user={user} />} />
         <Route
@@ -317,7 +324,7 @@ export default function App() {
           path="/manager-portal"
           element={
             user ? (
-              user.role === 'manager' ? <Navigate to="/manager/dashboard" replace /> : <Navigate to="/employee-portal" replace />
+              user.role === 'manager' || user.role === 'admin' ? <Navigate to="/manager/dashboard" replace /> : <Navigate to="/employee-portal" replace />
             ) : (
               <Navigate to="/auth/login" replace />
             )
@@ -329,7 +336,7 @@ export default function App() {
         <Route
           path="/employee/*"
           element={
-            <ProtectedRoute user={user} allowedRoles={["employee", "manager"]}>
+            <ProtectedRoute user={user} allowedRoles={["employee", "manager", "admin"]}>
               <EmployeeLayout user={user} onLogout={handleLogout}>
                 <Routes>
                   <Route path="dashboard" element={<EmployeeDashboard />} />
@@ -348,7 +355,7 @@ export default function App() {
         <Route
           path="/manager/*"
           element={
-            <ProtectedRoute user={user} allowedRole="manager">
+            <ProtectedRoute user={user} allowedRoles={["manager", "admin"]}>
               <ManagerLayout user={user} onLogout={handleLogout}>
                 <Routes>
                   <Route path="dashboard" element={<ManagerDashboard />} />
@@ -357,7 +364,9 @@ export default function App() {
                   <Route path="wdt-analytics" element={<ManagerWDTAnalytics />} />
                   <Route path="6x6-analysis" element={<ManagerSixBySixAnalysis />} />
                   <Route path="deep-analysis" element={<DeepAnalysis />} />
-                  <Route path="fitment" element={<ManagerFitmentAnalytics />} />
+                                    <Route path="process-management" element={<ProcessManagementPage />} />
+                  <Route path="taxonomy" element={<TaxonomyManagement />} />
+                  <Route path="audit-logs" element={<AuditLogs />} />
                   <Route path="my-profile" element={<PersonalProfile />} />
                   <Route path="*" element={<Navigate to="dashboard" replace />} />
                 </Routes>

@@ -4,6 +4,7 @@ const taxonomySchema = new mongoose.Schema({
   majorProcess: { type: String, required: true },
   process: { type: String, required: true },
   subProcesses: [{ type: String }],
+  tags: [{ type: String }], // Keywords for NLP boosting as per PRD 5.3
   department: { type: String }, // Optional: only show for specific depts
   isActive: { type: Boolean, default: true }
 }, { timestamps: true });

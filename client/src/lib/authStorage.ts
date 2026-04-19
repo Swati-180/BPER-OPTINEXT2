@@ -1,4 +1,4 @@
-export type PortalRole = 'employee' | 'manager';
+export type PortalRole = 'employee' | 'manager' | 'admin';
 
 export type AuthSource = 'normal' | 'invite' | 'demo';
 

@@ -2,11 +2,15 @@ const ProcessAnalysis = require('../models/ProcessAnalysis');
 const WDTSubmission = require('../models/WDTSubmission');
 
 function computeScore(criteria = []) {
-  return criteria.reduce((total, value) => {
-    if (value === 'H') return total + 1;
-    if (value === 'M') return total + 0.5;
-    return total;
-  }, 0);
+  if (!criteria || criteria.length === 0) return 0;
+  
+  // PRD: Group 1 (Performance - first 6) looking for 'H'
+  const performanceScore = criteria.slice(0, 6).filter(val => val === 'H').length;
+  
+  // PRD: Group 2 (Characteristics - next 6) looking for 'L'
+  const characteristicScore = criteria.slice(6, 12).filter(val => val === 'L').length;
+  
+  return performanceScore + characteristicScore;
 }
 
 function normalizeAnalysisRecord(record) {
@@ -17,13 +21,14 @@ function normalizeAnalysisRecord(record) {
   return {
     ...record,
     score,
-    consolidated: typeof record.consolidated === 'boolean' ? record.consolidated : score >= 8,
+    consolidated: typeof record.consolidated === 'boolean' ? record.consolidated : score >= 7,
   };
 }
 
 const getSixBySixData = async (req, res) => {
   try {
     const { department } = req.query;
+    console.log(`[6x6 Report] Fetching data for department: "${department}"`);
     
     // 1. Sync new processes from WDT submissions
     const matchStage = department && department !== 'All Departments' ? { 'employee.department': department } : {};
@@ -34,7 +39,7 @@ const getSixBySixData = async (req, res) => {
        { 
          $group: {
            _id: { 
-             process: '$payload.rows.subProcess', // Assuming subProcess represents the unique granular task
+             process: '$payload.rows.subProcess',
              department: '$employee.department',
              type: '$payload.rows.activityCategory'
            }
@@ -42,29 +47,43 @@ const getSixBySixData = async (req, res) => {
        }
     ]);
     
-    // 2. Insert any newly discovered processes blindly as stubs
+    // 2. Insert stubs with random values for testing if not exists
+    const criteriaOptions = ['H', 'M', 'L', '-'];
+    
     for (const item of aggregatedProcesses) {
-      if (!item._id.process) continue;
+      const processName = item._id.process;
+      const deptName = item._id.department || 'General';
+      
+      if (!processName) continue;
       
       const exists = await ProcessAnalysis.findOne({
-        process: item._id.process,
-        department: item._id.department
+        process: processName,
+        department: deptName
       });
       
       if (!exists) {
+        // Create with random criteria for now as requested
+        const randomCriteria = Array.from({ length: 12 }, () => 
+          criteriaOptions[Math.floor(Math.random() * criteriaOptions.length)]
+        );
+        
         await ProcessAnalysis.create({
-          process: item._id.process,
-          department: item._id.department,
+          process: processName,
+          department: deptName,
           type: item._id.type || 'core',
-          criteria: Array(12).fill('-'),
-          score: 0,
+          criteria: randomCriteria,
+          score: 0, // calc automatically by pre-save
           consolidated: false
         });
       }
     }
     
-    // 3. Query the fully populated list
-    const query = department && department !== 'All Departments' ? { department } : {};
+    // 3. Query with strict matching
+    let query = {};
+    if (department && department !== 'All Departments') {
+       query.department = department;
+    }
+    
     const data = await ProcessAnalysis.find(query).sort({ department: 1, type: 1 }).lean();
     res.json(data.map(normalizeAnalysisRecord));
   } catch (err) {

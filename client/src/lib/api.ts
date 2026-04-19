@@ -18,7 +18,7 @@ export async function apiFetch(endpoint: string, options: RequestInit = {}) {
     const response = await fetch(`${BASE_URL}${endpoint}`, { ...options, headers });
     
     // Global Security Audit: Handle Expired Tokens
-    if (response.status === 401 || response.status === 403) {
+    if (response.status === 401) {
       console.warn('Session expired or unauthorized. Clearing session and redirecting.');
       localStorage.removeItem('bper.auth.token');
       localStorage.removeItem('bper.auth.user');
@@ -123,6 +123,116 @@ export function getUtilizationAnalysisReport(department?: string) {
     ? `?department=${encodeURIComponent(department)}`
     : '';
   return apiGetJson<any>(`/reports/utilization-analysis${query}`);
+}
+
+// Process Management - Activities API
+export interface Tower {
+  name: string;
+  processCount: number;
+}
+
+export interface Process {
+  name: string;
+  activityCount: number;
+}
+
+export interface Activity {
+  _id: string;
+  name: string;
+  isCustom: boolean;
+  automationPotential: string;
+  addedBy?: string;
+  description?: string;
+}
+
+export interface SearchActivity {
+  _id: string;
+  name: string;
+  department: { name: string };
+  tower: { name: string };
+  process: { name: string };
+  isCustom: boolean;
+  automationPotential: string;
+}
+
+export async function getTowersForDepartment(deptId: string): Promise<Tower[]> {
+  return apiGetJson<Tower[]>(`/activities/towers/${encodeURIComponent(deptId)}`);
+}
+
+export async function getProcessesForTower(towerId: string): Promise<Process[]> {
+  return apiGetJson<Process[]>(`/activities/processes/${encodeURIComponent(towerId)}`);
+}
+
+export async function getActivitiesForProcess(tower: string, process: string): Promise<Activity[]> {
+  const query = `?tower=${encodeURIComponent(tower)}&process=${encodeURIComponent(process)}`;
+  return apiGetJson<Activity[]>(`/activities/list${query}`);
+}
+
+export async function searchActivities(searchTerm: string, deptId?: string): Promise<SearchActivity[]> {
+  const query = deptId 
+    ? `?q=${encodeURIComponent(searchTerm)}&deptId=${encodeURIComponent(deptId)}`
+    : `?q=${encodeURIComponent(searchTerm)}`;
+  return apiGetJson<SearchActivity[]>(`/activities/search${query}`);
+}
+
+export async function createCustomActivity(payload: {
+  departmentId: string;
+  towerId: string;
+  processId: string;
+  name: string;
+  description?: string;
+  automationPotential?: string;
+  notes?: string;
+}): Promise<{ message: string; activity: any }> {
+  const response = await apiFetch('/activities/custom', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data?.message || 'Failed to create custom activity');
+  }
+
+  return data;
+}
+
+export async function createCustomTower(payload: {
+  departmentId: string;
+  name: string;
+}): Promise<{ message: string; tower: Tower }> {
+  const response = await apiFetch('/activities/tower/custom', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data?.message || 'Failed to create tower');
+  }
+
+  return data;
+}
+
+export async function createCustomProcess(payload: {
+  towerId: string;
+  departmentId: string;
+  name: string;
+}): Promise<{ message: string; process: Process }> {
+  const response = await apiFetch('/activities/process/custom', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data?.message || 'Failed to create process');
+  }
+
+  return data;
 }
 
 // CSV Export Helper
