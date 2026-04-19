@@ -47,19 +47,11 @@ const LOGIN_SESSION_KEY = 'bper.session.loginAt';
 function Logo() {
   return (
     <div className="flex flex-col items-center mb-4 md:mb-6">
-      <div className="flex items-center gap-1">
-        <div className="flex items-center font-bold text-3xl md:text-4xl tracking-tighter">
-          <span className="text-[#F27D26]">Q</span>
-          <span className="text-[#165BAA]">G</span>
-          <span className="ml-1 text-[#F27D26]">Quintes</span>
-          <span className="text-[#165BAA]">Global</span>
-        </div>
-      </div>
-      <div className="flex items-center gap-1 mt-0.5">
-        <span className="text-[10px] md:text-[12px] italic font-serif text-[#333333]">
-          Co-Creating Value <span className="text-[#F27D26] not-italic mx-0.5">|</span> Simplifying Tomorrow
-        </span>
-      </div>
+      <img
+        src="https://quintesglobal.com/wp-content/uploads/2021/11/logo-quintesglobal-1.png"
+        alt="QG Tools"
+        className="block h-14 md:h-16 w-auto object-contain"
+      />
     </div>
   );
 }

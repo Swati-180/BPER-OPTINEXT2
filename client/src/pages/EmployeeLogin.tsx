@@ -14,19 +14,11 @@ import { API_ENDPOINTS } from '../lib/config';
 function Logo() {
   return (
     <div className="flex flex-col items-center mb-6">
-      <div className="flex items-center gap-1">
-        <div className="flex items-center font-bold text-3xl tracking-tighter">
-          <span className="text-[#F27D26]">Q</span>
-          <span className="text-[#165BAA]">G</span>
-          <span className="ml-1 text-[#F27D26]">Quintes</span>
-          <span className="text-[#165BAA]">Global</span>
-        </div>
-      </div>
-      <div className="flex items-center gap-1 mt-0.5">
-        <span className="text-[10px] italic font-serif text-[#333333]">
-          Empowering Employees <span className="text-[#F27D26] not-italic mx-0.5">|</span> Shaping Excellence
-        </span>
-      </div>
+      <img
+        src="https://quintesglobal.com/wp-content/uploads/2021/11/logo-quintesglobal-1.png"
+        alt="QG Tools"
+        className="block h-14 w-auto object-contain"
+      />
     </div>
   );
 }

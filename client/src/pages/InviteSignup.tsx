@@ -125,6 +125,11 @@ export default function InviteSignupPage({ onLogin }: InviteSignupProps) {
     <div className="min-h-screen bg-[#EAF2FB] px-4 py-10 flex items-center justify-center">
       <div className="w-full max-w-2xl">
         <div className="mb-5 text-center">
+          <img
+            src="https://quintesglobal.com/wp-content/uploads/2021/11/logo-quintesglobal-1.png"
+            alt="QG Tools"
+            className="mx-auto mb-3 h-14 w-auto"
+          />
           <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-[#5E7EA6]">BPER Platform</p>
           <h1 className="mt-2 text-4xl font-bold tracking-tight text-[#102846]">{isEmployeeInvite ? 'Complete your employee signup' : 'Create your manager account'}</h1>
           <p className="mt-2 text-sm text-[#607A9A]">
