@@ -69,17 +69,25 @@ export default function ProcessManagementPage() {
       setExpanded({ towers: new Set(), processes: new Set() });
 
       try {
+        console.log('Fetching towers for department:', department);
         const towers = await getTowersForDepartment(department);
-        const towerData: TreeData = { towers: {} };
-
-        towers.forEach((tower) => {
-          towerData.towers[tower.name] = {
-            data: tower,
-          };
-        });
-
-        setTreeData(towerData);
+        console.log('Received towers:', towers);
+        
+        if (!towers || towers.length === 0) {
+          console.warn('No towers returned from API');
+          setTreeData({ towers: {} });
+        } else {
+          const towerData: TreeData = { towers: {} };
+          towers.forEach((tower) => {
+            towerData.towers[tower.name] = {
+              data: tower,
+            };
+          });
+          console.log('Setting tree data with towers:', Object.keys(towerData.towers));
+          setTreeData(towerData);
+        }
       } catch (err: any) {
+        console.error('Error loading towers:', err);
         setError(err?.message || 'Failed to load towers');
       } finally {
         setIsLoading(false);

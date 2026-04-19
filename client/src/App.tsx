@@ -34,6 +34,7 @@ import ManagerSixBySixAnalysis from './pages/manager/SixBySixAnalysis';
 import DeepAnalysis from './pages/manager/DeepAnalysis';
 import ProcessOperationsHub from './pages/manager/ProcessOperationsHub';
 import PersonalProfile from './pages/manager/PersonalProfile';
+import APIDebug from './pages/manager/APIDebug';
 
 import Unauthorized from './pages/Unauthorized';
 import { clearActiveUnderReviewReferenceId } from './pages/employee/bperSubmissionStorage';
@@ -364,6 +365,7 @@ export default function App() {
                   <Route path="process-management" element={<Navigate to="/manager/process-operations?tab=process" replace />} />
                   <Route path="taxonomy" element={<Navigate to="/manager/process-operations?tab=taxonomy" replace />} />
                   <Route path="audit-logs" element={<Navigate to="/manager/process-operations?tab=audit" replace />} />
+                  <Route path="api-debug" element={<APIDebug />} />
                   <Route path="my-profile" element={<PersonalProfile />} />
                   <Route path="*" element={<Navigate to="dashboard" replace />} />
                 </Routes>

@@ -6,6 +6,7 @@ const WDTSubmission = require('./models/WDTSubmission');
 const Taxonomy = require('./models/Taxonomy');
 const ProcessAnalysis = require('./models/ProcessAnalysis');
 const bcrypt = require('bcryptjs');
+const mockProcessData = require('./utils/mockProcessData');
 
 dotenv.config({ path: './.env' });
 
@@ -157,9 +158,45 @@ async function seed() {
     await ProcessAnalysis.deleteMany({});
     console.log('Cleared existing data');
 
-    // Insert taxonomy
+    // Insert basic taxonomy data first
     await Taxonomy.insertMany(taxonomyData);
     console.log('Inserted Seed Taxonomy');
+
+    // Insert mock data from JSON files
+    console.log('Loading and processing mock data from JSON files...');
+    
+    const sixBySixRecords = mockProcessData.buildTaxonomyFromSixBySix();
+    if (sixBySixRecords.length > 0) {
+      try {
+        await Taxonomy.insertMany(sixBySixRecords, { ordered: false });
+        console.log(`Inserted ${sixBySixRecords.length} records from 6x6 data`);
+      } catch (err) {
+        if (err.code !== 11000) throw err;
+        console.log('6x6 data: some duplicates skipped');
+      }
+    }
+
+    const faRecords = mockProcessData.buildTaxonomyFromFAActivities();
+    if (faRecords.length > 0) {
+      try {
+        await Taxonomy.insertMany(faRecords, { ordered: false });
+        console.log(`Inserted ${faRecords.length} records from FA activities`);
+      } catch (err) {
+        if (err.code !== 11000) throw err;
+        console.log('FA activities: some duplicates skipped');
+      }
+    }
+
+    const hrRecords = mockProcessData.buildTaxonomyFromHRActivities();
+    if (hrRecords.length > 0) {
+      try {
+        await Taxonomy.insertMany(hrRecords, { ordered: false });
+        console.log(`Inserted ${hrRecords.length} records from HR activities`);
+      } catch (err) {
+        if (err.code !== 11000) throw err;
+        console.log('HR activities: some duplicates skipped');
+      }
+    }
 
     // Insert users
     for (const u of users) {
@@ -229,6 +266,18 @@ async function seed() {
 
     await ProcessAnalysis.insertMany(analysisRecords);
     console.log('Inserted Process Analysis Data (6x6)');
+
+    // Insert mock ProcessAnalysis records from JSON files
+    const mockAnalysisRecords = mockProcessData.buildProcessAnalysisRecords();
+    if (mockAnalysisRecords.length > 0) {
+      try {
+        await ProcessAnalysis.insertMany(mockAnalysisRecords, { ordered: false });
+        console.log(`Inserted ${mockAnalysisRecords.length} mock ProcessAnalysis records`);
+      } catch (err) {
+        if (err.code !== 11000) throw err;
+        console.log('Mock analysis records: some duplicates skipped');
+      }
+    }
 
     // Insert Fitment data
     const fitmentRecords = employees.map((emp, idx) => {

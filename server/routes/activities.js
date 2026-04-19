@@ -11,13 +11,21 @@ function canAddCustom(userRole) {
 /**
  * GET /api/activities/towers/:deptId
  * Returns towers for a department (lazy loading)
+ * Applies portal-based filtering based on user role
  */
 router.get('/towers/:deptId', verifyToken, async (req, res) => {
   try {
     const { deptId } = req.params;
+    const userPortal = req.user.role === 'employee' ? 'employee' : 'manager';
     
     // Query taxonomy to get unique towers in this department
-    let query = {};
+    let query = {
+      $or: [
+        { portal: 'all' },
+        { portal: userPortal }
+      ]
+    };
+    
     if (deptId !== 'All') {
       query.department = deptId || { $exists: false };
     }
@@ -39,14 +47,20 @@ router.get('/towers/:deptId', verifyToken, async (req, res) => {
 /**
  * GET /api/activities/processes/:towerId
  * Returns processes under a tower (lazy loading)
+ * Applies portal-based filtering based on user role
  */
 router.get('/processes/:towerId', verifyToken, async (req, res) => {
   try {
     const { towerId } = req.params;
+    const userPortal = req.user.role === 'employee' ? 'employee' : 'manager';
     
-    // Query taxonomy to get processes under this tower
+    // Query taxonomy to get processes under this tower with portal filtering
     const data = await Taxonomy.find({ 
-      majorProcess: towerId
+      majorProcess: towerId,
+      $or: [
+        { portal: 'all' },
+        { portal: userPortal }
+      ]
     });
     
     // Extract unique processes
@@ -101,10 +115,12 @@ router.get('/list', verifyToken, async (req, res) => {
  * GET /api/activities/search
  * Full-text search for activities with full path
  * Query: ?q=searchterm&deptId=optional
+ * Applies portal-based filtering based on user role
  */
 router.get('/search', verifyToken, async (req, res) => {
   try {
     const { q, deptId } = req.query;
+    const userPortal = req.user.role === 'employee' ? 'employee' : 'manager';
     
     if (!q || q.trim().length === 0) {
       return res.json([]);
@@ -115,6 +131,14 @@ router.get('/search', verifyToken, async (req, res) => {
         { majorProcess: { $regex: q, $options: 'i' } },
         { process: { $regex: q, $options: 'i' } },
         { subProcesses: { $regex: q, $options: 'i' } }
+      ],
+      $and: [
+        {
+          $or: [
+            { portal: 'all' },
+            { portal: userPortal }
+          ]
+        }
       ]
     };
 

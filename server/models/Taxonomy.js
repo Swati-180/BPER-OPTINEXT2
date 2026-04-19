@@ -6,6 +6,7 @@ const taxonomySchema = new mongoose.Schema({
   subProcesses: [{ type: String }],
   tags: [{ type: String }], // Keywords for NLP boosting as per PRD 5.3
   department: { type: String }, // Optional: only show for specific depts
+  portal: { type: String, enum: ['employee', 'manager', 'all'], default: 'all' }, // Portal separation
   isActive: { type: Boolean, default: true }
 }, { timestamps: true });
 

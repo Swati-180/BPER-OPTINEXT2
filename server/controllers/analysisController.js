@@ -25,6 +25,10 @@ function normalizeAnalysisRecord(record) {
   };
 }
 
+function isMockStandardOperatingProcedure(processName = '') {
+  return /^Standard Operating Procedure\s+\d+$/i.test(String(processName).trim());
+}
+
 const getSixBySixData = async (req, res) => {
   try {
     const { department } = req.query;
@@ -55,6 +59,7 @@ const getSixBySixData = async (req, res) => {
       const deptName = item._id.department || 'General';
       
       if (!processName) continue;
+      if (isMockStandardOperatingProcedure(processName)) continue;
       
       const exists = await ProcessAnalysis.findOne({
         process: processName,

@@ -46,6 +46,7 @@ export async function apiGetJson<T>(endpoint: string): Promise<T> {
 
   if (!response.ok) {
     const message = data?.message || `Request failed with status ${response.status}`;
+    console.error(`API Error [${endpoint}]:`, { status: response.status, message, data });
     throw new Error(message);
   }
 
