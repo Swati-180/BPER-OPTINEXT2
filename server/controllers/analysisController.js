@@ -1,5 +1,4 @@
 const ProcessAnalysis = require('../models/ProcessAnalysis');
-const WDTSubmission = require('../models/WDTSubmission');
 
 function computeScore(criteria = []) {
   if (!criteria || criteria.length === 0) return 0;
@@ -25,66 +24,29 @@ function normalizeAnalysisRecord(record) {
   };
 }
 
+function buildDepartmentFilter(department) {
+  if (!department || department === 'All Departments') {
+    return {};
+  }
+
+  if (department === 'F&A' || department === 'Finance & Accounting' || department === 'Finance & Accounts') {
+    return { department: { $in: ['F&A', 'Finance & Accounting', 'Finance & Accounts'] } };
+  }
+
+  if (department === 'HR' || department === 'Human Resources') {
+    return { department: { $in: ['HR', 'Human Resources'] } };
+  }
+
+  return { department };
+}
+
 const getSixBySixData = async (req, res) => {
   try {
     const { department } = req.query;
     console.log(`[6x6 Report] Fetching data for department: "${department}"`);
-    
-    // 1. Sync new processes from WDT submissions
-    const matchStage = department && department !== 'All Departments' ? { 'employee.department': department } : {};
-    
-    const aggregatedProcesses = await WDTSubmission.aggregate([
-       { $match: matchStage },
-       { $unwind: '$payload.rows' },
-       { 
-         $group: {
-           _id: { 
-             process: '$payload.rows.subProcess',
-             department: '$employee.department',
-             type: '$payload.rows.activityCategory'
-           }
-         }
-       }
-    ]);
-    
-    // 2. Insert stubs with random values for testing if not exists
-    const criteriaOptions = ['H', 'M', 'L', '-'];
-    
-    for (const item of aggregatedProcesses) {
-      const processName = item._id.process;
-      const deptName = item._id.department || 'General';
-      
-      if (!processName) continue;
-      
-      const exists = await ProcessAnalysis.findOne({
-        process: processName,
-        department: deptName
-      });
-      
-      if (!exists) {
-        // Create with random criteria for now as requested
-        const randomCriteria = Array.from({ length: 12 }, () => 
-          criteriaOptions[Math.floor(Math.random() * criteriaOptions.length)]
-        );
-        
-        await ProcessAnalysis.create({
-          process: processName,
-          department: deptName,
-          type: item._id.type || 'core',
-          criteria: randomCriteria,
-          score: 0, // calc automatically by pre-save
-          consolidated: false
-        });
-      }
-    }
-    
-    // 3. Query with strict matching
-    let query = {};
-    if (department && department !== 'All Departments') {
-       query.department = department;
-    }
-    
-    const data = await ProcessAnalysis.find(query).sort({ department: 1, type: 1 }).lean();
+    const query = buildDepartmentFilter(department);
+
+    const data = await ProcessAnalysis.find(query).sort({ department: 1, type: 1, process: 1 }).lean();
     res.json(data.map(normalizeAnalysisRecord));
   } catch (err) {
     res.status(500).json({ message: err.message });

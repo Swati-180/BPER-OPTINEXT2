@@ -1,0 +1,2012 @@
+{
+  "department": "Finance & Accounting",
+  "towers": [
+    {
+      "name": "P2P",
+      "processes": [
+        {
+          "name": "Vendor Management",
+          "subProcesses": [
+            {
+              "name": "Vendor Master Creation",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "Vendor Master Modification",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "Vendor Deactivation",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "Vendor Bank Detail Validation",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "Vendor KYC Verification",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "Sanctions Screening",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "Duplicate Vendor Check",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "Vendor Categorization",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "Vendor Portal Support",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "Vendor Performance Tracking",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            }
+          ]
+        },
+        {
+          "name": "Sourcing & Procurement Ops",
+          "subProcesses": [
+            {
+              "name": "Purchase Requisition Review",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "PR Approval Workflow Support",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "RFQ Support",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "Bid Comparison Analysis",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "PO Creation - Spot",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "PO Creation - Blanket",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "PO Change Orders",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "Contract Upload & Indexing",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "Catalog Enablement",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "Spend Analytics Support",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            }
+          ]
+        },
+        {
+          "name": "Invoice Processing",
+          "subProcesses": [
+            {
+              "name": "Invoice Receipt - Email",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "Invoice Receipt - Portal",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "Invoice Scanning & OCR",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "Invoice Indexing",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "2-Way Matching",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "3-Way Matching",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "GR/IR Review",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "Non-PO Invoice Processing",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "Freight Invoice Processing",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "Utility Invoice Processing",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "Debit Note Processing",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "Credit Note Processing",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "Duplicate Invoice Validation",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "Blocked Invoice Resolution",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "Invoice Exception Handling",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            }
+          ]
+        },
+        {
+          "name": "Employee Expenses",
+          "subProcesses": [
+            {
+              "name": "T&E Audit",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "Expense Report Processing",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "Corporate Card Reconciliation",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "Per Diem Validation",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "Employee Reimbursement Processing",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            }
+          ]
+        },
+        {
+          "name": "Payments & Disbursement",
+          "subProcesses": [
+            {
+              "name": "Payment Proposal Preparation",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "Payment Run Execution",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "Manual Payment Processing",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "Urgent Payment Handling",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "Payment File Upload",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "Bank Portal Upload",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "Payment Reversal Handling",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "Stop Payment Requests",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "Payment Reconciliation",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "Vendor Query Resolution",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            }
+          ]
+        },
+        {
+          "name": "AP Reporting & Controls",
+          "subProcesses": [
+            {
+              "name": "AP Aging Report",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "GR/IR Aging Review",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "Vendor Statement Reconciliation",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "Open PO Review",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "Accrual for Unbilled Liabilities",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "Month-End Close Support",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "SOX Documentation",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "Audit Support - AP",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "KPI Reporting - AP",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "O2C",
+      "processes": [
+        {
+          "name": "Customer Master",
+          "subProcesses": [
+            {
+              "name": "Customer Master Creation",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "Customer Master Modification",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "Credit Limit Setup",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "Credit Review",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "Customer KYC",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "Tax Code Assignment",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "Customer Blocking/Unblocking",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            }
+          ]
+        },
+        {
+          "name": "Order Management",
+          "subProcesses": [
+            {
+              "name": "Sales Order Entry",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "Order Validation",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "Pricing Validation",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "ATP Check",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "Order Amendment",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "Backorder Management",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "Contract Order Setup",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "Subscription Setup",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "Milestone Billing Setup",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            }
+          ]
+        },
+        {
+          "name": "Billing",
+          "subProcesses": [
+            {
+              "name": "Invoice Generation - Manual",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "Invoice Generation - Auto",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "Recurring Billing",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "Progress Billing",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "Intercompany Billing",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "Credit Memo Processing",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "Debit Memo Processing",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "E-invoicing Submission",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "Tax Calculation Validation",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "Billing Dispute Logging",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            }
+          ]
+        },
+        {
+          "name": "Cash Application",
+          "subProcesses": [
+            {
+              "name": "Lockbox Processing",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "Bank Statement Upload",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "Manual Cash Application",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "Auto Cash Application Monitoring",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "Unapplied Cash Review",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "Short Payment Handling",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "Overpayment Handling",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "Refund Processing",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            }
+          ]
+        },
+        {
+          "name": "Collections",
+          "subProcesses": [
+            {
+              "name": "Dunning Letter Execution",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "Collection Calls",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "Collection Emails",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "Promise-to-Pay Tracking",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "Dispute Resolution Follow-up",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "Escalation to Sales",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "Write-off Processing",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "Bad Debt Provision Input",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            }
+          ]
+        },
+        {
+          "name": "AR Reporting & Controls",
+          "subProcesses": [
+            {
+              "name": "AR Aging Report",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "Customer Statement Reconciliation",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "Deduction Analysis",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "Collection Effectiveness Reporting",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "Month-End Close Support - AR",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "SOX Documentation - AR",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "Audit Support - AR",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            }
+          ]
+        },
+        {
+          "name": "Revenue Accounting",
+          "subProcesses": [
+            {
+              "name": "Revenue Recognition - Point in Time",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "Revenue Recognition - Over Time",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "Deferred Revenue Accounting",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "Contract Asset Accounting",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "Revenue Accruals",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "IFRS 15/ASC 606 Compliance Support",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "R2R",
+      "processes": [
+        {
+          "name": "General Ledger",
+          "subProcesses": [
+            {
+              "name": "Manual Journal Entries",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "Recurring Journal Entries",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "Accrual Entries",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "Provision Entries",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "Prepaid Amortization",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "Reclassification Entries",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "Payroll Posting",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "Lease Accounting Entries",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "Inventory Accounting Support",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "Cost Allocation Entries",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            }
+          ]
+        },
+        {
+          "name": "Intercompany",
+          "subProcesses": [
+            {
+              "name": "IC Invoice Creation",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "IC Invoice Posting",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "IC Reconciliation",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "IC Dispute Resolution",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "IC Eliminations",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "IC Balance Confirmation",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            }
+          ]
+        },
+        {
+          "name": "Fixed Assets",
+          "subProcesses": [
+            {
+              "name": "Asset Master Creation",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "Capital WIP Tracking",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "Asset Capitalization",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "Depreciation Run",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "Asset Transfer",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "Asset Retirement",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "Asset Disposal",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "Asset Impairment Review",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "Physical Verification Coordination",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            }
+          ]
+        },
+        {
+          "name": "Bank & Treasury Accounting",
+          "subProcesses": [
+            {
+              "name": "Bank Reconciliation",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "Cash Clearing Reconciliation",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "FX Revaluation",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "Loan Accounting",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "Interest Accruals",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "Investment Accounting",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "Hedge Accounting Support",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "Cash Forecasting Support",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            }
+          ]
+        },
+        {
+          "name": "Period-End Close",
+          "subProcesses": [
+            {
+              "name": "Close Calendar Management",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "Subledger to GL Reconciliation",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "Balance Sheet Reconciliation",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "Trial Balance Preparation",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "P&L Review",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "Variance Analysis",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "Flux Analysis",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "Management Reporting Pack",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "Board Reporting Support",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            }
+          ]
+        },
+        {
+          "name": "Consolidation & Reporting",
+          "subProcesses": [
+            {
+              "name": "Entity Level Financial Statements",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "Group Consolidation",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "Intercompany Elimination - Consolidation",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "Minority Interest Accounting",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "Regulatory Reporting",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "Statutory Reporting Support",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "Audit Schedule Preparation",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "External Audit Coordination",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            }
+          ]
+        },
+        {
+          "name": "Tax & Compliance",
+          "subProcesses": [
+            {
+              "name": "GST/VAT Return Support",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "TDS Calculation Support",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "Withholding Tax Accounting",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "Corporate Tax Provision Support",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "Deferred Tax Accounting",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "Transfer Pricing Support",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "Internal Control Testing",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            },
+            {
+              "name": "SOX Compliance Support",
+              "automationPotential": null,
+              "volumeMonthly": null,
+              "currentFTE": null,
+              "proposedFTE": null,
+              "location": null,
+              "systemUsed": null,
+              "slaTat": null,
+              "comments": null
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

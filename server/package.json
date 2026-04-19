@@ -7,6 +7,7 @@
     "start": "node index.js",
     "dev": "nodemon index.js",
     "seed": "node seed_bper.js",
+    "seed:mock-process-data": "node scripts/replace_mock_process_data.js",
     "verify:reports": "node verify_reports.js"
   },
   "dependencies": {

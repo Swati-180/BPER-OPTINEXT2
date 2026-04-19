@@ -1,0 +1,1641 @@
+{
+  "department": "HR",
+  "towers": [
+    {
+      "name": "Administration",
+      "processes": [
+        {
+          "name": "Administration",
+          "subProcesses": [
+            "Administration"
+          ]
+        },
+        {
+          "name": "Gifts finalization for all the events",
+          "subProcesses": [
+            "Gifts finalization for all the events"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Employee Life Cycle Management",
+      "processes": [
+        {
+          "name": "Absorption of Trainee",
+          "subProcesses": [
+            "Inform AllSec for payroll purposes",
+            "Update systems as per request"
+          ]
+        },
+        {
+          "name": "Calculate leave encashment",
+          "subProcesses": [
+            "Leave balance Verification",
+            "Resolving queries regarding PL encashment"
+          ]
+        },
+        {
+          "name": "Car Lease",
+          "subProcesses": [
+            "Explain Opt in / Opt out",
+            "Restructure CTC and share it with Allsec",
+            "Sign and Approve Agreement",
+            "Invoice Processing",
+            "Car Lease Fuel Expenses"
+          ]
+        },
+        {
+          "name": "Compensation restructuring",
+          "subProcesses": [
+            "Drive group wide benchmarking exercise"
+          ]
+        },
+        {
+          "name": "Confirmation / Probation Confirmation",
+          "subProcesses": [
+            "Confirmation in SAP",
+            "Follow up with HOD for completion of probation evaluation",
+            "Inform AllSec for payroll purposes",
+            "Issue letters to confirmed employees",
+            "Organize and evaluate probation completion review for GET/ ET/MT/ AALP",
+            "Ensure confirmation of Digital CEO office Strategy within timeline"
+          ]
+        },
+        {
+          "name": "Consultant and Pilot salary process",
+          "subProcesses": [
+            "Consultant and Pilot salary process PR SES checklist"
+          ]
+        },
+        {
+          "name": "Contract Renewal of Outsourced employees",
+          "subProcesses": [
+            "Follow Up with RM for Contract Renewal of Outsourced employees"
+          ]
+        },
+        {
+          "name": "Create / update employee policies",
+          "subProcesses": [
+            "Create / update / harmonise policies across Group"
+          ]
+        },
+        {
+          "name": "Death Relief",
+          "subProcesses": [
+            "Connect with Employee family & gather  required documents",
+            "Death Benefit Fund Payment",
+            "Deduction of Death Benevolent Fund(DBF) Contribution",
+            "Prepare documents for Death Relief Fund by coordinating with beneficiary",
+            "Translate and counsel as a mediator with family nominee for DBF"
+          ]
+        },
+        {
+          "name": "Employee Master Data",
+          "subProcesses": [
+            "Employee Master Data maintenance"
+          ]
+        },
+        {
+          "name": "Employment Certificate",
+          "subProcesses": [
+            "Issuance of Certificate"
+          ]
+        },
+        {
+          "name": "ESIC",
+          "subProcesses": [
+            "Capture PF Opt In - Opt Out",
+            "ESIC Registration process"
+          ]
+        },
+        {
+          "name": "Full & Final Settlement",
+          "subProcesses": [
+            "Calculate & Share encashment entitlement",
+            "Capture details ofrResigned employee for tracking exit details till his last date",
+            "Connect with employee and inform him about Exit Process such as NDC Clearance Post Exit Documents etc final settlement timelines",
+            "DPR Creation with Checklist",
+            "Follow up with  line manager concerned to ensure timely approval on resignation",
+            "Get Approval for F&F Payments",
+            "Initiate F&F",
+            "Monitor No Dues Status",
+            "Negative FFS recovery and payable",
+            "Post receiving department clearance follow up with HRSSC team to generate F&F Statement",
+            "Raise Separation request in Service Now Portal as soon as manager approves resignation",
+            "Share Separation request to HRSSC for triggering NDC 15 days prior to last working date"
+          ]
+        },
+        {
+          "name": "Joining & Transfer/Relocation Expenses Reimbursement",
+          "subProcesses": [
+            "Claim documents verification",
+            "Upload claim docs into DMS"
+          ]
+        },
+        {
+          "name": "Joining / Transfer/Relocation Expense Reimbursement",
+          "subProcesses": [
+            "Process Joining / Transfer / Relocation expenses reimbursement",
+            "Probation - Employee Document Filing"
+          ]
+        },
+        {
+          "name": "Joining/onboarding",
+          "subProcesses": [
+            "ADID and Email ID Creation request",
+            "Create Position in System",
+            "Employee Code Creation",
+            "Generic id addition and deletion for new joinee",
+            "Induction of new hires every week",
+            "Joining Kit handover and Department handover to all new joinees",
+            "Share details with AllSec for Payroll Processing",
+            "Document verification"
+          ]
+        },
+        {
+          "name": "Leave Quota Management",
+          "subProcesses": [
+            "Create Leave in Systems",
+            "Deduct PL balance",
+            "Download and Verify Leave Quotas from System",
+            "Solve employees doubts and issues while applying leaves and guide on advance PL"
+          ]
+        },
+        {
+          "name": "Loan & Advances",
+          "subProcesses": [
+            "Payment to Vendor",
+            "Verify  Loan Eligibility/ Criteria / documents"
+          ]
+        },
+        {
+          "name": "LTA Requests / Claims",
+          "subProcesses": [
+            "Prepare & Provide inputs to AllSec",
+            "Process request",
+            "Inform Allsec for payment processing",
+            "Make required changes"
+          ]
+        },
+        {
+          "name": "Marriage Gift",
+          "subProcesses": [
+            "Provide inputs to AllSec",
+            "Verify documents"
+          ]
+        },
+        {
+          "name": "National Pension Scheme",
+          "subProcesses": [
+            "Helping and guiding new joiners for NPS process",
+            "Verify requests and documents"
+          ]
+        },
+        {
+          "name": "Pay change due to PMS",
+          "subProcesses": [
+            "Inform AllSec for Payroll processing"
+          ]
+        },
+        {
+          "name": "Personal data management",
+          "subProcesses": [
+            "Address any type of employee queries related to Policies or Benefit claim procedure",
+            "Inform AllSec for payroll purposes",
+            "Update details as per request received"
+          ]
+        },
+        {
+          "name": "Probation Confirmation / Extension",
+          "subProcesses": [
+            "Follow up with RM for completion of probation evaluation",
+            "Generate Confirmation / probation extension letter",
+            "Inform AllSec for Payroll processing"
+          ]
+        },
+        {
+          "name": "Provident Fund",
+          "subProcesses": [
+            "Address employee queries regarding transfer rejection or pension transfer issue or PF withdrawal process or name correction or anyother queries",
+            "KYC PF Claims name change request approval on PF Portal",
+            "PF Registration - Verification of documents, registration on portal",
+            "PF Transfer activities",
+            "PF-UAN Mapping in Portal",
+            "Upload document to DMS",
+            "Nomination and KYC",
+            "PF Withdrawal"
+          ]
+        },
+        {
+          "name": "Reporting & Trackers",
+          "subProcesses": [
+            "Active Resigned List",
+            "Attendance",
+            "Finalize salary TDS, JV Posting, Verification, TDS Challan"
+          ]
+        },
+        {
+          "name": "Resignation Reversal",
+          "subProcesses": [
+            "Perform System updates based on requests"
+          ]
+        },
+        {
+          "name": "Retirement / Extension",
+          "subProcesses": [
+            "Complete Statutory account transfer i.e., PF, ESI, PTax, NPS, Sodexo, Car Lease etc",
+            "Update records based on Inputs",
+            "Issuance of Superannuation Letter 3 months in advance",
+            "Retirement Extension NFA approvals and issuing extension letters"
+          ]
+        },
+        {
+          "name": "Revised date of joining",
+          "subProcesses": [
+            "Approve Documents in DMS"
+          ]
+        },
+        {
+          "name": "Separation Management",
+          "subProcesses": [
+            "ADID and Email ID Deactivation Request",
+            "Conduct Exit Interviews",
+            "Follow up with employee regarding No Due Clearance and HRSSC till final payout done",
+            "Initiate Separation action in System",
+            "No Dues Clearance Follow Up with Location HR",
+            "No Dues Clearance report shared with ACC payroll Team",
+            "Prepare Separation Letters",
+            "Share Input with AllSec for payroll changes",
+            "Upload document to DMS",
+            "Provide clearance in system like Notice Pay recovery,  ID card",
+            "Share separation Input details with Payroll team",
+            "Coordinate with relative wrt to Death cases",
+            "No dues certificate shared with Payroll team"
+          ]
+        },
+        {
+          "name": "Sodexo Meal Card (Meal Allowance)",
+          "subProcesses": [
+            "New Card Distribution",
+            "Create New Order / Cancel Order"
+          ]
+        },
+        {
+          "name": "Time and attendance Management",
+          "subProcesses": [
+            "it depends & differs emp queries from day to day and it may 30 minutes and so sometimes only 2 queries and at times 3 or so emp and the time taken may go to 1 hr or 1 &30 hrs a day",
+            "Resolving employees queries and doubts and resolving attendance issues",
+            "Assign shift from the portal",
+            "Upload document to DMS",
+            "Check attendance of all Executives before payroll processing for any major absence"
+          ]
+        },
+        {
+          "name": "Transfer/Relocation",
+          "subProcesses": [
+            "Cost Center Mapping",
+            "Functional Manager",
+            "New Position creation for transfers",
+            "Prepare and share payroll input to Allsec",
+            "Receive Request & Execute System Transfer / Relocation",
+            "Reporting and HOD Change",
+            "Reporting Manager Mapping",
+            "Upload required documents",
+            "Issuance of Transfer letter",
+            "Updation of Transfer in SAP",
+            "Reporting and HOD Update"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "HR Operations",
+      "processes": [
+        {
+          "name": "Audits",
+          "subProcesses": [
+            "Leave data management",
+            "Participate in governance committees to share insights from a BU governance perspective",
+            "Payroll Audit"
+          ]
+        },
+        {
+          "name": "Benevolent Fund Process",
+          "subProcesses": [
+            "Benevolent Fund Process"
+          ]
+        },
+        {
+          "name": "Cluster Manpower Reconciliation",
+          "subProcesses": [
+            "Cluster Manpower Reconciliation"
+          ]
+        },
+        {
+          "name": "Cluster Offroll Manpower Attendance Validation",
+          "subProcesses": [
+            "Cluster Offroll Manpower Attendance Validation"
+          ]
+        },
+        {
+          "name": "Committees and Boards",
+          "subProcesses": [
+            "Track adherence to defined governance protocols"
+          ]
+        },
+        {
+          "name": "complete Compliance task in legatrix platform",
+          "subProcesses": [
+            "complete Compliance task in legatrix platform"
+          ]
+        },
+        {
+          "name": "Data Analysis",
+          "subProcesses": [
+            "Acquire data from primary data sources and maintain databases",
+            "Acquire data from primary or secondary data sources and maintain databases",
+            "Prepare ad-hoc reports",
+            "Prepare weekly /  monthly /  annual reports",
+            "Co-ordination for Queries",
+            "Prepare daily reports",
+            "Data analysis involves the process of cleaning transforming modeling data to discover meaningful information draw conclusions and support decision-making",
+            "Develop & implement data analyses, data collection systems and other strategies",
+            "Employee Data Verification",
+            "Monthly Reports",
+            "Quality Monitoring & Improvement in Service Delivery",
+            "Weekly Reports"
+          ]
+        },
+        {
+          "name": "Data Collection",
+          "subProcesses": [
+            "Cascade the KRAs and KPIs effectively",
+            "Data modeling",
+            "Data Modification",
+            "Monthly Data Collection and Validation",
+            "Collection and validation of data"
+          ]
+        },
+        {
+          "name": "Data Interpretation",
+          "subProcesses": [
+            "Create documentation on steps of the data analysis process",
+            "Interpret and research employee data findings to make recommendations",
+            "Transforms raw data into meaningful information that drives decision making and informs strategies"
+          ]
+        },
+        {
+          "name": "Documentation",
+          "subProcesses": [
+            "Maintain records related to employees benefits",
+            "Save soft copies  of all the finalized  process and worksheets",
+            "Upload  documents in DMS file of an employee",
+            "Personnel file record Maintenance"
+          ]
+        },
+        {
+          "name": "Employee Mediclaim Policy",
+          "subProcesses": [
+            "Assisting Employees during the medical emergency with Network Hospital list and details of critical illness etc",
+            "Co-ordination with Employee / TPA for claim settlement",
+            "Co-ordination with TPA",
+            "Corporate Buffer Process",
+            "Group Mediclaim Policy - Addition Deletion and Correction monthly Data",
+            "Group Personal Accidental Policy- Addition Deletion and Correction Monthly Data",
+            "Verifying Reimbursement Documents and approving it before submitting it to TPA",
+            "Documentation for GPA claims"
+          ]
+        },
+        {
+          "name": "Fixed Term Appointment",
+          "subProcesses": [
+            "FTA Extension process NFA Issue of letters and update in oracle",
+            "Raise necessary request in Service Now Portal for extending last date"
+          ]
+        },
+        {
+          "name": "Governance Framework",
+          "subProcesses": [
+            "Track progress of HR subfunctions through HR Governance Scorecard",
+            "Understand and implement governance systems",
+            "Understand and implement governance systems for PAPs Skilling"
+          ]
+        },
+        {
+          "name": "Governance Framework (PMS)",
+          "subProcesses": [
+            "Implement the mechanism for periodic performance reviews",
+            "Implementation of the mechanism for periodic performance reviews of PAPs skilling"
+          ]
+        },
+        {
+          "name": "Joining/onboarding Sub Processes",
+          "subProcesses": [
+            "Assign leave and Attendance policy",
+            "Assign necessary shift schedule to a new joinee",
+            "Joining & Relocation Expense Request",
+            "Prepare Welcome Circulars of New Joinee"
+          ]
+        },
+        {
+          "name": "Payroll & Benefits",
+          "subProcesses": [
+            "3rd party employees, salary and reimbursement invoice booking and their salary payout",
+            "Addressing employee queries on Benefits such as Sodexo Meal Card LTA Car Lease Investment Declaration,  timelines,  loan,  etc",
+            "Consultant/Pilots salary process - PR/PO/SES/Checklist",
+            "Employee Benefits",
+            "Address employee queries related to salary",
+            "Insurance Process",
+            "LTA",
+            "Marriage Gift",
+            "Mobile Handset Reimbursement",
+            "Monthly data input submission for payroll life cycle",
+            "Overlook outsourced employees' life cycle from hire to retire",
+            "Payment follow ups with ABEX & BU Finance",
+            "PAYROLL",
+            "Payroll Governance",
+            "Payroll Input submission",
+            "Payroll JV & Vendor Reconciliation with Abex",
+            "Perform data analysis Generate meaningful insights to build interventions",
+            "Prepare CTC break up",
+            "Prepare CTC Breakup for offcycle payment revision cases",
+            "Publish monthly MIS to relevant stakeholder",
+            "Salary Advance",
+            "Salary Disbursement Activity",
+            "Service Now Request",
+            "Shortfall Notice Period Reimbursement",
+            "Sodexo related activity",
+            "Track payment of termination payments like resignation, retirements etc",
+            "Validation of CTC break up"
+          ]
+        },
+        {
+          "name": "Performance Review",
+          "subProcesses": [
+            "(blank)",
+            "Performance Review"
+          ]
+        },
+        {
+          "name": "Performance Review (PMS)",
+          "subProcesses": [
+            "Maintain documents and records on performance review",
+            "Team Performance"
+          ]
+        },
+        {
+          "name": "PF",
+          "subProcesses": [
+            "Coordinate with PF & Compliance Team and provide all required documents",
+            "Help employees to solve their issues in PF portal",
+            "Help ex employees for adding exit date and resolving any issues from organisation pf side",
+            "KYC name change, transfer approval on PF portal",
+            "Track Monthly PF Compliance  & Ensure payment is processed on time",
+            "Monthly PF compliance tracking & ensure payment processed on time",
+            "New Company Registration",
+            "Renewal of Digital Signature of all entities",
+            "Support new joinees for transfer of PF from old company to organisation"
+          ]
+        },
+        {
+          "name": "Process Implementation",
+          "subProcesses": [
+            "Track implementation of the tools, methods and interventions defined for the function"
+          ]
+        },
+        {
+          "name": "PT Registration & Compliance",
+          "subProcesses": [
+            "One time PT Registration monthly compliance and monitoring",
+            "Raise NIS for PT payment and follow up till payment"
+          ]
+        },
+        {
+          "name": "Separation Management",
+          "subProcesses": [
+            "Administration of exit feedback",
+            "Administration of No Due Clearance",
+            "do separation",
+            "F & F Documents Upload in DMS",
+            "F&F Payment process & follow up with team",
+            "Full & Final Settlement End to End Process",
+            "No Due clearance and follow up for F&F paysheet & payment",
+            "Release relieving letter and service certificate",
+            "Reliving letter & Service Certificate"
+          ]
+        },
+        {
+          "name": "Strategic Roles and Responsibilities",
+          "subProcesses": [
+            "Run analysis on varied programs from time to time to make further process improvements",
+            "Analysis on PAPs programs from time to time to make further process improvements",
+            "Business planning and budgeting exercise"
+          ]
+        },
+        {
+          "name": "Transfer",
+          "subProcesses": [
+            "Follow up for approval",
+            "Inter company and intra company transfer action",
+            "Raise Transfer requisition form",
+            "Transfer",
+            "Issue transfer letter"
+          ]
+        },
+        {
+          "name": "Vendor management",
+          "subProcesses": [
+            "Vendor Payment Reconciliation",
+            "Vendor payments and related activity"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "HRBP",
+      "processes": [
+        {
+          "name": "Administration",
+          "subProcesses": [
+            "Administration",
+            "Bill payments Processing",
+            "Ensure all  departments concerned  are well informed and connected for online monitoring",
+            "Ensure infrastructure is  properly placed and in working condition during the classes",
+            "Ensure Bill payments Processing",
+            "Ensure creation and formulation of Service Order",
+            "Ensure program run as per scheduled time line"
+          ]
+        },
+        {
+          "name": "Compliance Management",
+          "subProcesses": [
+            "Compliance Management"
+          ]
+        },
+        {
+          "name": "Employee Satisfaction Survey",
+          "subProcesses": [
+            "Analyse the satisfaction level of PAPs",
+            "Analyse survey data and identify strength and area of improvement",
+            "Analyse outcome of Employee Satisfaction Survey",
+            "Prepare and implement action plan for area of improvement",
+            "Prepare inferences and present to leadership team for decision",
+            "Spread communication and follow up with employees for active participation in survey",
+            "Support Employee Satisfaction Survey"
+          ]
+        },
+        {
+          "name": "GET regular Connect",
+          "subProcesses": [
+            "Connect with GETs on Regular basis"
+          ]
+        },
+        {
+          "name": "HR Budget",
+          "subProcesses": [
+            "Manpower Planning and HR Budgeting",
+            "PAPs engagement planning and budgeting",
+            "Budget for CEO office Strategy and Digital function"
+          ]
+        },
+        {
+          "name": "Integrated Talent Management",
+          "subProcesses": [
+            "Create strategic ways/ Implement initiatives to improve the relationship between the company\u2019s leadership, employees and stakeholders",
+            "Ensure identification and implementation of training program for PAPs to suit as per business needs",
+            "Help support Site HR in employee related issues & concenrn",
+            "Implement initiatives to improve the relationship between the company leadership and its primary stakeholders",
+            "Meet  HR & employee at Site visit",
+            "Monitor budget PAPs engagement plan",
+            "Provide inputs for customisation of the existing training program architecture to suit business needs",
+            "Review the effectiveness of leadership/trainings programs at BU/Site level and provide insights for improvement - Create MIS",
+            "Review the effectiveness of trainings programs at Site level and provide insights for improvement - Create MIS",
+            "Manage the process of internal recruitment and employee transfers from other departments to  the BU",
+            "Monitor budget for the BU-HR department",
+            "Prepare and update Annual Budget in BPC"
+          ]
+        },
+        {
+          "name": "Interns Onboarding-Start to end",
+          "subProcesses": [
+            "Interns Onboarding-Start to end"
+          ]
+        },
+        {
+          "name": "Opentext Application",
+          "subProcesses": [
+            "Role matrix mapping",
+            "Role Matrix Mapping & make necessary changes"
+          ]
+        },
+        {
+          "name": "Performance improvement management",
+          "subProcesses": [
+            "Ensure and Manage Performance Improvement Plans",
+            "Manage Performance Improvement Plans"
+          ]
+        },
+        {
+          "name": "Performance Review",
+          "subProcesses": [
+            "Conduct timely reviews of all on-going BU strategic initiatives with the project team",
+            "Conduct timely reviews of on-going BU strategic initiatives with the project team",
+            "Coordinate performance reviews",
+            "Trigger performance reviews"
+          ]
+        },
+        {
+          "name": "SOPs",
+          "subProcesses": [
+            "Customise and create SOPs in line with group issued policies",
+            "Employee Addition and Deletion",
+            "Ensure SOPs adherence",
+            "Follow Up to reporting manager for SOP Assignment to New Employees",
+            "Review SOPs periodically",
+            "Weekly Report",
+            "Ensure the creation of SOPs for PAPs engagement plan"
+          ]
+        },
+        {
+          "name": "Stakeholder Management",
+          "subProcesses": [
+            "Constant Interaction with Stakeholder and Understand the concerns and address"
+          ]
+        },
+        {
+          "name": "Strategic Roles and Responsibilities",
+          "subProcesses": [
+            "BU Connect",
+            "Communicate Corporate culture to employees",
+            "Conduct trainings for new hires on business objectives",
+            "Co-ordinate with TA team to ensure  efficient & smooth recruiting",
+            "Create / outsource tailored professional development & training programs",
+            "Develop Strategic Plan for HR in line with Group framework and guidelines",
+            "Engage with Partner for T&C (e.g. Institutions for Leadership programs) for implementation of initiatives",
+            "Engage with Training Partner/Facilitator for T&C for facilitating the initiatives",
+            "Conduct trainings for new batches of shortlisted PAPs",
+            "Communicate Corporate culture to PAPs engaged",
+            "Drive management initiatives",
+            "HR Governance Scorecard",
+            "Identify and execute transformational initiatives in line with Group priorities",
+            "Identify and update available talent pool - internal job marketplace",
+            "Implement Band & Grade structure with various talent process and track compliance",
+            "Implement Job evaluation exercise at  BU level",
+            "Implement new technologies as per plan provided by the Group",
+            "Implement ESG goals with suitable targets & Interventions",
+            "Manage employee retention related initiatives/activities",
+            "Monthly Employee Feedback",
+            "Oversee & create job descriptions",
+            "Participate and provide inputs to HR Council on state of talent health of their respective Businesses",
+            "Participate in the Agenda Setting Conference for the BU and support formulation of KRA\u2019s",
+            "Participate in the business planning process",
+            "Participate in the Strategic Workforce Planning exercise and provide inputs",
+            "Prepare & share current HR needs of BU",
+            "Provide inputs for formulation of long-term strategic plans for the BU HR function",
+            "Provide inputs to BU HR Head to formulate plans and strategies to drive People Operations at the business unit",
+            "Provide inputs to Performance Management team during the program design",
+            "Review & Confirm reward parameters, reward policy and R&R programs deployed at a BU level",
+            "Review and align Talent Management strategies in line with future workplace trends in line with Group guidance",
+            "Strategic workforce planning - Participate/Provide inputs",
+            "Ensure employee queries are addressed promptly and escalate as applicable",
+            "Track goals set by Senior Management",
+            "Tracking ESG goals with suitable targets,  and reporting",
+            "Work closely with relevant business stakeholders & participate in business planning process- Ensure BU-HR alignment",
+            "Perform Job evaluation exercise at the BU level",
+            "Drive Digitization - Monitor/Implement initiatives on Digitization",
+            "Perform Job Evaluation exercise",
+            "Create a structured framework for BU-HR",
+            "Identify and share bottlenecks in recruiting and hiring processes.",
+            "Provide business insights on the change management strategy",
+            "Provide inputs for audit priorities at BU Level",
+            "Provide inputs for formulating business specific BU HR Policies",
+            "Provide support in building a business case for change and present it to the relevant stakeholders",
+            "Support the executive management team in major decisions - Provide/share necessary inputs",
+            "Track and report people metrics as per defined framework",
+            "Provide inputs for formulation of long-term strategic plans for PAPs engagement",
+            "KRONOS Implementation and Value Realization"
+          ]
+        },
+        {
+          "name": "Talent Acquisition",
+          "subProcesses": [
+            "Align manpower planning in accordance with current & future business requirements",
+            "Induction of new employees",
+            "Participate in candidate screening & job interviewing",
+            "Support the BU talent acquisition team"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "IR-ER",
+      "processes": [
+        {
+          "name": "Competency Assessment",
+          "subProcesses": [
+            "Undertake Competency assessment"
+          ]
+        },
+        {
+          "name": "Compliance",
+          "subProcesses": [
+            "Licenses Certification",
+            "Maintaining forms",
+            "Managing Notices",
+            "Project Contractor's Compliances",
+            "Register Management",
+            "Returns filing",
+            "Visit management"
+          ]
+        },
+        {
+          "name": "Compliance Audits",
+          "subProcesses": [
+            "All statute documents as per law",
+            "Conduct compliance audits",
+            "IMS Audit"
+          ]
+        },
+        {
+          "name": "Compliance Risk Assessment",
+          "subProcesses": [
+            "Conduct Compliance risk assessment"
+          ]
+        },
+        {
+          "name": "Contract Labour Management System",
+          "subProcesses": [
+            "Contract Labour Life Cycle Management",
+            "Kronos Implementation",
+            "Post Joining Activity",
+            "Power BI Scorecard - Operational / Compliance / Data Quality",
+            "Pre Onboarding Activity",
+            "Vendor Bill Processing & Payment",
+            "Vendor Payment Inputs Validation & Approval"
+          ]
+        },
+        {
+          "name": "Digitization - Audits",
+          "subProcesses": [
+            "Digitization Audits - implement"
+          ]
+        },
+        {
+          "name": "Digitization - compliance tracking",
+          "subProcesses": [
+            "Digitization of compliance tracking - implement"
+          ]
+        },
+        {
+          "name": "Digitization - Labour Compliance",
+          "subProcesses": [
+            "Digitization of Labour Compliance - Implement"
+          ]
+        },
+        {
+          "name": "Digitization - Litigation Tracker",
+          "subProcesses": [
+            "Digitization  of Litigation Tracker - implement"
+          ]
+        },
+        {
+          "name": "Digitization - Statutory forms",
+          "subProcesses": [
+            "Digitization of Statutory Forms & Formats - implement"
+          ]
+        },
+        {
+          "name": "Digitization - Statutory reporting",
+          "subProcesses": [
+            "Digitization of statutory reporting  - implement"
+          ]
+        },
+        {
+          "name": "Disciplinary Action",
+          "subProcesses": [
+            "Appointment of Enquiry officer",
+            "Conducting preliminary enquiry",
+            "Issue Show cause Notice through",
+            "Issue Show cause or Charge sheet",
+            "Resolution i.e., closure of the grievance on Oracle"
+          ]
+        },
+        {
+          "name": "Grievance management",
+          "subProcesses": [
+            "Appointment of the Investigator by GRC",
+            "Collect concern from forums like Focused group discussion CEO connect Suggestion box and in meeting with stakeholders We resolve issues then and there if not we collect the concerns and resolve it on priority basis",
+            "Communication of outcome & Partnering with employee",
+            "Conduct Preliminary Investigation & GRC Operations",
+            "Organise connects with Business Heads and close the points in MOM",
+            "Receive complaints on Grievance management",
+            "Tracking & Monitoring Grievances (MIS)"
+          ]
+        },
+        {
+          "name": "Group MIS",
+          "subProcesses": [
+            "Create and share MIS on audits/risks"
+          ]
+        },
+        {
+          "name": "IR Summits & Conclave",
+          "subProcesses": [
+            "Attend IR summits & Conclave"
+          ]
+        },
+        {
+          "name": "Knowledge Management",
+          "subProcesses": [
+            "Create Knowledge materials",
+            "Ensure creation of knowledge material"
+          ]
+        },
+        {
+          "name": "Legal drafting",
+          "subProcesses": [
+            "Conduct Enquiry Proceedings"
+          ]
+        },
+        {
+          "name": "MDP & Certification Programs",
+          "subProcesses": [
+            "Obtain certification for Statutory Position in Mining",
+            "Seek nominations of MDP & Certification programs"
+          ]
+        },
+        {
+          "name": "Policies & SOPs",
+          "subProcesses": [
+            "Create IR policies & SOPs",
+            "Review SOP periodically  and ensure adherence within HR Team"
+          ]
+        },
+        {
+          "name": "Risk Management",
+          "subProcesses": [
+            "Create IR Risk Assessment & Contingency plans",
+            "Complete wage settlements"
+          ]
+        },
+        {
+          "name": "Stakeholder Management",
+          "subProcesses": [
+            "Deal with Government Officials",
+            "Deal with Trade Union Leaders",
+            "Ensure targeted number of PAPs get benefit out of the program",
+            "Ensure gainful Utilization of PAPs",
+            "Identify Project Affected Peoples as per the requirement of Project",
+            "Invite and ensure maximum participation of PAPs in sensitization Program",
+            "Organise sensitization Program for PAPs",
+            "Shortlist  Identified PAPs as per the eligibility criteria of the project",
+            "One to one interaction with PAPs",
+            "Obtain consent of all shortlisted PAPs for the program",
+            "Ensure targeted number of PAPs attend the sensitization Session"
+          ]
+        },
+        {
+          "name": "Talent Management",
+          "subProcesses": [
+            "Deploy  Group mandated talent management programs at the BU level for IR"
+          ]
+        },
+        {
+          "name": "Wage Settlements",
+          "subProcesses": [
+            "(blank)",
+            "Undertake wage settlements"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Merger & Acquisition",
+      "processes": [
+        {
+          "name": "Merger & Acquisition",
+          "subProcesses": [
+            "Involvment in Merger and Acquisition activities"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Performance & Rewards, WF Planning",
+      "processes": [
+        {
+          "name": "Current State Assessment",
+          "subProcesses": [
+            "Current Headcount Information gathering",
+            "Skill Identification and collation (mapping workforce)",
+            "Populate Template for WFM data gathering",
+            "Upload template in System & provide overall guidelines",
+            "Check Submission status and send reminders to BU for pending items",
+            "Inform BUs about the process and submission timelines"
+          ]
+        },
+        {
+          "name": "Employee Recognition Programs",
+          "subProcesses": [
+            "Create and publish framework",
+            "Lead Employee Recognition and Reward",
+            "SPOT Recognition"
+          ]
+        },
+        {
+          "name": "Execution",
+          "subProcesses": [
+            "Identify gap between current availability & future requirements",
+            "Create final WF plan - Group Level"
+          ]
+        },
+        {
+          "name": "Future State Visioning",
+          "subProcesses": [
+            "Evaluate WF Growth Plans against Business Growth Plans",
+            "Future WF formulation - Create approach and scenario",
+            "Identify & compile Future Skill requirements",
+            "Map Skill Availability - internal and external"
+          ]
+        },
+        {
+          "name": "HR Technology & Analytics",
+          "subProcesses": [
+            "Formulate controls to assure data accuracy and security in the system",
+            "N-1 PMS Reviews",
+            "Ensure complete implementation of Change Management Project"
+          ]
+        },
+        {
+          "name": "Job description",
+          "subProcesses": [
+            "Create and share guidance on identification and documentation of job description for unique job role"
+          ]
+        },
+        {
+          "name": "Organization Effectiveness",
+          "subProcesses": [
+            "For justified escalation, seek approval for re-opening performance form;",
+            "Provide inputs / Guidance for devising the organization structure and determining the long-term workforce plans",
+            "Survey to check Organization effectiveness and perform analysis based on the data"
+          ]
+        },
+        {
+          "name": "Performance Management System",
+          "subProcesses": [
+            "Communicate the performance management philosophy and policy",
+            "Develop and facilitate trainings / workshops / orientation sessions for line managers on performance management concept",
+            "Drive digitization process in collaboration with relevant partners to design and implement solution for upgradation",
+            "Evaluate  employee's feedback on the overall PMS process",
+            "Implement and manage promotion processes in the business in alignment with Group guidelines",
+            "Monitor quarterly face-to-face performance discussion with reportees, review progress and record comments on online PMS module",
+            "Monitor timeline adherence for goal setting",
+            "Participate in performance review committee and facilitate discussion to determine final ratings",
+            "Perform year-end reviews and feedback provision at the business unit level",
+            "Provide inputs recommendations to existing pay-performance matrix",
+            "Track timely system updating with approved goals",
+            "PMS Data Sanitization"
+          ]
+        },
+        {
+          "name": "Rewards & Recognition",
+          "subProcesses": [
+            "Contribute to creation of benefits plan",
+            "Define reward parameters",
+            "Design and Implement changes in current compensation programs",
+            "Lead rewards & benefits administration process",
+            "Track and monitor the overall wage bill and highlight concerns to Leadership"
+          ]
+        },
+        {
+          "name": "Salary Surveys and Benchmarking",
+          "subProcesses": [
+            "Conduct Salary Surveys and Benchmarking"
+          ]
+        },
+        {
+          "name": "Strategic Roles and Responsibilities",
+          "subProcesses": [
+            "Drive/Implement the annual compensation cycle",
+            "Define the compensation structure  in line with CoE guideline",
+            "Implement the compensation structure - BU",
+            "Track adherence to the budgets across BU"
+          ]
+        },
+        {
+          "name": "Total Rewards & Compensation Management",
+          "subProcesses": [
+            "Restructuring of CTC",
+            "Support Group and Business in the digitization process in collaboration with relevant partners - Implement relevant initiatives",
+            "Design and implement incentive policies",
+            "Increment Grid Simulation and approval",
+            "Increment and market correction finalization",
+            "Engage in compensation revision process on Comp platform"
+          ]
+        },
+        {
+          "name": "WFP",
+          "subProcesses": [
+            "Conduct strategic workforce planning process"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Strategy and Governance",
+      "processes": [
+        {
+          "name": "Audit",
+          "subProcesses": [
+            "Agree audit priorites & scope",
+            "Support audit by providing required information / documents, responses to questions and queries",
+            "Track and report actions to closure",
+            "Work on recommendations and action plan provided by auditors"
+          ]
+        },
+        {
+          "name": "Capability building",
+          "subProcesses": [
+            "Establish HR Operating model for new acquisitions and new capabilities",
+            "Provide guidance for global organisation group operations and growth plans including new country entries"
+          ]
+        },
+        {
+          "name": "Change Management",
+          "subProcesses": [
+            "Conduct HR Council meeting to discuss people, process, technology matters on regular basis",
+            "Create / update SOPs across processes",
+            "Create training materials for new systems",
+            "Monitor adoption of new systems",
+            "Priortise and finalise Transformation portfolio and pipeline",
+            "Periodic Steering Committee meetings to monitor and govern project / process progress",
+            "Ensure that all project and programs have well defined success criteria",
+            "Decide annual priorities and transformation portfolio",
+            "Project manager ensures adoption and value realisation tracking"
+          ]
+        },
+        {
+          "name": "Communication",
+          "subProcesses": [
+            "Communication cascade across levels from group to Site including reverse flow of information"
+          ]
+        },
+        {
+          "name": "Controls",
+          "subProcesses": [
+            "Establish process controls to assure data accuracy",
+            "Verify records and perform HR/Departmental audits"
+          ]
+        },
+        {
+          "name": "Follow-ups with BUHR for Recovery of FFS",
+          "subProcesses": [
+            "Follow-ups with BUHR for Recovery of FFS"
+          ]
+        },
+        {
+          "name": "Governance",
+          "subProcesses": [
+            "Strategic management of placement consultants"
+          ]
+        },
+        {
+          "name": "HR Risk Register",
+          "subProcesses": [
+            "Quarterly Review Meeting and Actionable"
+          ]
+        },
+        {
+          "name": "Integrated Management Systems",
+          "subProcesses": [
+            "ISO Standard Implementation"
+          ]
+        },
+        {
+          "name": "Integrated Management Systems- IMS",
+          "subProcesses": [
+            "HR Risk Register"
+          ]
+        },
+        {
+          "name": "Market positioning",
+          "subProcesses": [
+            "Review and finalise the social media content for Job Postings and Campus hiring",
+            "Provide required information and support to CBC team for market positioning including social media"
+          ]
+        },
+        {
+          "name": "MIS  & Dashboards",
+          "subProcesses": [
+            "Provide timely reports to management to aid decision making"
+          ]
+        },
+        {
+          "name": "Miscellaneous",
+          "subProcesses": [
+            "Quarterly Townhall CEO Connect"
+          ]
+        },
+        {
+          "name": "Periodic Review of Integrated System Documents of HR Function",
+          "subProcesses": [
+            "Periodic Review of Integrated System Documents of HR Function"
+          ]
+        },
+        {
+          "name": "Policy",
+          "subProcesses": [
+            "Periodic review and updation (if required) of HR Policies",
+            "Communicate / Cascade Policies (as required)",
+            "Ensure adherence to group guidelines with regard to cyber security, and employee data privacy"
+          ]
+        },
+        {
+          "name": "Preparing necessary Financial approvals for training and engagement",
+          "subProcesses": [
+            "Preparing necessary Financial approvals for training and engagement"
+          ]
+        },
+        {
+          "name": "Reconciliation of Left employee open ledger of SAP and Clear",
+          "subProcesses": [
+            "Reconciliation of Left employee open ledger of SAP and Clear"
+          ]
+        },
+        {
+          "name": "Statutory",
+          "subProcesses": [
+            "Monitor adherence to global norms with regard to employee/ candidate data - GDPR norms",
+            "Provide inputs to CEO/ Board as per statutory requirements",
+            "Define ESG goals with suitable targets, interventions and reporting"
+          ]
+        },
+        {
+          "name": "Strategic Roles and Responsibilities",
+          "subProcesses": [
+            "Create the strategic objectives, priorities in line with the overall Group Governance strategy",
+            "Establish road maps and goals for the Governance function at the BU level",
+            "Create the strategic objectives, priorities, road maps and goals for the Governance function at the BU  in line with the overall Group Governance strategy",
+            "Positioning organisation Brand in Market place including customers",
+            "Support global organisation group operations and growth plans including new country entries"
+          ]
+        },
+        {
+          "name": "Strategy",
+          "subProcesses": [
+            "Create framework  policy and structure for internal talent mobility - internal job marketplace",
+            "Define Talent Management strategies for organisation Group in line with future workplace trends",
+            "Develop Strategic Plan for HR including group guidelines and framework",
+            "Evaluate Competitive benchmarking on policy, EVP, campus perceptions etc.",
+            "Provide People Risk Management Framework - Metrics at all levels"
+          ]
+        },
+        {
+          "name": "Strategy & Governance for Overseas Locations",
+          "subProcesses": [
+            "Indonesia and Australia HR Strategy & Governance"
+          ]
+        },
+        {
+          "name": "Talent Management",
+          "subProcesses": [
+            "Create and implement KRAs for HR Function",
+            "Identify training requirements  and ensure execution",
+            "Monitor progess and identify gaps",
+            "Periodially assess training effectiveness",
+            "Run Talent Councils with CEOs to keep them appraised of state of talent health in their Business",
+            "Estblish staff development framework for HR Function"
+          ]
+        },
+        {
+          "name": "Technology",
+          "subProcesses": [
+            "Identify opportunities for process automation",
+            "Identify, evaluate and engage technology partners",
+            "Monitor project progress and timely escalation of issues and deviation from the plan"
+          ]
+        },
+        {
+          "name": "Technology Change Management",
+          "subProcesses": [
+            "Change Management"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Talent Acquisition",
+      "processes": [
+        {
+          "name": "BGV Checks",
+          "subProcesses": [
+            "Identify BGV Vendor",
+            "Receive Information & Share with Hiring Manager",
+            "Send Welcome Package to New Joinee",
+            "Share details for Verifications"
+          ]
+        },
+        {
+          "name": "Capturing Cadre Management Numbers requirement in line with Business Plan",
+          "subProcesses": [
+            "Capturing Cadre Management Numbers requirement in line with Business Plan"
+          ]
+        },
+        {
+          "name": "Create Positions in Core HR",
+          "subProcesses": [
+            "Consolidate and share approved annual demand plan at BU Level",
+            "Create and update positions",
+            "Seek approval for ad hoc positions"
+          ]
+        },
+        {
+          "name": "Interview & Assessments",
+          "subProcesses": [
+            "Administer Additional Assessments (Thomas or Korn Ferry Assessments)",
+            "Carry out interview - 1st level",
+            "Evaluate Thomas Profiling",
+            "Interview candidate and shortlist for the next level interview Interview based on technical and behavior competencies",
+            "Schedule Final Interviews",
+            "Schedule Interviews for shortlisted candidates",
+            "Share feedback form",
+            "Share results of additional assessments",
+            "Shortlist candidates for Interview Round",
+            "Travel Arrangements & Guest House Booking For Candidates",
+            "Validate the personal and profile information"
+          ]
+        },
+        {
+          "name": "Manage & Post Job Requisition",
+          "subProcesses": [
+            "Assign \u2018Recruiter\u2019 & \u2018Collaborators\u2019",
+            "Complete job requisition form and submit for approval",
+            "Create ad-hoc positions post approvals",
+            "Format the JD before posting & attach interview assessment sheet",
+            "Initiate Job Requisition, enter JDs"
+          ]
+        },
+        {
+          "name": "Manage Medical Tests",
+          "subProcesses": [
+            "Follow up and receive acceptance of Offer",
+            "Initiate and Manage Medical Tests"
+          ]
+        },
+        {
+          "name": "Manage Offer",
+          "subProcesses": [
+            "Approve Offer Letter",
+            "Business approval: Candidate and compensation",
+            "Engage with candidate post offer",
+            "Finalise Offer",
+            "Negotiate with Candidate",
+            "Preparation of Adobe ENFA",
+            "Prepare Offer Letter",
+            "Prepare Welcome Package",
+            "Receive Results and send confirmation",
+            "Seek business approval in case of change in compensation post offer",
+            "Seek business approval in case of change in date of joining",
+            "Send Approved Offer Letter to Candidate",
+            "Share results with Hiring Managers / Sourcing Teams"
+          ]
+        },
+        {
+          "name": "MI & Analytics",
+          "subProcesses": [
+            "Capture, produce and analyse recruitment metrics",
+            "Perodic data sharing and review with Business"
+          ]
+        },
+        {
+          "name": "On Boarding (Pre & Post)",
+          "subProcesses": [
+            "Allocate Assets (Launch Asset Allocation checklist)",
+            "Assign Sahyogi (Buddy)",
+            "Conduct New Hire Induction every week",
+            "Confirm BGV Closure",
+            "Co-ordinate with Payroll agencies for Completion of Onboarding and Employee code - Out source employees",
+            "create employee digital file in DMS",
+            "Create employee id / code",
+            "Employee Comfort - Workstation & Basic requirement Provisioning Department wise",
+            "Provide Documents and Details of outsourced HO candidates for Kronos Generation",
+            "Raise Asset Allocation Request for outsourced employees",
+            "Seat Allocation",
+            "Seek joining experience feedback from New Joinee",
+            "Support Day 1 at office",
+            "Travel Arrangements & Guest House Booking For New Joiners",
+            "Travel Arrangements Guest House Booking For Candidates",
+            "Travel Arrangements Guest House Booking For New Joiners",
+            "Trigger on-boarding list with New Joinee",
+            "Validate New Joinee Documents",
+            "Share input to Allsec for payroll processing",
+            "Completing joining formalities"
+          ]
+        },
+        {
+          "name": "Recruitment team management",
+          "subProcesses": [
+            "Create, seek approval and implement recruiter incentive plans",
+            "Review team performance and take follow through actions"
+          ]
+        },
+        {
+          "name": "Reference Checks",
+          "subProcesses": [
+            "Carry out Reference Checks",
+            "Finalise Candidates",
+            "Identify vendor for carrying out reference checks",
+            "Provide pre-offer document and reference details",
+            "Reference Check"
+          ]
+        },
+        {
+          "name": "Screen Candidate &  Technical Assessment",
+          "subProcesses": [
+            "Conduct profile and phone screening",
+            "Mettl - Conduct technical assessment & auto upload of  report",
+            "Shortlist candidates for next round",
+            "Skillate - Send parsed CV back to ORC",
+            "Submit candidate profiles to Hiring Manager",
+            "Weekly Review Meetings"
+          ]
+        },
+        {
+          "name": "Source Candidates",
+          "subProcesses": [
+            "Campus Connect",
+            "Organizing Events at Campus",
+            "Post job requisition on organisation career sites, to consultants and  on job boards",
+            "Receive Candidate applications",
+            "Skillate - Parse CVs of all candidates",
+            "Summer Internship projects",
+            "Scholarships to the Meritorious Students",
+            "MOU with Reputed Institutes"
+          ]
+        },
+        {
+          "name": "SSC",
+          "subProcesses": [
+            "Assign \u2018Recruiter\u2019 & \u2018Collaborators\u2019"
+          ]
+        },
+        {
+          "name": "Strategic Roles and Responsibilities",
+          "subProcesses": [
+            "Org Chart preparation in line with department heads",
+            "Org chart approval process as per group guidelines"
+          ]
+        },
+        {
+          "name": "TA Budget",
+          "subProcesses": [
+            "Formulate budget, seek approval and monitor",
+            "Manpower Budget Mapping - Current v/s Approved Status"
+          ]
+        },
+        {
+          "name": "Vendor management",
+          "subProcesses": [
+            "Add / remove vendors",
+            "Analyse vendor performance",
+            "Create, seek approval and implement vendor incentive plans",
+            "Manage placement consultants"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Talent Management",
+      "processes": [
+        {
+          "name": "Employee Engagement and Connect",
+          "subProcesses": [
+            "Allocate Mentors for GETs",
+            "Connect with Senior Leaders of Mining Business",
+            "Create action plan on areas of opportunity basis survey findings",
+            "Create and send communication plan",
+            "Create communication for new initiatives",
+            "Create communication plan for socialising employees",
+            "Create detailed survey reports at the BU level",
+            "Create employee engagement surveys",
+            "Design initiatives for Employee Engagement",
+            "Design interventions to work on the survey outcomes",
+            "Ensure Focused Group Discussion with PAPs",
+            "Execute employee engagement survey",
+            "Execute engagement initiatives",
+            "Focused Group Discussion",
+            "Implement the ABLP program at BU level basis the guidelines",
+            "Mining site visit",
+            "Mundra Site Visit",
+            "Project Allocation at site or work location during probation Period for GETs",
+            "Seek approvals for engagement survey",
+            "Send survey response to BU / Function heads",
+            "Supervise survey results analysis of ABLP and report at the Group and business level",
+            "Mundra IR & Employee Engagement Council"
+          ]
+        },
+        {
+          "name": "HR Ops & PMS",
+          "subProcesses": [
+            "Attandance Regularization"
+          ]
+        },
+        {
+          "name": "HR Technology & Analytics",
+          "subProcesses": [
+            "Identify & drive implementation of Learning & Development and Talent Management technology products across the Group",
+            "Identify areas within L&D and talent management that can be potentially automated / digitized",
+            "Implement approved engagement interventions at the BU level",
+            "Improvement based analytics",
+            "Quarterly Employee Separation Report",
+            "Monthly Demographics Report",
+            "Match NR Data with Group's Dashboard",
+            "Create and Implement digital learning strategy for the Group, define the agenda and manage all aspects relating to content, licences, etc."
+          ]
+        },
+        {
+          "name": "Job architecture",
+          "subProcesses": [
+            "Job architecture for digital functions/CEO office/ Strategy"
+          ]
+        },
+        {
+          "name": "L&OD Process",
+          "subProcesses": [
+            "Conduct Skill Assessment and Calibration"
+          ]
+        },
+        {
+          "name": "MIS & Dashboards",
+          "subProcesses": [
+            "Annual reporting",
+            "Create appropriate reporting platform/Framework for L&OD metrics",
+            "Data Management of Business Managers",
+            "Data Management of Function Managers",
+            "Ensure daily and monthly MIS",
+            "Ensure Maintain training records and reports on each progress",
+            "Ensure preparation finalization and sharing of Training framework to departments and personnel concerned",
+            "Execute all training related activities including invites and infrastructure related arrangements",
+            "Finalize and share R&R categories and framework",
+            "Maintain training records and reports on individual progress",
+            "Create Monthly Business wise Dashboard",
+            "Multiple templates of multiple stakeholders",
+            "Partner with Group L&OD Head to create(define) suitable metrics to evaluate the effectiveness",
+            "Partner with L&OD Head to identify select the facilitator and evaluate the effectiveness",
+            "Rate  training programs efficiency",
+            "Year wise Data Management of PMS"
+          ]
+        },
+        {
+          "name": "Organizational Sustainability & Branding",
+          "subProcesses": [
+            "Cultivate strategic relationships with partners",
+            "Execute plans to align L&D processes with L&D head",
+            "Execute plans to align L&OD processes to the established band/grade matrix at the BU level",
+            "Implement digitization of processes in collaboration with relevant partners /Vendors",
+            "Implement processes in collaboration with relevant partners /Vendors",
+            "ensure adoption of organisation Behavioural Competency Framework in all TM and L&OD processes at the BU level",
+            "Evaluate & shortlist and provide suggestions for partner empanelment"
+          ]
+        },
+        {
+          "name": "Performance Management - Annual appraisal",
+          "subProcesses": [
+            "Carry out Matrix Manager Rating",
+            "Collate and create MIS on Ratings",
+            "Communicate Performance Management philosophy and policy",
+            "Create annual appraisal / performance review calendar",
+            "Draft digital, standard, autogenerated email and release calendar and process",
+            "Drive Performance Management / Employee Self-Appraisal",
+            "In-person reminders",
+            "Prepare and share MIS / relevant / agreed Dashboards to identified stake holders on goals setting",
+            "prepare Appriciation letter after promotion and share with employees family",
+            "Quarterly/Mid-year/Year -end review of N-1/CEO Office/Strategy/Digital",
+            "Release FAQs",
+            "Send autogenerated reminder to employee for non completion",
+            "Send autogenerated reminder to employee with CC to manager for non completion",
+            "Share non completion list to manager after cut off date"
+          ]
+        },
+        {
+          "name": "Performance Management - Goal Setting",
+          "subProcesses": [
+            "Create goal setting calendar",
+            "Draft digital, standard, autogenerated email and release calendar and process",
+            "Goal Setting of N-1 /CEO office/Strategy and Digital",
+            "In- person reminders",
+            "Prepare and share MIS / relevant / agreed Dashboards to identified stake holders on goals setting",
+            "Release FAQs",
+            "Send autogenerated reminder to employee for non completion",
+            "Send autogenerated reminder to employee with CC to manager for non completion",
+            "Share non completion list to manager after cut off date"
+          ]
+        },
+        {
+          "name": "Strategic Roles and Responsibilities",
+          "subProcesses": [
+            "Basis guidelines generate and finalize BU TM and L&OD budgets in consultation with HRBPs and BU HR Head",
+            "Conduct Skill Assessment and Calibration",
+            "Conduct/Spearhead Technical and Behavioural competency framework development",
+            "Cultivate strategic relationships with partners",
+            "Develop annual and medium term priorities for TM and L&OD within business in sync with the overall business plans",
+            "Develop Key Talent Initiatives for BU",
+            "Evaluate shortlist and empanel partners trainer for design and delivery of Training programs along with L&D head",
+            "Evaluate, shortlist and empanel partners for design and delivery of TM programs",
+            "Finalize training dates with BUs facilitator and L&D Head",
+            "Implement relevant talent initiatives e.g. Leadership development, Succession planning, HiPO",
+            "Oversee implementation and adherence to the action plans",
+            "Provide insights to define the philosophy & strategy & road map and goals for the TM and L&OD and PMS function aligned with the overall HR strategy and business growth plans",
+            "Share training dates and training link to concern heads and leaders",
+            "Share training dates for centrally driven Leadership programs with BUs",
+            "Take action against instances of non-performances",
+            "Track and report L&OD metrics to various stakeholders on a periodic basis",
+            "Track partner performance and conduct timely review",
+            "Finalize training dates for centrally driven Leadership programs with BUs",
+            "Share framework with BUs for creating action plans basis audit findings",
+            "HR STRAP Exercise",
+            "Contextualise , cascade communicate the philosophy, strategy, road map, framework, Policies - at BU level"
+          ]
+        },
+        {
+          "name": "Talent & Career Management",
+          "subProcesses": [
+            "Collaborate with stakeholders & participants to drive continuous process improvement in ABLP",
+            "Create an effective communication plan for socializing employees with the set framework and principles",
+            "Develop a robust talent pipeline at BU",
+            "Identification and management of career trajectory of High Potential (HiPos) and other employee",
+            "Implement group guidelines for succession planning at BU",
+            "Job rotation of GETs",
+            "Run frequent analysis on varied programs from time to time",
+            "Schedule & Conduct ABLP",
+            "Seek nomination for ABLP (organisation Business Leadership Program)",
+            "Share consolidated feedback to relevant stakeholders",
+            "Share guidelines with BUs",
+            "Track Performance/Completion",
+            "Track adherence to budgets at the BU level; Address budget overruns if any"
+          ]
+        },
+        {
+          "name": "Talent Development",
+          "subProcesses": [
+            "Allocation of GETs to work area",
+            "Assessment of Induction Training program",
+            "Cross Functional Training at Site for GETs",
+            "Delivery of the interventions in alliance with internal & external stakeholders, SMEs & the trainers",
+            "Design relevant training programs at the BU level;",
+            "Develop instructional material, creative learning assets",
+            "Create E Learning Programs for GETs",
+            "Ensure preparation of training calendar and share to concern heads",
+            "Evaluate and document the training requirements",
+            "Execute Induction Program in Line with Plan",
+            "Finalise the mode and format of training delivery",
+            "Induction Plan and Execution",
+            "Invite nominations for the scheduled BU level trainings and finalize the list of participants",
+            "K4FD assessment Feedback",
+            "Lean Six Sigma Green belt certification",
+            "Prepare a training calendar based on the training needs identified",
+            "Share BU insights with the Group L&OD Head",
+            "Yearly Learning Plan at Work area for GETs",
+            "Knowledge Sharing",
+            "Samavesh Booklet Preparation",
+            "Evaluate and document the training requirements for the PAPs"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Additional Activities - Training",
+      "processes": [
+        {
+          "name": "Additional Activities - Training",
+          "subProcesses": [
+            "Additional Activities - Training"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Additional Activities - Meeting",
+      "processes": [
+        {
+          "name": "Additional Activities - Meeting",
+          "subProcesses": [
+            "Additional Activities - Meeting"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Additional Activities - Others",
+      "processes": [
+        {
+          "name": "Additional Activities - Others",
+          "subProcesses": [
+            "Additional Activities - Others"
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,6095 @@
+{
+  "departments": [
+    {
+      "id": "F&A",
+      "name": "Finance & Accounting",
+      "processes": [
+        {
+          "id": "1",
+          "name": "Inter company Accounting",
+          "activities": [
+            {
+              "id": "1.1",
+              "name": "Inter company Accounting - Sales and Good",
+              "type": "Analytics",
+              "parameters": {
+                "Multiple Locns": "L",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "H",
+                "Skill": "L"
+              },
+              "score": 9,
+              "consolidate": true
+            },
+            {
+              "id": "1.2",
+              "name": "Inter company  Reconciliations for Sales and Good",
+              "type": "Analytics",
+              "parameters": {
+                "Multiple Locns": "L",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "H",
+                "Skill": "L"
+              },
+              "score": 9,
+              "consolidate": true
+            },
+            {
+              "id": "1.3",
+              "name": "Head Office Accounting",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "L",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "H",
+                "Skill": "L"
+              },
+              "score": 9,
+              "consolidate": true
+            },
+            {
+              "id": "1.4",
+              "name": "Inter company Funds Transfer",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "L",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "H",
+                "Skill": "L"
+              },
+              "score": 9,
+              "consolidate": true
+            }
+          ]
+        },
+        {
+          "id": "2",
+          "name": "Management Accounting",
+          "activities": []
+        },
+        {
+          "id": "2.1",
+          "name": "Budget Consolidation - done in SAP automatically",
+          "activities": [
+            {
+              "id": "2.2",
+              "name": "Budget upload to GL system - release of budget",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "L",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "H",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 9,
+              "consolidate": true
+            },
+            {
+              "id": "2.3",
+              "name": "Budget Control",
+              "type": "Reporting",
+              "parameters": {
+                "Multiple Locns": "L",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "H",
+                "Regulatory": "L",
+                "Skill": "H"
+              },
+              "score": 8,
+              "consolidate": true
+            },
+            {
+              "id": "2.4",
+              "name": "Cost Centre allocations of expenses  - decision",
+              "type": "Analytics",
+              "parameters": {
+                "Multiple Locns": "L",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "H",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 9,
+              "consolidate": true
+            },
+            {
+              "id": "2.5",
+              "name": "Cost Centre allocations of expenses  - accounting entry",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "L",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 10,
+              "consolidate": true
+            }
+          ]
+        },
+        {
+          "id": "3",
+          "name": "Management reporting",
+          "activities": [
+            {
+              "id": "3.1",
+              "name": "Investor Reporting",
+              "type": "Reporting",
+              "parameters": {
+                "Multiple Locns": "L",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "L",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "H",
+                "Regulatory": "H",
+                "Skill": "H"
+              },
+              "score": 6,
+              "consolidate": false
+            },
+            {
+              "id": "3.2",
+              "name": "Management reporting Variance Analysis - based on financial accounting",
+              "type": "Reporting",
+              "parameters": {
+                "Multiple Locns": "L",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "L",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 9,
+              "consolidate": true
+            },
+            {
+              "id": "3.2",
+              "name": "Monthend accounting related senior management reports / special reports / month end analysis",
+              "type": "Reporting",
+              "parameters": {
+                "Multiple Locns": "L",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "L",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 9,
+              "consolidate": true
+            }
+          ]
+        },
+        {
+          "id": "4",
+          "name": "Monthend accounting",
+          "activities": [
+            {
+              "id": "4.1",
+              "name": "Monthend accounting entries - provisions, accruals, write offs",
+              "type": "Analytics",
+              "parameters": {
+                "Multiple Locns": "L",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 10,
+              "consolidate": true
+            },
+            {
+              "id": "4.2",
+              "name": "GL Preparations / Sub Ledger preparations / supporting Schedule Preparations",
+              "type": "Reporting",
+              "parameters": {
+                "Multiple Locns": "L",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "L",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 9,
+              "consolidate": true
+            },
+            {
+              "id": "4.3",
+              "name": "Preparation of Trial Balance (monthly / annual)",
+              "type": "Reporting",
+              "parameters": {
+                "Multiple Locns": "L",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "L",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "L",
+                "Skill": "H"
+              },
+              "score": 8,
+              "consolidate": true
+            },
+            {
+              "id": "4.4",
+              "name": "Preparation of P&L Statement (monthly / annual)",
+              "type": "Reporting",
+              "parameters": {
+                "Multiple Locns": "L",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "L",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "L",
+                "Skill": "H"
+              },
+              "score": 8,
+              "consolidate": true
+            },
+            {
+              "id": "4.5",
+              "name": "Preparation of Cash Flow Statements (monthly / annual)",
+              "type": "Reporting",
+              "parameters": {
+                "Multiple Locns": "L",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "L",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "L",
+                "Skill": "H"
+              },
+              "score": 8,
+              "consolidate": true
+            }
+          ]
+        },
+        {
+          "id": "6",
+          "name": "",
+          "activities": []
+        },
+        {
+          "id": "5",
+          "name": "Account Reconciliations",
+          "activities": [
+            {
+              "id": "5.1",
+              "name": "Reconciliations of Balance Sheet Accounts include bank accounts, Advance Payments",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "L",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "L",
+                "ERP / Technology": "L",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 8,
+              "consolidate": true
+            },
+            {
+              "id": "5.2",
+              "name": "Payroll and Statutory Payment recs",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "L",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "L",
+                "ERP / Technology": "L",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 8,
+              "consolidate": true
+            },
+            {
+              "id": "5.3",
+              "name": "Clearing Acct Recs",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "L",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "L",
+                "ERP / Technology": "L",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 8,
+              "consolidate": true
+            },
+            {
+              "id": "5.4",
+              "name": "Revenue Reconciliations",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "L",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "L",
+                "ERP / Technology": "L",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "H",
+                "Skill": "L"
+              },
+              "score": 7,
+              "consolidate": true
+            },
+            {
+              "id": "5.5",
+              "name": "Ledger account scrutiny and reconciliations",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "L",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "L",
+                "ERP / Technology": "L",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "L",
+                "Skill": "H"
+              },
+              "score": 7,
+              "consolidate": true
+            }
+          ]
+        },
+        {
+          "id": "6",
+          "name": "Statutory Reporting",
+          "activities": [
+            {
+              "id": "6.1",
+              "name": "Local GAAP Financials",
+              "type": "Reporting",
+              "parameters": {
+                "Multiple Locns": "L",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "L",
+                "SOPs": "L",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "H",
+                "Skill": "L"
+              },
+              "score": 7,
+              "consolidate": true
+            },
+            {
+              "id": "6.2",
+              "name": "Schedule Preparation",
+              "type": "Reporting",
+              "parameters": {
+                "Multiple Locns": "L",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "L",
+                "ERP / Technology": "L",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "H",
+                "Skill": "L"
+              },
+              "score": 7,
+              "consolidate": true
+            },
+            {
+              "id": "6.3",
+              "name": "Statutory Reporting",
+              "type": "Reporting",
+              "parameters": {
+                "Multiple Locns": "L",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "L",
+                "ERP / Technology": "L",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "H",
+                "Skill": "L"
+              },
+              "score": 7,
+              "consolidate": true
+            },
+            {
+              "id": "6.4",
+              "name": "Financial Statement Consolidation",
+              "type": "Reporting",
+              "parameters": {
+                "Multiple Locns": "L",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "L",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "H",
+                "Skill": "H"
+              },
+              "score": 7,
+              "consolidate": true
+            }
+          ]
+        },
+        {
+          "id": "7",
+          "name": "Taxation and Compliance",
+          "activities": [
+            {
+              "id": "7.1",
+              "name": "Tax Verification - income tax (corporate)",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "L",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "L",
+                "ERP / Technology": "L",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "H",
+                "Skill": "H"
+              },
+              "score": 6,
+              "consolidate": false
+            },
+            {
+              "id": "7.2",
+              "name": "Tax Verification - employee income tax",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "L",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "L",
+                "Sensitivity": "H",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "H",
+                "Skill": "H"
+              },
+              "score": 6,
+              "consolidate": false
+            },
+            {
+              "id": "7.3",
+              "name": "Advance / Prepaid Tax",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "L",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "L",
+                "ERP / Technology": "L",
+                "Sensitivity": "H",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "H",
+                "Skill": "L"
+              },
+              "score": 6,
+              "consolidate": false
+            },
+            {
+              "id": "7.4",
+              "name": "Monthly Income Tax payment and return filing",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "L",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "L",
+                "ERP / Technology": "L",
+                "Sensitivity": "H",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "H",
+                "Regulatory": "H",
+                "Skill": "H"
+              },
+              "score": 4,
+              "consolidate": false
+            },
+            {
+              "id": "7.5",
+              "name": "Annual IT Return and Filing",
+              "type": "Reporting",
+              "parameters": {
+                "Multiple Locns": "L",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "L",
+                "ERP / Technology": "L",
+                "Sensitivity": "H",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "H",
+                "Regulatory": "H",
+                "Skill": "H"
+              },
+              "score": 4,
+              "consolidate": false
+            },
+            {
+              "id": "7.6",
+              "name": "With-holding Tax Processes  - Praparation of Return, Deduction as per law",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "L",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "L",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "H",
+                "Skill": "L"
+              },
+              "score": 8,
+              "consolidate": true
+            },
+            {
+              "id": "7.7",
+              "name": "With - holding Tax Returns (monthly / half yearly / annual)",
+              "type": "Reporting",
+              "parameters": {
+                "Multiple Locns": "L",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "L",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "H",
+                "Skill": "L"
+              },
+              "score": 8,
+              "consolidate": true
+            },
+            {
+              "id": "7.8",
+              "name": "VAT Processes - Praparation of Return, Deduction as per law",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "L",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "L",
+                "ERP / Technology": "L",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "H",
+                "Skill": "H"
+              },
+              "score": 6,
+              "consolidate": false
+            },
+            {
+              "id": "7.9",
+              "name": "VAT Monthly returns and assessments",
+              "type": "Reporting",
+              "parameters": {
+                "Multiple Locns": "L",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "L",
+                "ERP / Technology": "L",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "H",
+                "Regulatory": "H",
+                "Skill": "H"
+              },
+              "score": 5,
+              "consolidate": false
+            },
+            {
+              "id": "7.1",
+              "name": "VAT Verification",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "L",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "L",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "H",
+                "Regulatory": "H",
+                "Skill": "L"
+              },
+              "score": 7,
+              "consolidate": true
+            },
+            {
+              "id": "7.11",
+              "name": "Excise",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "L",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "L",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "H",
+                "Regulatory": "H",
+                "Skill": "H"
+              },
+              "score": 6,
+              "consolidate": false
+            },
+            {
+              "id": "7.12",
+              "name": "Service Tax",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "L",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "L",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "H",
+                "Regulatory": "H",
+                "Skill": "L"
+              },
+              "score": 7,
+              "consolidate": true
+            },
+            {
+              "id": "7.13",
+              "name": "Customs",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "H",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "L",
+                "ERP / Technology": "L",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "H",
+                "Regulatory": "H",
+                "Skill": "L"
+              },
+              "score": 7,
+              "consolidate": true
+            },
+            {
+              "id": "7.14",
+              "name": "State Tax",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "L",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "L",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "H",
+                "Regulatory": "H",
+                "Skill": "H"
+              },
+              "score": 6,
+              "consolidate": false
+            },
+            {
+              "id": "7.15",
+              "name": "Export/Import Policy",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "L",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "L",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "H",
+                "Regulatory": "H",
+                "Skill": "L"
+              },
+              "score": 7,
+              "consolidate": true
+            },
+            {
+              "id": "8",
+              "name": "Project Accounting",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "L",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "L",
+                "ERP / Technology": "L",
+                "Sensitivity": "H",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 7,
+              "consolidate": true
+            }
+          ]
+        },
+        {
+          "id": "9",
+          "name": "Accounts Payables",
+          "activities": [
+            {
+              "id": "9.1",
+              "name": "Approvals for expenses (operating / capital)",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "H",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "L",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 12,
+              "consolidate": true
+            },
+            {
+              "id": "9.2",
+              "name": "Verification of Invoices",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "L",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 10,
+              "consolidate": true
+            },
+            {
+              "id": "9.3",
+              "name": "Three way reconciliations of goods received",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "H",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 11,
+              "consolidate": true
+            },
+            {
+              "id": "9.4",
+              "name": "Invoice Processing - finished goods, services, deposit payments",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "L",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "L",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 11,
+              "consolidate": true
+            },
+            {
+              "id": "9.5",
+              "name": "Payment Processing (checks / funds transfers / other mode of payments",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "L",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 10,
+              "consolidate": true
+            },
+            {
+              "id": "9.6",
+              "name": "Cheque Generation",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "L",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 10,
+              "consolidate": true
+            },
+            {
+              "id": "9.7",
+              "name": "Dispatch of payments (checks, other instruments)",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "L",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 10,
+              "consolidate": true
+            },
+            {
+              "id": "9.8",
+              "name": "Query Handling (vendor queries / invoice queries)",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "L",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "L",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 11,
+              "consolidate": true
+            },
+            {
+              "id": "9.9",
+              "name": "Vendor Account Reconciliations",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "L",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "L",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "L",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 10,
+              "consolidate": true
+            },
+            {
+              "id": "9.1",
+              "name": "Advance payments",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "L",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "L",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 11,
+              "consolidate": true
+            },
+            {
+              "id": "9.11",
+              "name": "Reconciliations Advance payments accounts",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "L",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "L",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "L",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 10,
+              "consolidate": true
+            },
+            {
+              "id": "9.12",
+              "name": "Pre-payments",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "L",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "L",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 11,
+              "consolidate": true
+            },
+            {
+              "id": "9.13",
+              "name": "Reconciliation of Pre payment vendor accounts",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "L",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "L",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "L",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 10,
+              "consolidate": true
+            },
+            {
+              "id": "9.14",
+              "name": "Capital payments",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "L",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "L",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 11,
+              "consolidate": true
+            },
+            {
+              "id": "9.15",
+              "name": "Reconciliations of Accounts Payable accounts",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "L",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "L",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "L",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 10,
+              "consolidate": true
+            },
+            {
+              "id": "9.16",
+              "name": "AP related senior management reports / special reports",
+              "type": "Reporting",
+              "parameters": {
+                "Multiple Locns": "L",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "L",
+                "ERP / Technology": "L",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 8,
+              "consolidate": true
+            },
+            {
+              "id": "9.17",
+              "name": "With-holding Tax",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "L",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "L",
+                "Sensitivity": "L",
+                "Criticality": "L",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "H",
+                "Skill": "L"
+              },
+              "score": 9,
+              "consolidate": true
+            },
+            {
+              "id": "9.18",
+              "name": "Raising Debit / Credit Notes",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "L",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "L",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 11,
+              "consolidate": true
+            },
+            {
+              "id": "9.19",
+              "name": "Document Storage",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "L",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "L",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "H",
+                "Skill": "L"
+              },
+              "score": 8,
+              "consolidate": true
+            },
+            {
+              "id": "9.2",
+              "name": "AP Accrual Process",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "L",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 10,
+              "consolidate": true
+            },
+            {
+              "id": "9.21",
+              "name": "Lease Payments",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "L",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 10,
+              "consolidate": true
+            },
+            {
+              "id": "9.22",
+              "name": "Works contract management",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "L",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 10,
+              "consolidate": true
+            },
+            {
+              "id": "9.23",
+              "name": "Freight invoices / payments - Exports",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "H",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 11,
+              "consolidate": true
+            },
+            {
+              "id": "9.24000000000001",
+              "name": "Payments on freight charges / clearing / custom charges / commissions - Imports",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "H",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "H",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 10,
+              "consolidate": true
+            }
+          ]
+        },
+        {
+          "id": "10",
+          "name": "Opex and Expense Accounting",
+          "activities": [
+            {
+              "id": "10.1",
+              "name": "Operating expenses",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "L",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "L",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 11,
+              "consolidate": true
+            },
+            {
+              "id": "10.2",
+              "name": "Purchase accounting ( Only for Paper Division at Unit Level)",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "L",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 10,
+              "consolidate": true
+            },
+            {
+              "id": "10.3",
+              "name": "Import accounting",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "L",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 10,
+              "consolidate": true
+            },
+            {
+              "id": "10.4",
+              "name": "Other expenses ( Unplanned Expenses, Advances to Employees)",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "H",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "L",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 12,
+              "consolidate": true
+            },
+            {
+              "id": "10.5",
+              "name": "Stock Valuation - inbound",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "H",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 11,
+              "consolidate": true
+            },
+            {
+              "id": "10.6",
+              "name": "Stocks Reconciliations (after physical verification) inbound",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "H",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "L",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 10,
+              "consolidate": true
+            }
+          ]
+        },
+        {
+          "id": "11",
+          "name": "Employee Related processes",
+          "activities": [
+            {
+              "id": "11.1",
+              "name": "Approval from BU on Payrol Disbursement",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "L",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "H",
+                "Sensitivity": "H",
+                "Criticality": "L",
+                "Controls": "L",
+                "Proximity": "H",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 9,
+              "consolidate": true
+            },
+            {
+              "id": "11.2",
+              "name": "Payrol Generation & Disbursement",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "L",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "H",
+                "Sensitivity": "H",
+                "Criticality": "L",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 10,
+              "consolidate": true
+            },
+            {
+              "id": "11.3",
+              "name": "Review and Confirmation of OT, TL Allowances, Variable Pay Allowance",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "L",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "H",
+                "Sensitivity": "H",
+                "Criticality": "L",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 10,
+              "consolidate": true
+            }
+          ]
+        },
+        {
+          "id": "13",
+          "name": "T&E Processing",
+          "activities": [
+            {
+              "id": "11.3",
+              "name": "Processing and payments of Expense Vouchers / Reimbursements - Conveyance and Travel ( Local)",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "L",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "H",
+                "Sensitivity": "H",
+                "Criticality": "L",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 10,
+              "consolidate": true
+            },
+            {
+              "id": "11.4",
+              "name": "Employee Loans / Advances accounting and payments",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "L",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "L",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 11,
+              "consolidate": true
+            },
+            {
+              "id": "11.5",
+              "name": "Provident Fund / Statutory Fund / Gratuity payments",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "L",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "H",
+                "Sensitivity": "H",
+                "Criticality": "L",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "H",
+                "Skill": "L"
+              },
+              "score": 9,
+              "consolidate": true
+            }
+          ]
+        },
+        {
+          "id": "14",
+          "name": "Others",
+          "activities": [
+            {
+              "id": "11.6",
+              "name": "Employee related expense accounting",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "L",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "L",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 11,
+              "consolidate": true
+            },
+            {
+              "id": "11.7",
+              "name": "Employee Processing related senior management reports / special reports",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "L",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "L",
+                "Sensitivity": "L",
+                "Criticality": "L",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 10,
+              "consolidate": true
+            },
+            {
+              "id": "11.8",
+              "name": "Queries handling",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "L",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "L",
+                "Sensitivity": "L",
+                "Criticality": "L",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 10,
+              "consolidate": true
+            }
+          ]
+        },
+        {
+          "id": "12",
+          "name": "Fixed Assets Accounting",
+          "activities": [
+            {
+              "id": "12.1",
+              "name": "Project Monitoring",
+              "type": "Analytics",
+              "parameters": {
+                "Multiple Locns": "L",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "H",
+                "Sensitivity": "H",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "H",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 8,
+              "consolidate": true
+            },
+            {
+              "id": "12.2",
+              "name": "Capital WIP Accounting",
+              "type": "Analytics",
+              "parameters": {
+                "Multiple Locns": "L",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 10,
+              "consolidate": true
+            },
+            {
+              "id": "12.3",
+              "name": "Capitalization of Fixed Assets",
+              "type": "Analytics",
+              "parameters": {
+                "Multiple Locns": "L",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 10,
+              "consolidate": true
+            },
+            {
+              "id": "12.4",
+              "name": "Depreciation of Fixed Assets",
+              "type": "Analytics",
+              "parameters": {
+                "Multiple Locns": "L",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 10,
+              "consolidate": true
+            },
+            {
+              "id": "12.5",
+              "name": "Retirement of Fixed Assets",
+              "type": "Analytics",
+              "parameters": {
+                "Multiple Locns": "L",
+                "Routine": "H",
+                "Volumes": "L",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 9,
+              "consolidate": true
+            },
+            {
+              "id": "12.6",
+              "name": "Disposal of Fixed Assets",
+              "type": "Analytics",
+              "parameters": {
+                "Multiple Locns": "H",
+                "Routine": "H",
+                "Volumes": "L",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 10,
+              "consolidate": true
+            },
+            {
+              "id": "12.7",
+              "name": "Maintenance of Fixed Asset Register",
+              "type": "Analytics",
+              "parameters": {
+                "Multiple Locns": "L",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 10,
+              "consolidate": true
+            },
+            {
+              "id": "12.8",
+              "name": "Reconciliation of Physical to Book",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "L",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "L",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 9,
+              "consolidate": true
+            },
+            {
+              "id": "12.9",
+              "name": "Accounting for differences between FAR and Physical Inventory",
+              "type": "Analytics",
+              "parameters": {
+                "Multiple Locns": "L",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "L",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 11,
+              "consolidate": true
+            },
+            {
+              "id": "12.1",
+              "name": "Fixed Assets Reconciliations",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "L",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 10,
+              "consolidate": true
+            },
+            {
+              "id": "12.11",
+              "name": "Fixed Assets Capex Vendor reconciliations",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "L",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 10,
+              "consolidate": true
+            },
+            {
+              "id": "12.12",
+              "name": "Inventorisation of Fixed Assets (physical verification)",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "H",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "H",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 10,
+              "consolidate": true
+            },
+            {
+              "id": "12.13",
+              "name": "Budegting and Capex Monitoring",
+              "type": "Analytics",
+              "parameters": {
+                "Multiple Locns": "H",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "H",
+                "Sensitivity": "H",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "H",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 9,
+              "consolidate": true
+            }
+          ]
+        },
+        {
+          "id": "13",
+          "name": "Petty Cash Management",
+          "activities": [
+            {
+              "id": "13.1",
+              "name": "Petty Cash Disbursements",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "H",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "L",
+                "Sensitivity": "L",
+                "Criticality": "L",
+                "Controls": "L",
+                "Proximity": "H",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 10,
+              "consolidate": true
+            },
+            {
+              "id": "13.2",
+              "name": "Accounting for Petty Cash",
+              "type": "Analytics",
+              "parameters": {
+                "Multiple Locns": "H",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "L",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 12,
+              "consolidate": true
+            },
+            {
+              "id": "13.3",
+              "name": "Petty Cash reconciliations",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "H",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "L",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 12,
+              "consolidate": true
+            }
+          ]
+        },
+        {
+          "id": "14",
+          "name": "Stores / Inventory Management (costing)",
+          "activities": [
+            {
+              "id": "14.1",
+              "name": "Inventory Valuations - Taken from SAP automatically",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "L",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "H",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 9,
+              "consolidate": true
+            },
+            {
+              "id": "14.2",
+              "name": "Costing / Records / Cost Sheets",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "H",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "L",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "H",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 9,
+              "consolidate": true
+            },
+            {
+              "id": "14.3",
+              "name": "Cost Audits - Annual",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "H",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "L",
+                "ERP / Technology": "L",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "H",
+                "Regulatory": "H",
+                "Skill": "H"
+              },
+              "score": 6,
+              "consolidate": false
+            },
+            {
+              "id": "14.4",
+              "name": "Product Costing",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "H",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "L",
+                "ERP / Technology": "L",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "H",
+                "Regulatory": "H",
+                "Skill": "H"
+              },
+              "score": 6,
+              "consolidate": false
+            },
+            {
+              "id": "14.5",
+              "name": "Budgeting and Mission preparation",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "H",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "L",
+                "ERP / Technology": "L",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "H",
+                "Regulatory": "H",
+                "Skill": "H"
+              },
+              "score": 6,
+              "consolidate": false
+            },
+            {
+              "id": "14.6",
+              "name": "Stores Audit",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "H",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "L",
+                "ERP / Technology": "L",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "H",
+                "Regulatory": "H",
+                "Skill": "H"
+              },
+              "score": 6,
+              "consolidate": false
+            },
+            {
+              "id": "14.7",
+              "name": "Management repoting and Variance Analysis - based on cost records",
+              "type": "Reporting",
+              "parameters": {
+                "Multiple Locns": "L",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "L",
+                "ERP / Technology": "H",
+                "Sensitivity": "H",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "H",
+                "Regulatory": "L",
+                "Skill": "H"
+              },
+              "score": 6,
+              "consolidate": false
+            },
+            {
+              "id": "14.8",
+              "name": "Variance analysis between Costing and financial records -  monthly",
+              "type": "Reporting",
+              "parameters": {
+                "Multiple Locns": "L",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "L",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "L",
+                "Skill": "H"
+              },
+              "score": 8,
+              "consolidate": true
+            },
+            {
+              "id": "14.9",
+              "name": "customer wise profitability - Sales margin reporting (by vendor / by category)",
+              "type": "Reporting",
+              "parameters": {
+                "Multiple Locns": "L",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "L",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "H",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 8,
+              "consolidate": true
+            },
+            {
+              "id": "14.1",
+              "name": "MIS / Reporting  - Including BSC",
+              "type": "Reporting",
+              "parameters": {
+                "Multiple Locns": "H",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "L",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 10,
+              "consolidate": true
+            }
+          ]
+        },
+        {
+          "id": "15",
+          "name": "Accounts Receivables",
+          "activities": [
+            {
+              "id": "15.1",
+              "name": "Accounting for accounts receivables",
+              "type": "Analytics",
+              "parameters": {
+                "Multiple Locns": "L",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "L",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 11,
+              "consolidate": true
+            },
+            {
+              "id": "15.2",
+              "name": "Query Handling (customer queries / follow ups with customers)",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "L",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "L",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 11,
+              "consolidate": true
+            },
+            {
+              "id": "15.3",
+              "name": "Working Capital Limit Control",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "L",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "H",
+                "Sensitivity": "H",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "H",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 8,
+              "consolidate": true
+            },
+            {
+              "id": "15.4",
+              "name": "Ageing of Accounts Receivables Accounts",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "L",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 10,
+              "consolidate": true
+            },
+            {
+              "id": "15.5",
+              "name": "AR related senior management reports / special reports",
+              "type": "Reporting",
+              "parameters": {
+                "Multiple Locns": "L",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 10,
+              "consolidate": true
+            },
+            {
+              "id": "15.6",
+              "name": "AR Bad Debt Provisioning - Approval",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "L",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "H",
+                "Sensitivity": "H",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "H",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 8,
+              "consolidate": true
+            },
+            {
+              "id": "15.7",
+              "name": "AR Bad Debt Provisioning - Entries",
+              "type": "Analytics",
+              "parameters": {
+                "Multiple Locns": "L",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 10,
+              "consolidate": true
+            },
+            {
+              "id": "15.8",
+              "name": "Bank reconciliations",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "L",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 10,
+              "consolidate": true
+            },
+            {
+              "id": "15.9",
+              "name": "Check Deposits",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "L",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "H",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 9,
+              "consolidate": true
+            },
+            {
+              "id": "15.1",
+              "name": "Fund trasnfers",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "L",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "H",
+                "Sensitivity": "H",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "H",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 8,
+              "consolidate": true
+            }
+          ]
+        },
+        {
+          "id": "16",
+          "name": "Billing",
+          "activities": [
+            {
+              "id": "16.1",
+              "name": "Raising Debit / Credit Notes",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "L",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "H",
+                "Sensitivity": "H",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 9,
+              "consolidate": true
+            }
+          ]
+        },
+        {
+          "id": "17",
+          "name": "Sales Accounting",
+          "activities": [
+            {
+              "id": "17.1",
+              "name": "Accounting of collections",
+              "type": "Analytics",
+              "parameters": {
+                "Multiple Locns": "L",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "L",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 11,
+              "consolidate": true
+            },
+            {
+              "id": "17.2",
+              "name": "Sale of Scrap",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "L",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "L",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 11,
+              "consolidate": true
+            },
+            {
+              "id": "17.3",
+              "name": "Cash Application / Allocation to receivables",
+              "type": "Analytics",
+              "parameters": {
+                "Multiple Locns": "L",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 10,
+              "consolidate": true
+            },
+            {
+              "id": "17.4",
+              "name": "Reconciliations (cash application to debtors receivables)",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "L",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 10,
+              "consolidate": true
+            },
+            {
+              "id": "17.5",
+              "name": "Cash Pick up and Deposit",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "L",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "L",
+                "ERP / Technology": "L",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "H",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 7,
+              "consolidate": true
+            },
+            {
+              "id": "17.6",
+              "name": "Stock Valuation - outbound",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "H",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "L",
+                "ERP / Technology": "L",
+                "Sensitivity": "L",
+                "Criticality": "L",
+                "Controls": "L",
+                "Proximity": "H",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 9,
+              "consolidate": true
+            },
+            {
+              "id": "17.7",
+              "name": "Stocks Reconciliations (after physical verification) - outbound",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "H",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "L",
+                "ERP / Technology": "L",
+                "Sensitivity": "L",
+                "Criticality": "L",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 10,
+              "consolidate": true
+            }
+          ]
+        },
+        {
+          "id": "18",
+          "name": "Treasury / Cash Management/ Business Revenue",
+          "activities": [
+            {
+              "id": "18.1",
+              "name": "Remittance Approvals",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "L",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "H",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 9,
+              "consolidate": true
+            },
+            {
+              "id": "18.2",
+              "name": "Intimation of Remittances",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "L",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "H",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 9,
+              "consolidate": true
+            },
+            {
+              "id": "18.3",
+              "name": "Credit terms finalization",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "L",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "L",
+                "ERP / Technology": "H",
+                "Sensitivity": "H",
+                "Criticality": "L",
+                "Controls": "L",
+                "Proximity": "H",
+                "Regulatory": "L",
+                "Skill": "H"
+              },
+              "score": 7,
+              "consolidate": true
+            },
+            {
+              "id": "18.4",
+              "name": "Local Currency Receipts",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "H",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "L",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "H",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 9,
+              "consolidate": true
+            },
+            {
+              "id": "18.5",
+              "name": "Foreign Currency Receipts / Forex Transactions",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "M",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "L",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "H",
+                "Regulatory": "H",
+                "Skill": "L"
+              },
+              "score": 7,
+              "consolidate": true
+            },
+            {
+              "id": "18.6",
+              "name": "Reconciliation Foreign Currency of Receipts and Payments",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "L",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 10,
+              "consolidate": true
+            },
+            {
+              "id": "18.7",
+              "name": "Currency Translations",
+              "type": "Analytics",
+              "parameters": {
+                "Multiple Locns": "L",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "L",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "H",
+                "Regulatory": "H",
+                "Skill": "H"
+              },
+              "score": 6,
+              "consolidate": false
+            },
+            {
+              "id": "18.8",
+              "name": "Investment Planning",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "L",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "L",
+                "ERP / Technology": "L",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "H",
+                "Regulatory": "L",
+                "Skill": "H"
+              },
+              "score": 6,
+              "consolidate": false
+            },
+            {
+              "id": "18.9",
+              "name": "Funding  - Project and Growth Expansion",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "L",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "L",
+                "ERP / Technology": "L",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "H",
+                "Proximity": "H",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 6,
+              "consolidate": false
+            },
+            {
+              "id": "18.1",
+              "name": "Financial Re-engineeering",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "L",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "L",
+                "ERP / Technology": "L",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "H",
+                "Proximity": "H",
+                "Regulatory": "L",
+                "Skill": "H"
+              },
+              "score": 5,
+              "consolidate": false
+            },
+            {
+              "id": "18.11",
+              "name": "Interaction with Banks - for routine and transactional related processes",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "L",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "L",
+                "ERP / Technology": "L",
+                "Sensitivity": "H",
+                "Criticality": "L",
+                "Controls": "L",
+                "Proximity": "H",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 7,
+              "consolidate": true
+            },
+            {
+              "id": "18.12",
+              "name": "Interaction with Banks - for non routine transactions",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "L",
+                "Routine": "L",
+                "Volumes": "H",
+                "Manpower": "L",
+                "SOPs": "L",
+                "ERP / Technology": "L",
+                "Sensitivity": "H",
+                "Criticality": "L",
+                "Controls": "L",
+                "Proximity": "H",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 5,
+              "consolidate": false
+            },
+            {
+              "id": "18.13",
+              "name": "Treasury Accounting - Accounting for Remittances",
+              "type": "Analytics",
+              "parameters": {
+                "Multiple Locns": "L",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 10,
+              "consolidate": true
+            },
+            {
+              "id": "18.14",
+              "name": "Treasury Accounting - Accounting for Bank Charges / bank interests",
+              "type": "Analytics",
+              "parameters": {
+                "Multiple Locns": "L",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 10,
+              "consolidate": true
+            },
+            {
+              "id": "18.15",
+              "name": "Working capital management",
+              "type": "Analytics",
+              "parameters": {
+                "Multiple Locns": "L",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "H",
+                "Sensitivity": "H",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 9,
+              "consolidate": true
+            },
+            {
+              "id": "18.16",
+              "name": "Cash Management - Reporting / MIS",
+              "type": "Reporting",
+              "parameters": {
+                "Multiple Locns": "L",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 10,
+              "consolidate": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "HR",
+      "name": "HR",
+      "processes": [
+        {
+          "id": "Recruitment and Selection",
+          "name": "1",
+          "activities": [
+            {
+              "id": "Building Job Descriptions",
+              "name": "1.1",
+              "type": "Functional",
+              "parameters": {
+                "Multiple Locns": "L",
+                "Routine": "M",
+                "Volumes": "M",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "M",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "L",
+                "Skill": "H"
+              },
+              "score": 6,
+              "consolidate": false
+            },
+            {
+              "id": "Sourcing Resumes",
+              "name": "1.2",
+              "type": "Functional",
+              "parameters": {
+                "Multiple Locns": "L",
+                "Routine": "M",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "M",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 8,
+              "consolidate": true
+            },
+            {
+              "id": "Background Check",
+              "name": "1.3",
+              "type": "Functional",
+              "parameters": {
+                "Multiple Locns": "L",
+                "Routine": "M",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "M",
+                "Sensitivity": "H",
+                "Criticality": "L",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "L",
+                "Skill": "H"
+              },
+              "score": 7,
+              "consolidate": true
+            },
+            {
+              "id": "Screening",
+              "name": "1.4",
+              "type": "Functional",
+              "parameters": {
+                "Multiple Locns": "L",
+                "Routine": "M",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "M",
+                "Sensitivity": "H",
+                "Criticality": "L",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 8,
+              "consolidate": true
+            },
+            {
+              "id": "Scheduling Interviews",
+              "name": "1.5",
+              "type": "Functional",
+              "parameters": {
+                "Multiple Locns": "L",
+                "Routine": "M",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "M",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 8,
+              "consolidate": true
+            },
+            {
+              "id": "Offer Closure",
+              "name": "1.6",
+              "type": "Functional",
+              "parameters": {
+                "Multiple Locns": "L",
+                "Routine": "M",
+                "Volumes": "M",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "M",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "H",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 6,
+              "consolidate": false
+            },
+            {
+              "id": "New Hire Integrations",
+              "name": "1.7",
+              "type": "Functional",
+              "parameters": {
+                "Multiple Locns": "L",
+                "Routine": "M",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "M",
+                "Sensitivity": "H",
+                "Criticality": "L",
+                "Controls": "L",
+                "Proximity": "H",
+                "Regulatory": "L",
+                "Skill": "H"
+              },
+              "score": 6,
+              "consolidate": false
+            },
+            {
+              "id": "MIS and Dashboards",
+              "name": "1.8",
+              "type": "Analytics",
+              "parameters": {
+                "Multiple Locns": "L",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "M",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 9,
+              "consolidate": true
+            }
+          ]
+        },
+        {
+          "id": "Learning and Development",
+          "name": "2",
+          "activities": [
+            {
+              "id": "Training Needs Analysis",
+              "name": "2.1",
+              "type": "Analytics",
+              "parameters": {
+                "Multiple Locns": "H",
+                "Routine": "H",
+                "Volumes": "M",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "M",
+                "Sensitivity": "M",
+                "Criticality": "H",
+                "Controls": "M",
+                "Proximity": "H",
+                "Regulatory": "L",
+                "Skill": "H"
+              },
+              "score": 5,
+              "consolidate": false
+            },
+            {
+              "id": "Training Administration",
+              "name": "2.2",
+              "type": "Functional",
+              "parameters": {
+                "Multiple Locns": "H",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "M",
+                "Sensitivity": "M",
+                "Criticality": "H",
+                "Controls": "M",
+                "Proximity": "H",
+                "Regulatory": "L",
+                "Skill": "H"
+              },
+              "score": 6,
+              "consolidate": false
+            },
+            {
+              "id": "Training Material Creation",
+              "name": "2.3",
+              "type": "Functional",
+              "parameters": {
+                "Multiple Locns": "H",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "M",
+                "Sensitivity": "M",
+                "Criticality": "H",
+                "Controls": "M",
+                "Proximity": "L",
+                "Regulatory": "L",
+                "Skill": "H"
+              },
+              "score": 7,
+              "consolidate": true
+            },
+            {
+              "id": "MIS and Dashboards",
+              "name": "2.4",
+              "type": "Analytics",
+              "parameters": {
+                "Multiple Locns": "H",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "M",
+                "Sensitivity": "M",
+                "Criticality": "H",
+                "Controls": "M",
+                "Proximity": "L",
+                "Regulatory": "L",
+                "Skill": "H"
+              },
+              "score": 7,
+              "consolidate": true
+            }
+          ]
+        },
+        {
+          "id": "Benefits Administartion",
+          "name": "3",
+          "activities": [
+            {
+              "id": "Health and Welfare",
+              "name": "3.1",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "H",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "M",
+                "SOPs": "H",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "L",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "M",
+                "Skill": "L"
+              },
+              "score": 10,
+              "consolidate": true
+            },
+            {
+              "id": "Any Other Allowances -Car Allowances, Chauffer Allowances",
+              "name": "3.2",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "H",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "M",
+                "SOPs": "H",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "L",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "M",
+                "Skill": "L"
+              },
+              "score": 10,
+              "consolidate": true
+            },
+            {
+              "id": "MIS and Dashboards",
+              "name": "3.3",
+              "type": "Analytics",
+              "parameters": {
+                "Multiple Locns": "H",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "M",
+                "SOPs": "H",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "L",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "M",
+                "Skill": "L"
+              },
+              "score": 10,
+              "consolidate": true
+            }
+          ]
+        },
+        {
+          "id": "Compensation Management  - Excluding Contractual",
+          "name": "4",
+          "activities": [
+            {
+              "id": "Payroll Processing - Staff and Operators",
+              "name": "4.1",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "H",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "M",
+                "SOPs": "H",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "L",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 11,
+              "consolidate": true
+            },
+            {
+              "id": "Payroll Processing - Managerial Cadre",
+              "name": "4.2",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "H",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "M",
+                "SOPs": "H",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "L",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 11,
+              "consolidate": true
+            },
+            {
+              "id": "Compensation Review Support",
+              "name": "4.3",
+              "type": "Analytics",
+              "parameters": {
+                "Multiple Locns": "H",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "M",
+                "SOPs": "H",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "L",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 11,
+              "consolidate": true
+            },
+            {
+              "id": "Employee Stock Option",
+              "name": "4.4",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "H",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "M",
+                "SOPs": "H",
+                "ERP / Technology": "H",
+                "Sensitivity": "H",
+                "Criticality": "L",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "M",
+                "Skill": "L"
+              },
+              "score": 9,
+              "consolidate": true
+            },
+            {
+              "id": "Bonus Plan Administartion",
+              "name": "4.5",
+              "type": "Functional",
+              "parameters": {
+                "Multiple Locns": "H",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "M",
+                "SOPs": "H",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "L",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "M",
+                "Skill": "L"
+              },
+              "score": 10,
+              "consolidate": true
+            },
+            {
+              "id": "MIS, Dashboards and Reporting",
+              "name": "4.6",
+              "type": "Analytics",
+              "parameters": {
+                "Multiple Locns": "H",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "M",
+                "SOPs": "H",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "L",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 11,
+              "consolidate": true
+            }
+          ]
+        },
+        {
+          "id": "Performance Management  - Below M4",
+          "name": "5",
+          "activities": [
+            {
+              "id": "Performance Review Support",
+              "name": "5.1",
+              "type": "Functional",
+              "parameters": {
+                "Multiple Locns": "H",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "L",
+                "Sensitivity": "H",
+                "Criticality": "L",
+                "Controls": "H",
+                "Proximity": "H",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 8,
+              "consolidate": true
+            },
+            {
+              "id": "Progression Management",
+              "name": "5.2",
+              "type": "Functional",
+              "parameters": {
+                "Multiple Locns": "H",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "L",
+                "ERP / Technology": "L",
+                "Sensitivity": "H",
+                "Criticality": "L",
+                "Controls": "M",
+                "Proximity": "H",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 7,
+              "consolidate": true
+            },
+            {
+              "id": "Variable Pay / Incentive",
+              "name": "5.3",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "H",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "M",
+                "ERP / Technology": "L",
+                "Sensitivity": "H",
+                "Criticality": "L",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 9,
+              "consolidate": true
+            }
+          ]
+        },
+        {
+          "id": "Performance Management  - Above M4",
+          "name": "6",
+          "activities": [
+            {
+              "id": "Performance Review Support",
+              "name": "6.1",
+              "type": "Functional",
+              "parameters": {
+                "Multiple Locns": "H",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "L",
+                "SOPs": "H",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "L",
+                "Controls": "L",
+                "Proximity": "H",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 10,
+              "consolidate": true
+            },
+            {
+              "id": "Progression Management",
+              "name": "6.2",
+              "type": "Functional",
+              "parameters": {
+                "Multiple Locns": "H",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "M",
+                "SOPs": "H",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "L",
+                "Controls": "M",
+                "Proximity": "H",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 9,
+              "consolidate": true
+            },
+            {
+              "id": "360 Degree Feedback Administartion",
+              "name": "6.3",
+              "type": "Functional",
+              "parameters": {
+                "Multiple Locns": "H",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "M",
+                "SOPs": "H",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "L",
+                "Controls": "M",
+                "Proximity": "H",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 9,
+              "consolidate": true
+            },
+            {
+              "id": "Variable Pay",
+              "name": "6.4",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "H",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "L",
+                "SOPs": "H",
+                "ERP / Technology": "M",
+                "Sensitivity": "L",
+                "Criticality": "L",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 10,
+              "consolidate": true
+            }
+          ]
+        },
+        {
+          "id": "Records Management",
+          "name": "7",
+          "activities": [
+            {
+              "id": "Employee Data Management",
+              "name": "7.1",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "H",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "L",
+                "SOPs": "H",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "L",
+                "Controls": "M",
+                "Proximity": "L",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 10,
+              "consolidate": true
+            },
+            {
+              "id": "Leave Management",
+              "name": "7.2",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "H",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "L",
+                "SOPs": "H",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "L",
+                "Controls": "M",
+                "Proximity": "L",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 10,
+              "consolidate": true
+            },
+            {
+              "id": "Time and Attendance",
+              "name": "7.3",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "H",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "L",
+                "SOPs": "H",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "L",
+                "Controls": "M",
+                "Proximity": "L",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 10,
+              "consolidate": true
+            },
+            {
+              "id": "Employee Self Service",
+              "name": "7.4",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "H",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "L",
+                "SOPs": "H",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "L",
+                "Controls": "M",
+                "Proximity": "L",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 10,
+              "consolidate": true
+            },
+            {
+              "id": "MIS, Dashboards and Reporting",
+              "name": "7.5",
+              "type": "Analytics",
+              "parameters": {
+                "Multiple Locns": "H",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "L",
+                "Controls": "M",
+                "Proximity": "L",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 11,
+              "consolidate": true
+            }
+          ]
+        },
+        {
+          "id": "Separation Management",
+          "name": "8",
+          "activities": [
+            {
+              "id": "Separations",
+              "name": "8.1",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "H",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "L",
+                "Controls": "M",
+                "Proximity": "H",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 10,
+              "consolidate": true
+            },
+            {
+              "id": "Data Management",
+              "name": "8.2",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "H",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "L",
+                "SOPs": "H",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "L",
+                "Controls": "M",
+                "Proximity": "L",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 10,
+              "consolidate": true
+            },
+            {
+              "id": "Separation clearances",
+              "name": "8.3",
+              "type": "Functional",
+              "parameters": {
+                "Multiple Locns": "H",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "L",
+                "SOPs": "H",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "L",
+                "Controls": "M",
+                "Proximity": "L",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 10,
+              "consolidate": true
+            },
+            {
+              "id": "Creation of Separation Letter",
+              "name": "8.4",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "H",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "M",
+                "SOPs": "H",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "L",
+                "Controls": "M",
+                "Proximity": "L",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 10,
+              "consolidate": true
+            },
+            {
+              "id": "Exit Interview Support",
+              "name": "8.5",
+              "type": "Functional",
+              "parameters": {
+                "Multiple Locns": "H",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "M",
+                "SOPs": "H",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "L",
+                "Controls": "M",
+                "Proximity": "H",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 9,
+              "consolidate": true
+            }
+          ]
+        },
+        {
+          "id": "Analytics",
+          "name": "9",
+          "activities": [
+            {
+              "id": "Workforce Analytics",
+              "name": "9.1",
+              "type": "Analytics",
+              "parameters": {
+                "Multiple Locns": "H",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "L",
+                "SOPs": "H",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "L",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 11,
+              "consolidate": true
+            },
+            {
+              "id": "Compensation Analytics",
+              "name": "9.2",
+              "type": "Analytics",
+              "parameters": {
+                "Multiple Locns": "H",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "L",
+                "SOPs": "H",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "L",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 11,
+              "consolidate": true
+            },
+            {
+              "id": "Performance Analytics",
+              "name": "9.3",
+              "type": "Analytics",
+              "parameters": {
+                "Multiple Locns": "H",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "L",
+                "SOPs": "H",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "L",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 11,
+              "consolidate": true
+            },
+            {
+              "id": "MES",
+              "name": "9.4",
+              "type": null,
+              "parameters": {
+                "Multiple Locns": "H",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "L",
+                "SOPs": "H",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "L",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 11,
+              "consolidate": true
+            }
+          ]
+        },
+        {
+          "id": "Industrial Relations and Benefits",
+          "name": "10",
+          "activities": [
+            {
+              "id": "Grievance registrations",
+              "name": "10.1",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "H",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "H",
+                "Sensitivity": "H",
+                "Criticality": "L",
+                "Controls": "H",
+                "Proximity": "H",
+                "Regulatory": "M",
+                "Skill": "H"
+              },
+              "score": 7,
+              "consolidate": true
+            },
+            {
+              "id": "Grievance handling",
+              "name": "10.2",
+              "type": "Functional",
+              "parameters": {
+                "Multiple Locns": "H",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "H",
+                "Sensitivity": "H",
+                "Criticality": "L",
+                "Controls": "H",
+                "Proximity": "H",
+                "Regulatory": "M",
+                "Skill": "H"
+              },
+              "score": 7,
+              "consolidate": true
+            },
+            {
+              "id": "Grievance resolution",
+              "name": "10.3",
+              "type": "Functional",
+              "parameters": {
+                "Multiple Locns": "H",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "L",
+                "Sensitivity": "H",
+                "Criticality": "L",
+                "Controls": "H",
+                "Proximity": "H",
+                "Regulatory": "M",
+                "Skill": "H"
+              },
+              "score": 6,
+              "consolidate": false
+            },
+            {
+              "id": "Shift/Roster Planning",
+              "name": "10.4",
+              "type": "Functional",
+              "parameters": {
+                "Multiple Locns": "H",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "L",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "H",
+                "Proximity": "H",
+                "Regulatory": "L",
+                "Skill": "M"
+              },
+              "score": 7,
+              "consolidate": true
+            },
+            {
+              "id": "Manpower Planning",
+              "name": "10.5",
+              "type": "Functional",
+              "parameters": {
+                "Multiple Locns": "H",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "L",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "H",
+                "Proximity": "H",
+                "Regulatory": "L",
+                "Skill": "M"
+              },
+              "score": 7,
+              "consolidate": true
+            },
+            {
+              "id": "Attendance Monitoring",
+              "name": "10.6",
+              "type": "Functional",
+              "parameters": {
+                "Multiple Locns": "H",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "L",
+                "SOPs": "H",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "H",
+                "Proximity": "H",
+                "Regulatory": "L",
+                "Skill": "M"
+              },
+              "score": 7,
+              "consolidate": true
+            }
+          ]
+        },
+        {
+          "id": "Any other",
+          "name": "10.7",
+          "activities": []
+        },
+        {
+          "id": "Statutory Compliance",
+          "name": "11",
+          "activities": [
+            {
+              "id": "Statutory Fund / Gratuity payments",
+              "name": "11.1",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "H",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "H",
+                "Sensitivity": "H",
+                "Criticality": "L",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "H",
+                "Skill": "L"
+              },
+              "score": 10,
+              "consolidate": true
+            },
+            {
+              "id": "PF Adminitration",
+              "name": "11.2",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "H",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "H",
+                "Sensitivity": "H",
+                "Criticality": "L",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "H",
+                "Skill": "L"
+              },
+              "score": 10,
+              "consolidate": true
+            }
+          ]
+        },
+        {
+          "id": "Any other Compliance",
+          "name": "11.3",
+          "activities": []
+        },
+        {
+          "id": "R&R",
+          "name": "12",
+          "activities": [
+            {
+              "id": "Implementation",
+              "name": "12.1",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "H",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "L",
+                "ERP / Technology": "L",
+                "Sensitivity": "H",
+                "Criticality": "L",
+                "Controls": "M",
+                "Proximity": "H",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 7,
+              "consolidate": true
+            },
+            {
+              "id": "Tracking",
+              "name": "12.2",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "H",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "L",
+                "ERP / Technology": "L",
+                "Sensitivity": "H",
+                "Criticality": "L",
+                "Controls": "M",
+                "Proximity": "H",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 7,
+              "consolidate": true
+            },
+            {
+              "id": "Reporting",
+              "name": "12.3",
+              "type": "Analytics",
+              "parameters": {
+                "Multiple Locns": "H",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "L",
+                "ERP / Technology": "L",
+                "Sensitivity": "H",
+                "Criticality": "L",
+                "Controls": "M",
+                "Proximity": "H",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 7,
+              "consolidate": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "SCM",
+      "name": "SCM",
+      "processes": [
+        {
+          "id": "1",
+          "name": "1",
+          "activities": [
+            {
+              "id": "",
+              "name": "1.1",
+              "type": "Analytics",
+              "parameters": {
+                "Multiple Locns": "H",
+                "Routine": "L",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "L",
+                "ERP / Technology": "L",
+                "Sensitivity": "H",
+                "Criticality": "L",
+                "Controls": "H",
+                "Proximity": "L",
+                "Regulatory": "L",
+                "Skill": "H"
+              },
+              "score": 6,
+              "consolidate": false
+            },
+            {
+              "id": "",
+              "name": "1.2",
+              "type": "Functional",
+              "parameters": {
+                "Multiple Locns": "H",
+                "Routine": "L",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "L",
+                "ERP / Technology": "L",
+                "Sensitivity": "H",
+                "Criticality": "L",
+                "Controls": "H",
+                "Proximity": "L",
+                "Regulatory": "L",
+                "Skill": "H"
+              },
+              "score": 6,
+              "consolidate": false
+            },
+            {
+              "id": "",
+              "name": "1.3",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "H",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "L",
+                "ERP / Technology": "L",
+                "Sensitivity": "H",
+                "Criticality": "L",
+                "Controls": "H",
+                "Proximity": "H",
+                "Regulatory": "L",
+                "Skill": "H"
+              },
+              "score": 6,
+              "consolidate": false
+            },
+            {
+              "id": "",
+              "name": "1.4",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "H",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "L",
+                "Sensitivity": "H",
+                "Criticality": "L",
+                "Controls": "H",
+                "Proximity": "H",
+                "Regulatory": "L",
+                "Skill": "H"
+              },
+              "score": 7,
+              "consolidate": true
+            },
+            {
+              "id": "",
+              "name": "1.5",
+              "type": "Analytics",
+              "parameters": {
+                "Multiple Locns": "H",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "L",
+                "Sensitivity": "H",
+                "Criticality": "L",
+                "Controls": "H",
+                "Proximity": "L",
+                "Regulatory": "L",
+                "Skill": "H"
+              },
+              "score": 8,
+              "consolidate": true
+            },
+            {
+              "id": "",
+              "name": "1.6",
+              "type": "Functional",
+              "parameters": {
+                "Multiple Locns": "H",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "L",
+                "Sensitivity": "H",
+                "Criticality": "L",
+                "Controls": "H",
+                "Proximity": "L",
+                "Regulatory": "L",
+                "Skill": "H"
+              },
+              "score": 8,
+              "consolidate": true
+            },
+            {
+              "id": "",
+              "name": "1.7",
+              "type": "Analytics",
+              "parameters": {
+                "Multiple Locns": "H",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "L",
+                "ERP / Technology": "L",
+                "Sensitivity": "H",
+                "Criticality": "L",
+                "Controls": "H",
+                "Proximity": "L",
+                "Regulatory": "L",
+                "Skill": "H"
+              },
+              "score": 7,
+              "consolidate": true
+            }
+          ]
+        },
+        {
+          "id": "P2P.7",
+          "name": "2",
+          "activities": [
+            {
+              "id": "P2P.7.001",
+              "name": "2.1",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "H",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "L",
+                "SOPs": "H",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "H",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 9,
+              "consolidate": true
+            },
+            {
+              "id": "P2P.7.002",
+              "name": "2.2",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "H",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "L",
+                "SOPs": "H",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 10,
+              "consolidate": true
+            },
+            {
+              "id": "P2P.7.003",
+              "name": "2.3",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "H",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "L",
+                "SOPs": "H",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 10,
+              "consolidate": true
+            },
+            {
+              "id": "P2P.7.004",
+              "name": "2.4",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "H",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "M",
+                "SOPs": "H",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "H",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 9,
+              "consolidate": true
+            },
+            {
+              "id": "P2P.7.005",
+              "name": "2.5",
+              "type": "Analytics",
+              "parameters": {
+                "Multiple Locns": "H",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "L",
+                "SOPs": "H",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 10,
+              "consolidate": true
+            },
+            {
+              "id": "P2P.7.006",
+              "name": "2.6",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "H",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "M",
+                "SOPs": "H",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 10,
+              "consolidate": true
+            },
+            {
+              "id": "P2P.7.007",
+              "name": "2.7",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "H",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "M",
+                "SOPs": "H",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 10,
+              "consolidate": true
+            },
+            {
+              "id": "P2P.7.008",
+              "name": "2.8",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "H",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 11,
+              "consolidate": true
+            },
+            {
+              "id": "",
+              "name": "2.9",
+              "type": "Functional",
+              "parameters": {
+                "Multiple Locns": "H",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "L",
+                "Skill": "M"
+              },
+              "score": 10,
+              "consolidate": true
+            }
+          ]
+        },
+        {
+          "id": "3",
+          "name": "3",
+          "activities": [
+            {
+              "id": "",
+              "name": "3.1",
+              "type": "Analytics",
+              "parameters": {
+                "Multiple Locns": "H",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "L",
+                "SOPs": "H",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "H",
+                "Proximity": "L",
+                "Regulatory": "L",
+                "Skill": "H"
+              },
+              "score": 8,
+              "consolidate": true
+            },
+            {
+              "id": "",
+              "name": "3.2",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "H",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "H",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 10,
+              "consolidate": true
+            },
+            {
+              "id": "",
+              "name": "3.3",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "H",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "H",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 10,
+              "consolidate": true
+            },
+            {
+              "id": "",
+              "name": "3.4",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "H",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "L",
+                "SOPs": "H",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 10,
+              "consolidate": true
+            },
+            {
+              "id": "",
+              "name": "3.5",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "H",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "H",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 10,
+              "consolidate": true
+            },
+            {
+              "id": "",
+              "name": "3.6",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "H",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "L",
+                "SOPs": "H",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "L",
+                "Controls": "L",
+                "Proximity": "H",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 10,
+              "consolidate": true
+            },
+            {
+              "id": "",
+              "name": "3.7",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "H",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 11,
+              "consolidate": true
+            },
+            {
+              "id": "",
+              "name": "3.8",
+              "type": "Analytics",
+              "parameters": {
+                "Multiple Locns": "H",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "M",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 10,
+              "consolidate": true
+            },
+            {
+              "id": "",
+              "name": "3.9",
+              "type": "Analytics",
+              "parameters": {
+                "Multiple Locns": "H",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "L",
+                "SOPs": "L",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "L",
+                "Skill": "H"
+              },
+              "score": 8,
+              "consolidate": true
+            },
+            {
+              "id": "",
+              "name": "3.1",
+              "type": "Functional",
+              "parameters": {
+                "Multiple Locns": "H",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "L",
+                "SOPs": "L",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "H",
+                "Regulatory": "L",
+                "Skill": "H"
+              },
+              "score": 7,
+              "consolidate": true
+            },
+            {
+              "id": "",
+              "name": "3.11",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "H",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 11,
+              "consolidate": true
+            },
+            {
+              "id": "",
+              "name": "3.12",
+              "type": "Analytics",
+              "parameters": {
+                "Multiple Locns": "H",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "L",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "L",
+                "Skill": "H"
+              },
+              "score": 9,
+              "consolidate": true
+            }
+          ]
+        },
+        {
+          "id": "4",
+          "name": "",
+          "activities": []
+        },
+        {
+          "id": "5",
+          "name": "4",
+          "activities": [
+            {
+              "id": "",
+              "name": "4.1",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "H",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "H",
+                "Proximity": "H",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 9,
+              "consolidate": true
+            },
+            {
+              "id": "",
+              "name": "4.2",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "L",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "H",
+                "Proximity": "L",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 9,
+              "consolidate": true
+            },
+            {
+              "id": "",
+              "name": "4.3",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "L",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "L",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 11,
+              "consolidate": true
+            },
+            {
+              "id": "",
+              "name": "4.4",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "H",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "H",
+                "Proximity": "H",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 9,
+              "consolidate": true
+            },
+            {
+              "id": "",
+              "name": "4.5",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "H",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "H",
+                "Proximity": "L",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 10,
+              "consolidate": true
+            },
+            {
+              "id": "",
+              "name": "4.6",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "L",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "L",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 11,
+              "consolidate": true
+            },
+            {
+              "id": "",
+              "name": "4.7",
+              "type": "Analytics",
+              "parameters": {
+                "Multiple Locns": "H",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "L",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 12,
+              "consolidate": true
+            },
+            {
+              "id": "",
+              "name": "4.8",
+              "type": "Functional",
+              "parameters": {
+                "Multiple Locns": "H",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "L",
+                "Controls": "H",
+                "Proximity": "H",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 10,
+              "consolidate": true
+            }
+          ]
+        },
+        {
+          "id": "6",
+          "name": "5",
+          "activities": [
+            {
+              "id": "",
+              "name": "5.1",
+              "type": "Functional",
+              "parameters": {
+                "Multiple Locns": "H",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "H",
+                "Proximity": "H",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 9,
+              "consolidate": true
+            },
+            {
+              "id": "P2P.7.009",
+              "name": "5.2",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "H",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "H",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 10,
+              "consolidate": true
+            },
+            {
+              "id": "P2P.7.010",
+              "name": "5.3",
+              "type": "Functional",
+              "parameters": {
+                "Multiple Locns": "H",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "H",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 10,
+              "consolidate": true
+            },
+            {
+              "id": "P2P.7.011",
+              "name": "5.4",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "H",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "L",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "H",
+                "Proximity": "H",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 8,
+              "consolidate": true
+            },
+            {
+              "id": "P2P.7.012",
+              "name": "5.5",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "H",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "L",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "H",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 9,
+              "consolidate": true
+            },
+            {
+              "id": "P2P.7.013",
+              "name": "5.6",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "H",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "L",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "H",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 9,
+              "consolidate": true
+            },
+            {
+              "id": "",
+              "name": "5.7",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "H",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "L",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "L",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 11,
+              "consolidate": true
+            },
+            {
+              "id": "P2P.7.014",
+              "name": "5.8",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "H",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "L",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "H",
+                "Proximity": "M",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 8,
+              "consolidate": true
+            }
+          ]
+        },
+        {
+          "id": "7",
+          "name": "6",
+          "activities": [
+            {
+              "id": "",
+              "name": "6.1",
+              "type": "Functional",
+              "parameters": {
+                "Multiple Locns": "H",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "L",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "H",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 9,
+              "consolidate": true
+            },
+            {
+              "id": "",
+              "name": "6.2",
+              "type": "Functional",
+              "parameters": {
+                "Multiple Locns": "H",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "H",
+                "Proximity": "H",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 9,
+              "consolidate": true
+            },
+            {
+              "id": "",
+              "name": "6.3",
+              "type": "Functional",
+              "parameters": {
+                "Multiple Locns": "H",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "L",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "H",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 9,
+              "consolidate": true
+            },
+            {
+              "id": "",
+              "name": "6.4",
+              "type": "Functional",
+              "parameters": {
+                "Multiple Locns": "H",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "L",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "H",
+                "Proximity": "H",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 8,
+              "consolidate": true
+            },
+            {
+              "id": "",
+              "name": "6.5",
+              "type": "Functional",
+              "parameters": {
+                "Multiple Locns": "H",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "H",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 10,
+              "consolidate": true
+            },
+            {
+              "id": "",
+              "name": "6.6",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "H",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "H",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 10,
+              "consolidate": true
+            },
+            {
+              "id": "",
+              "name": "6.7",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "H",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "L",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "H",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 9,
+              "consolidate": true
+            },
+            {
+              "id": "",
+              "name": "6.8",
+              "type": "Functional",
+              "parameters": {
+                "Multiple Locns": "H",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "L",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "H",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 9,
+              "consolidate": true
+            },
+            {
+              "id": "",
+              "name": "6.9",
+              "type": "Functional",
+              "parameters": {
+                "Multiple Locns": "H",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "L",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "H",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 9,
+              "consolidate": true
+            },
+            {
+              "id": "",
+              "name": "6.1",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "H",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "L",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 10,
+              "consolidate": true
+            }
+          ]
+        },
+        {
+          "id": "8",
+          "name": "7",
+          "activities": [
+            {
+              "id": "",
+              "name": "7.1",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "H",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "L",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "H",
+                "Regulatory": "H",
+                "Skill": "L"
+              },
+              "score": 8,
+              "consolidate": true
+            },
+            {
+              "id": "",
+              "name": "7.2",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "H",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "L",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "H",
+                "Regulatory": "H",
+                "Skill": "M"
+              },
+              "score": 7,
+              "consolidate": true
+            },
+            {
+              "id": "",
+              "name": "7.3",
+              "type": "Functional",
+              "parameters": {
+                "Multiple Locns": "H",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "L",
+                "ERP / Technology": "L",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "H",
+                "Regulatory": "H",
+                "Skill": "M"
+              },
+              "score": 6,
+              "consolidate": false
+            },
+            {
+              "id": "",
+              "name": "7.4",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "H",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "L",
+                "ERP / Technology": "L",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "H",
+                "Regulatory": "H",
+                "Skill": "H"
+              },
+              "score": 6,
+              "consolidate": false
+            },
+            {
+              "id": "",
+              "name": "7.5",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "H",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "L",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "H",
+                "Skill": "M"
+              },
+              "score": 8,
+              "consolidate": true
+            },
+            {
+              "id": "",
+              "name": "7.6",
+              "type": "Functional",
+              "parameters": {
+                "Multiple Locns": "H",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "L",
+                "ERP / Technology": "L",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "H",
+                "Regulatory": "H",
+                "Skill": "M"
+              },
+              "score": 6,
+              "consolidate": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "Logistics",
+      "name": "Logistics",
+      "processes": [
+        {
+          "id": "Inbound Logistics (Imports/Domestic)",
+          "name": "1",
+          "activities": [
+            {
+              "id": "Approval and Payments on freight charges / clearing / custom charges / commissions",
+              "name": "1.1",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "L",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "L",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "H",
+                "Skill": "L"
+              },
+              "score": 8,
+              "consolidate": true
+            },
+            {
+              "id": "Cargo Clearance",
+              "name": "1.2",
+              "type": "Functional",
+              "parameters": {
+                "Multiple Locns": "L",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "L",
+                "ERP / Technology": "L",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "H",
+                "Regulatory": "H",
+                "Skill": "L"
+              },
+              "score": 6,
+              "consolidate": false
+            },
+            {
+              "id": "Transporter Selection and receiving rates",
+              "name": "1.3",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "H",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "L",
+                "ERP / Technology": "L",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "H",
+                "Skill": "L"
+              },
+              "score": 8,
+              "consolidate": true
+            },
+            {
+              "id": "Transporter Rates negotiations and pricing",
+              "name": "1.4",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "H",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "L",
+                "ERP / Technology": "L",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "H",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 8,
+              "consolidate": true
+            },
+            {
+              "id": "MIS and Reporting",
+              "name": "1.5",
+              "type": "Analytics",
+              "parameters": {
+                "Multiple Locns": "H",
+                "Routine": "M",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "L",
+                "ERP / Technology": "L",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 8,
+              "consolidate": true
+            }
+          ]
+        },
+        {
+          "id": "Outbound Logistics - Domestics/Exports",
+          "name": "2",
+          "activities": [
+            {
+              "id": "Raising of Invoices",
+              "name": "2.1",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "H",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "L",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "L",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 11,
+              "consolidate": true
+            },
+            {
+              "id": "Sales Contract",
+              "name": "2.2",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "H",
+                "Routine": "L",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "H",
+                "Skill": "H"
+              },
+              "score": 8,
+              "consolidate": true
+            },
+            {
+              "id": "Order processing",
+              "name": "2.3",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "H",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 11,
+              "consolidate": true
+            },
+            {
+              "id": "Dispatch / Distribution to Customers",
+              "name": "2.4",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "H",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "L",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "H",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 9,
+              "consolidate": true
+            },
+            {
+              "id": "Receiving - GRN and other documents from forwarder/CHA",
+              "name": "2.5",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "H",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "L",
+                "ERP / Technology": "L",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 9,
+              "consolidate": true
+            },
+            {
+              "id": "Quality Inspection",
+              "name": "2.6",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "H",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "L",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "H",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 9,
+              "consolidate": true
+            },
+            {
+              "id": "Sorting",
+              "name": "2.7",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "H",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "L",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "H",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 9,
+              "consolidate": true
+            },
+            {
+              "id": "Storing",
+              "name": "2.8",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "H",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "L",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "H",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 9,
+              "consolidate": true
+            }
+          ]
+        },
+        {
+          "id": "Shipping - Domestics/ Export",
+          "name": "3",
+          "activities": [
+            {
+              "id": "Approval for Freight invoices / payments",
+              "name": "3.1",
+              "type": "Functional",
+              "parameters": {
+                "Multiple Locns": "H",
+                "Routine": "H",
+                "Volumes": "L",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "L",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 11,
+              "consolidate": true
+            },
+            {
+              "id": "Invoicing - Bonded Warehouses",
+              "name": "3.2",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "H",
+                "Routine": "H",
+                "Volumes": "L",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "L",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "L",
+                "Skill": "M"
+              },
+              "score": 10,
+              "consolidate": true
+            },
+            {
+              "id": "Clearing Charges Payments",
+              "name": "3.3",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "H",
+                "Routine": "H",
+                "Volumes": "L",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "L",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "H",
+                "Skill": "L"
+              },
+              "score": 10,
+              "consolidate": true
+            },
+            {
+              "id": "Buyer Information Gathering & Storage",
+              "name": "3.4",
+              "type": "Functional",
+              "parameters": {
+                "Multiple Locns": "L",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "L",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "H",
+                "Skill": "L"
+              },
+              "score": 8,
+              "consolidate": true
+            },
+            {
+              "id": "Shipment Advise Notification",
+              "name": "3.5",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "L",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "L",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "H",
+                "Skill": "M"
+              },
+              "score": 7,
+              "consolidate": true
+            },
+            {
+              "id": "Liase on with the Forwarder",
+              "name": "3.6",
+              "type": "Functional",
+              "parameters": {
+                "Multiple Locns": "L",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "H",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 10,
+              "consolidate": true
+            },
+            {
+              "id": "Pre-Shipment Documents Preparation",
+              "name": "3.7",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "L",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "L",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "H",
+                "Skill": "L"
+              },
+              "score": 8,
+              "consolidate": true
+            },
+            {
+              "id": "Goods Hand Over",
+              "name": "3.8",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "H",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "L",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "H",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 9,
+              "consolidate": true
+            },
+            {
+              "id": "Final Documentation",
+              "name": "3.9",
+              "type": "Transactional",
+              "parameters": {
+                "Multiple Locns": "H",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "L",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "H",
+                "Skill": "L"
+              },
+              "score": 9,
+              "consolidate": true
+            },
+            {
+              "id": "MIS and Reporting",
+              "name": "3.1",
+              "type": "Analytics",
+              "parameters": {
+                "Multiple Locns": "H",
+                "Routine": "H",
+                "Volumes": "H",
+                "Manpower": "H",
+                "SOPs": "H",
+                "ERP / Technology": "L",
+                "Sensitivity": "L",
+                "Criticality": "H",
+                "Controls": "L",
+                "Proximity": "L",
+                "Regulatory": "L",
+                "Skill": "L"
+              },
+              "score": 10,
+              "consolidate": true
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

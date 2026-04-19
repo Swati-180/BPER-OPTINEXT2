@@ -12,6 +12,7 @@ const fitmentRoutes = require('./routes/fitment');
 const taxonomyRoutes = require('./routes/taxonomy');
 const reportRoutes = require('./routes/reports');
 const activitiesRoutes = require('./routes/activities');
+const seedMockProcessData = require('./scripts/replace_mock_process_data');
 
 const app = express();
 
@@ -35,6 +36,7 @@ async function startServer() {
     console.log(`Connecting to primary MongoDB...`);
     await mongoose.connect(mongoUri, { serverSelectionTimeoutMS: 5000 });
     console.log('Connected to MongoDB successfully.');
+    await seedMockProcessData({ connect: false });
   } catch (err) {
     console.log('Primary MongoDB connection failed. Attempting In-Memory fallback...');
     try {
@@ -48,6 +50,7 @@ async function startServer() {
       const { seed } = require('./seed_bper');
       console.log('Seeding in-memory database...');
       await seed();
+      await seedMockProcessData({ connect: false });
     } catch (fallbackErr) {
       console.error('CRITICAL: Could not connect to primary DB and mongodb-memory-server is not available.');
       console.error('Please check your MONGODB_URI in .env or run "npm install" in the server directory.');

@@ -5,6 +5,10 @@ const Fitment = require('./models/Fitment');
 const WDTSubmission = require('./models/WDTSubmission');
 const Taxonomy = require('./models/Taxonomy');
 const ProcessAnalysis = require('./models/ProcessAnalysis');
+const {
+  getMockTaxonomyRecords,
+  getMockProcessAnalysisRecords,
+} = require('./utils/mockProcessData');
 const bcrypt = require('bcryptjs');
 
 dotenv.config({ path: './.env' });
@@ -157,8 +161,8 @@ async function seed() {
     await ProcessAnalysis.deleteMany({});
     console.log('Cleared existing data');
 
-    // Insert taxonomy
-    await Taxonomy.insertMany(taxonomyData);
+    // Insert mock process-management taxonomy
+    await Taxonomy.insertMany(getMockTaxonomyRecords());
     console.log('Inserted Seed Taxonomy');
 
     // Insert users
@@ -217,17 +221,8 @@ async function seed() {
     }
     console.log('Generated Random WDT Submissions');
 
-    // Insert ProcessAnalysis for 6x6
-    const analysisRecords = [
-      { process: 'Invoice Validation', department: 'Finance', type: 'Core', criteria: ['H', 'M', 'H', 'L', 'M', 'H', 'H', 'M', 'L', 'H', 'M', 'H'] },
-      { process: 'Payroll Disbursement', department: 'HR', type: 'Core', criteria: ['M', 'H', 'H', 'M', 'L', 'H', 'M', 'H', 'H', 'M', 'L', 'H'] },
-      { process: 'Network Security', department: 'IT', type: 'Core', criteria: ['H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H', 'H'] },
-      { process: 'Vendor Onboarding', department: 'Finance', type: 'Support', criteria: ['L', 'M', 'L', 'H', 'M', 'L', 'M', 'H', 'L', 'M', 'H', 'L'] },
-      { process: 'User Access Mgmt', department: 'IT', type: 'Support', criteria: ['M', 'L', 'M', 'H', 'H', 'M', 'L', 'M', 'H', 'L', 'M', 'H'] },
-      { process: 'Tax Filing', department: 'HR', type: 'Specialized', criteria: ['H', 'H', 'L', 'M', 'H', 'H', 'L', 'M', 'H', 'H', 'L', 'M'] }
-    ];
-
-    await ProcessAnalysis.insertMany(analysisRecords);
+    // Insert mock 6x6 process analysis data
+    await ProcessAnalysis.insertMany(getMockProcessAnalysisRecords());
     console.log('Inserted Process Analysis Data (6x6)');
 
     // Insert Fitment data
