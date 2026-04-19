@@ -16,6 +16,7 @@ import {
   getFteSummaryReport,
   getFitmentSummaryReport,
 } from '../../lib/api';
+import { useNavigate } from 'react-router-dom';
 import { formatDateISO } from '../employee/bperSubmissionStorage';
 
 type Trend = 'up' | 'steady' | 'down';
@@ -103,6 +104,7 @@ function getStatusClass(status: 'Under Review' | 'Approved' | 'Changes Requested
 }
 
 export default function Dashboard() {
+  const navigate = useNavigate();
   const [dashboard, setDashboard] = useState<DashboardReport | null>(null);
   const [fteSummary, setFteSummary] = useState<FteSummaryReport | null>(null);
   const [fteConsolidation, setFteConsolidation] = useState<FteConsolidationReport | null>(null);
@@ -177,15 +179,40 @@ export default function Dashboard() {
     const pending = segments.find((s) => s.key === 'pending');
     const changes = segments.find((s) => s.key === 'changesRequested');
 
+    const approvedCount = safeNumber(approved?.count, safeNumber(summary.approved));
+    const pendingCount = safeNumber(pending?.count, safeNumber(summary.pendingReview));
+    const changesCount = safeNumber(changes?.count, safeNumber(summary.changesRequested));
+
+    const resolvedTotal = safeNumber(summary.totalSubmissions, approvedCount + pendingCount + changesCount);
+    const total = resolvedTotal > 0 ? resolvedTotal : approvedCount + pendingCount + changesCount;
+
+    const rows = [
+      { key: 'approved', label: 'Approved', count: approvedCount, colorClass: 'bg-[#1E65AF]' },
+      { key: 'pending', label: 'Pending', count: pendingCount, colorClass: 'bg-[#3F82E5]' },
+      { key: 'changesRequested', label: 'Changes Requested', count: changesCount, colorClass: 'bg-[#C8D3E1]' },
+    ].map((item) => ({
+      ...item,
+      percent: total > 0 ? Number(((item.count / total) * 100).toFixed(1)) : 0,
+    }));
+
+    const approvedPct = rows[0]?.percent || 0;
+    const pendingPct = rows[1]?.percent || 0;
+    const changesPct = rows[2]?.percent || 0;
+    const ringBackground =
+      total === 0
+        ? '#E6EDF7'
+        : `conic-gradient(#1E65AF ${approvedPct}%, #3F82E5 ${approvedPct}% ${approvedPct + pendingPct}%, #C8D3E1 ${approvedPct + pendingPct}% 100%)`;
+
     return {
-      approvedPct: safeNumber(approved?.percent),
-      pendingPct: safeNumber(pending?.percent),
-      changesPct: safeNumber(changes?.percent),
-      approvedCount: safeNumber(approved?.count),
-      pendingCount: safeNumber(pending?.count),
-      changesCount: safeNumber(changes?.count),
+      total,
+      rows,
+      ringBackground,
+      hasData: total > 0,
+      approvedPct,
+      pendingPct,
+      changesPct,
     };
-  }, [dashboard]);
+  }, [dashboard, summary.approved, summary.pendingReview, summary.changesRequested, summary.totalSubmissions]);
 
   const teamUtilization = useMemo(() => {
     return Array.isArray(dashboard?.charts?.teamUtilization) ? dashboard!.charts!.teamUtilization! : [];
@@ -298,24 +325,26 @@ export default function Dashboard() {
           <h3 className="text-xl font-bold text-[#102846]">Submission Status</h3>
           <p className="mt-1 text-xs text-[#617C9E]">Current review progress</p>
 
-          <div className="mt-4 flex justify-center">
-            <div
-              className="relative h-40 w-40 rounded-full"
-              style={{
-                background: `conic-gradient(#1E65AF ${statusSegments.approvedPct}%, #3F82E5 ${statusSegments.approvedPct}% ${statusSegments.approvedPct + statusSegments.pendingPct}%, #C8D3E1 ${statusSegments.approvedPct + statusSegments.pendingPct}% 100%)`,
-              }}
-            >
-              <div className="absolute inset-6 rounded-full border border-[#E3ECF9] bg-white flex flex-col items-center justify-center">
-                <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-[#768EAA]">Total Submissions</p>
-                <p className="text-3xl font-bold text-[#102846]">{safeNumber(summary.totalSubmissions)}</p>
+          <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-[170px_1fr] md:items-center">
+            <div className="flex justify-center">
+              <div
+                className="relative h-40 w-40 rounded-full"
+                style={{ background: statusSegments.ringBackground }}
+              >
+                <div className="absolute inset-6 rounded-full border border-[#E3ECF9] bg-white px-2 text-center flex flex-col items-center justify-center">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.08em] leading-tight text-[#6E88A9]">
+                    Total Submissions
+                  </p>
+                  <p className="mt-1 text-4xl leading-none font-bold text-[#102846]">{statusSegments.total}</p>
+                </div>
               </div>
             </div>
-          </div>
 
-          <div className="mt-4 space-y-2">
-            <StatusRow label="Approved" value={statusSegments.approvedPct} colorClass="bg-[#1E65AF]" count={statusSegments.approvedCount} />
-            <StatusRow label="Pending" value={statusSegments.pendingPct} colorClass="bg-[#3F82E5]" count={statusSegments.pendingCount} />
-            <StatusRow label="Changes Requested" value={statusSegments.changesPct} colorClass="bg-[#C8D3E1]" count={statusSegments.changesCount} />
+            <div className="space-y-2.5">
+              {statusSegments.rows.map((row) => (
+                <StatusRow key={row.key} label={row.label} value={row.percent} colorClass={row.colorClass} count={row.count} />
+              ))}
+            </div>
           </div>
         </article>
       </section>
@@ -393,6 +422,7 @@ export default function Dashboard() {
 
           <button
             type="button"
+            onClick={() => navigate('/manager/deep-analysis?tab=utilization&subTab=employee')}
             className="mt-4 inline-flex items-center gap-2 text-xs font-bold text-[#1E5EA9] hover:text-[#194F8D]"
           >
             View Full Team Breakdown
@@ -420,6 +450,7 @@ export default function Dashboard() {
           <div className="grid gap-2 xl:justify-self-end">
             <button
               type="button"
+              onClick={() => navigate('/manager/deep-analysis?tab=consolidation&subTab=overview')}
               className="inline-flex w-fit items-center justify-center gap-2 rounded-lg border border-white/20 bg-white px-4 py-2.5 text-sm font-semibold text-[#09274D] hover:bg-[#EAF2FF]"
             >
               View Full Report
@@ -512,14 +543,19 @@ function KpiCard({
 
 function StatusRow({ label, value, colorClass, count }: { label: string; value: number; colorClass: string; count: number }) {
   return (
-    <div className="flex items-center justify-between text-xs font-medium text-[#36506F]">
-      <div className="flex items-center gap-2.5">
-        <span className={`h-3 w-3 rounded-full ${colorClass}`} />
-        {label}
+    <div className="space-y-1.5">
+      <div className="flex items-center justify-between text-xs font-medium text-[#36506F]">
+        <div className="flex items-center gap-2.5">
+          <span className={`h-3 w-3 rounded-full ${colorClass}`} />
+          {label}
+        </div>
+        <span className="font-bold text-[#5C7698]">
+          {Math.round(value)}% ({count})
+        </span>
       </div>
-      <span className="font-bold text-[#5C7698]">
-        {Math.round(value)}% ({count})
-      </span>
+      <div className="h-2 rounded-full bg-[#E9EFF8] overflow-hidden">
+        <div className={`h-full rounded-full ${colorClass}`} style={{ width: `${Math.max(0, Math.min(100, value))}%` }} />
+      </div>
     </div>
   );
 }

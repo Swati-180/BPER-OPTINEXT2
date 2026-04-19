@@ -10,13 +10,85 @@ import {
   Bell, 
   Globe,
   Camera,
-  CheckCircle2
+  CheckCircle2,
+  X,
+  Loader2
 } from 'lucide-react';
 import { apiFetch } from '../../lib/api';
+import { loadAuthUser, saveAuthUser } from '../../lib/authStorage';
+
+type ManagerProfile = {
+  _id: string;
+  name: string;
+  email: string;
+  employeeId?: string;
+  designation?: string;
+  location?: string;
+  organization?: string;
+  supervisorName?: string;
+  supervisorTitle?: string;
+  client?: string;
+  band?: string;
+  role?: string;
+};
+
+type Preferences = {
+  emailNotifications: boolean;
+  analyticsDashboardDefault: boolean;
+  desktopAlerts: boolean;
+};
+
+const PREFS_KEY = 'bper.manager.preferences';
+
+const DEFAULT_PREFS: Preferences = {
+  emailNotifications: true,
+  analyticsDashboardDefault: true,
+  desktopAlerts: false,
+};
 
 export default function PersonalProfile() {
-  const [profile, setProfile] = useState<any>(null);
+  const [profile, setProfile] = useState<ManagerProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [isPasswordOpen, setIsPasswordOpen] = useState(false);
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
+  const [isSavingPassword, setIsSavingPassword] = useState(false);
+  const [profileError, setProfileError] = useState<string | null>(null);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  const [editDraft, setEditDraft] = useState({
+    name: '',
+    designation: '',
+    location: '',
+    organization: '',
+    supervisorName: '',
+    supervisorTitle: '',
+    client: '',
+    band: '',
+  });
+
+  const [passwordDraft, setPasswordDraft] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: '',
+  });
+
+  const [prefs, setPrefs] = useState<Preferences>(() => {
+    if (typeof window === 'undefined') return DEFAULT_PREFS;
+    try {
+      const raw = window.localStorage.getItem(PREFS_KEY);
+      if (!raw) return DEFAULT_PREFS;
+      return { ...DEFAULT_PREFS, ...JSON.parse(raw) } as Preferences;
+    } catch {
+      return DEFAULT_PREFS;
+    }
+  });
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    window.localStorage.setItem(PREFS_KEY, JSON.stringify(prefs));
+  }, [prefs]);
 
   useEffect(() => {
     async function fetchMyProfile() {
@@ -34,6 +106,108 @@ export default function PersonalProfile() {
     fetchMyProfile();
   }, []);
 
+  function openEditProfile() {
+    if (!profile) return;
+    setProfileError(null);
+    setSuccessMessage(null);
+    setEditDraft({
+      name: profile.name || '',
+      designation: profile.designation || '',
+      location: profile.location || '',
+      organization: profile.organization || '',
+      supervisorName: profile.supervisorName || '',
+      supervisorTitle: profile.supervisorTitle || '',
+      client: profile.client || '',
+      band: profile.band || '',
+    });
+    setIsEditOpen(true);
+  }
+
+  async function submitProfileUpdate() {
+    setProfileError(null);
+    setSuccessMessage(null);
+
+    if (!editDraft.name.trim()) {
+      setProfileError('Full name is required.');
+      return;
+    }
+
+    setIsSavingProfile(true);
+    try {
+      const response = await apiFetch('/auth/me', {
+        method: 'PATCH',
+        body: JSON.stringify(editDraft),
+      });
+
+      const data = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(data?.message || 'Failed to update profile.');
+      }
+
+      const updated = data?.user as ManagerProfile;
+      setProfile(updated);
+      setIsEditOpen(false);
+      setSuccessMessage('Profile updated successfully.');
+
+      const authUser = loadAuthUser();
+      if (authUser) {
+        saveAuthUser({
+          ...authUser,
+          name: updated.name || authUser.name,
+          organization: updated.organization || authUser.organization || '',
+        });
+      }
+    } catch (error: any) {
+      setProfileError(error?.message || 'Failed to update profile.');
+    } finally {
+      setIsSavingProfile(false);
+    }
+  }
+
+  async function submitPasswordChange() {
+    setPasswordError(null);
+    setSuccessMessage(null);
+
+    if (!passwordDraft.currentPassword || !passwordDraft.newPassword || !passwordDraft.confirmPassword) {
+      setPasswordError('All password fields are required.');
+      return;
+    }
+
+    if (passwordDraft.newPassword.length < 8) {
+      setPasswordError('New password must be at least 8 characters.');
+      return;
+    }
+
+    if (passwordDraft.newPassword !== passwordDraft.confirmPassword) {
+      setPasswordError('New password and confirm password do not match.');
+      return;
+    }
+
+    setIsSavingPassword(true);
+    try {
+      const response = await apiFetch('/auth/me/change-password', {
+        method: 'POST',
+        body: JSON.stringify({
+          currentPassword: passwordDraft.currentPassword,
+          newPassword: passwordDraft.newPassword,
+        }),
+      });
+
+      const data = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(data?.message || 'Failed to change password.');
+      }
+
+      setPasswordDraft({ currentPassword: '', newPassword: '', confirmPassword: '' });
+      setIsPasswordOpen(false);
+      setSuccessMessage('Password changed successfully.');
+    } catch (error: any) {
+      setPasswordError(error?.message || 'Failed to change password.');
+    } finally {
+      setIsSavingPassword(false);
+    }
+  }
+
   if (isLoading) {
     return (
       <div className="flex h-[60vh] items-center justify-center">
@@ -44,6 +218,24 @@ export default function PersonalProfile() {
 
   return (
     <div className="max-w-5xl mx-auto space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
+      {successMessage && (
+        <section className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+          {successMessage}
+        </section>
+      )}
+
+      {profileError && (
+        <section className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {profileError}
+        </section>
+      )}
+
+      {passwordError && (
+        <section className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {passwordError}
+        </section>
+      )}
+
       {/* Header Profile Section */}
       <section className="relative overflow-hidden rounded-3xl border border-[#D9E4F2] bg-white shadow-[0_8px_30px_rgba(16,42,80,0.06)]">
         <div className="h-32 bg-linear-to-r from-[#003366] via-[#165BAA] to-[#4D89C9]"></div>
@@ -66,8 +258,8 @@ export default function PersonalProfile() {
               </div>
               <p className="text-lg text-[#5D789A] font-medium">{profile?.designation || 'Senior Administrator'}</p>
               <div className="flex items-center gap-4 text-sm text-[#7A92AF]">
-                <span className="flex items-center gap-1.5"><Building2 size={14} /> Quintes Global</span>
-                <span className="flex items-center gap-1.5"><Globe size={14} /> Mumbai, India</span>
+                <span className="flex items-center gap-1.5"><Building2 size={14} /> {profile?.organization || 'Quintes Global'}</span>
+                <span className="flex items-center gap-1.5"><Globe size={14} /> {profile?.location || 'Mumbai, India'}</span>
               </div>
             </div>
           </div>
@@ -82,16 +274,67 @@ export default function PersonalProfile() {
               <h2 className="text-xl font-bold text-[#102846] flex items-center gap-2">
                 <User className="text-[#165BAA]" size={20} /> Personal Information
               </h2>
-              <button className="text-sm font-bold text-[#165BAA] hover:underline">Edit Profile</button>
+              <button
+                type="button"
+                onClick={openEditProfile}
+                className="text-sm font-bold text-[#165BAA] hover:underline"
+              >
+                Edit Profile
+              </button>
             </div>
+
+            {isEditOpen && (
+              <div className="mb-6 rounded-xl border border-[#DCE8F6] bg-[#F8FBFF] p-4">
+                <div className="mb-4 flex items-center justify-between">
+                  <h3 className="text-sm font-bold text-[#102846]">Edit Profile Details</h3>
+                  <button
+                    type="button"
+                    onClick={() => setIsEditOpen(false)}
+                    className="text-[#6E86A3] hover:text-[#3E5778]"
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                  <InputField label="Full Name" value={editDraft.name} onChange={(value) => setEditDraft((prev) => ({ ...prev, name: value }))} />
+                  <InputField label="Designation" value={editDraft.designation} onChange={(value) => setEditDraft((prev) => ({ ...prev, designation: value }))} />
+                  <InputField label="Location" value={editDraft.location} onChange={(value) => setEditDraft((prev) => ({ ...prev, location: value }))} />
+                  <InputField label="Organization" value={editDraft.organization} onChange={(value) => setEditDraft((prev) => ({ ...prev, organization: value }))} />
+                  <InputField label="Supervisor Name" value={editDraft.supervisorName} onChange={(value) => setEditDraft((prev) => ({ ...prev, supervisorName: value }))} />
+                  <InputField label="Supervisor Title" value={editDraft.supervisorTitle} onChange={(value) => setEditDraft((prev) => ({ ...prev, supervisorTitle: value }))} />
+                  <InputField label="Client" value={editDraft.client} onChange={(value) => setEditDraft((prev) => ({ ...prev, client: value }))} />
+                  <InputField label="Band" value={editDraft.band} onChange={(value) => setEditDraft((prev) => ({ ...prev, band: value }))} />
+                </div>
+
+                <div className="mt-4 flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={submitProfileUpdate}
+                    disabled={isSavingProfile}
+                    className="inline-flex items-center gap-2 rounded-lg bg-[#165BAA] px-4 py-2 text-xs font-bold text-white hover:bg-[#124b8d] disabled:opacity-70"
+                  >
+                    {isSavingProfile ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                    Save Changes
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsEditOpen(false)}
+                    className="rounded-lg border border-[#D3DEEB] px-4 py-2 text-xs font-bold text-[#3F5878] hover:bg-white"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-y-6 gap-x-8">
               <InfoItem label="Full Name" value={profile?.name} icon={User} />
               <InfoItem label="Email Address" value={profile?.email} icon={Mail} />
               <InfoItem label="Employee ID" value={profile?.employeeId || 'QG-ADM-001'} icon={Shield} />
-              <InfoItem label="Joined Date" value="Oct 12, 2024" icon={Calendar} />
-              <InfoItem label="Direct Reports" value="12 Team Members" icon={Lock} />
-              <InfoItem label="Access Level" value="Administrator / Manager" icon={Shield} />
+              <InfoItem label="Joined Date" value={profile?.createdAt ? new Date(profile.createdAt).toLocaleDateString() : 'N/A'} icon={Calendar} />
+              <InfoItem label="Direct Reports" value={profile?.role === 'admin' ? 'Administrative Access' : 'Managerial Access'} icon={Lock} />
+              <InfoItem label="Access Level" value={(profile?.role || 'manager').toUpperCase()} icon={Shield} />
             </div>
           </section>
 
@@ -110,8 +353,61 @@ export default function PersonalProfile() {
                     <p className="text-xs text-[#7A92AF]">Last changed 3 months ago</p>
                   </div>
                 </div>
-                <button className="rounded-lg border border-[#D9E4F2] px-4 py-2 text-xs font-bold text-[#102846] hover:bg-white transiton-colors">Change Password</button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPasswordError(null);
+                    setSuccessMessage(null);
+                    setIsPasswordOpen((prev) => !prev);
+                  }}
+                  className="rounded-lg border border-[#D9E4F2] px-4 py-2 text-xs font-bold text-[#102846] hover:bg-white transition-colors"
+                >
+                  Change Password
+                </button>
               </div>
+
+              {isPasswordOpen && (
+                <div className="rounded-xl border border-[#DCE8F6] bg-[#F8FBFF] p-4">
+                  <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                    <InputField
+                      label="Current Password"
+                      type="password"
+                      value={passwordDraft.currentPassword}
+                      onChange={(value) => setPasswordDraft((prev) => ({ ...prev, currentPassword: value }))}
+                    />
+                    <InputField
+                      label="New Password"
+                      type="password"
+                      value={passwordDraft.newPassword}
+                      onChange={(value) => setPasswordDraft((prev) => ({ ...prev, newPassword: value }))}
+                    />
+                    <InputField
+                      label="Confirm Password"
+                      type="password"
+                      value={passwordDraft.confirmPassword}
+                      onChange={(value) => setPasswordDraft((prev) => ({ ...prev, confirmPassword: value }))}
+                    />
+                  </div>
+                  <div className="mt-4 flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={submitPasswordChange}
+                      disabled={isSavingPassword}
+                      className="inline-flex items-center gap-2 rounded-lg bg-[#165BAA] px-4 py-2 text-xs font-bold text-white hover:bg-[#124b8d] disabled:opacity-70"
+                    >
+                      {isSavingPassword ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                      Update Password
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setIsPasswordOpen(false)}
+                      className="rounded-lg border border-[#D3DEEB] px-4 py-2 text-xs font-bold text-[#3F5878] hover:bg-white"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
 
               <div className="flex items-center justify-between p-4 rounded-xl border border-[#E9EFF7] bg-[#F8FBFF]">
                 <div className="flex items-center gap-4">
@@ -136,9 +432,27 @@ export default function PersonalProfile() {
               <Settings2 className="text-[#165BAA]" size={20} /> Preferences
             </h2>
             <div className="space-y-5">
-              <PreferenceToggle label="Email Notifications" description="Receive daily task summaries" initialValue={true} icon={Bell} />
-              <PreferenceToggle label="Analytics Dashboard" description="Show 6x6 metrics by default" initialValue={true} icon={Globe} />
-              <PreferenceToggle label="Desktop Alerts" description="Browser level notification alerts" initialValue={false} icon={Bell} />
+              <PreferenceToggle
+                label="Email Notifications"
+                description="Receive daily task summaries"
+                value={prefs.emailNotifications}
+                onChange={(value) => setPrefs((prev) => ({ ...prev, emailNotifications: value }))}
+                icon={Bell}
+              />
+              <PreferenceToggle
+                label="Analytics Dashboard"
+                description="Show 6x6 metrics by default"
+                value={prefs.analyticsDashboardDefault}
+                onChange={(value) => setPrefs((prev) => ({ ...prev, analyticsDashboardDefault: value }))}
+                icon={Globe}
+              />
+              <PreferenceToggle
+                label="Desktop Alerts"
+                description="Browser level notification alerts"
+                value={prefs.desktopAlerts}
+                onChange={(value) => setPrefs((prev) => ({ ...prev, desktopAlerts: value }))}
+                icon={Bell}
+              />
             </div>
           </section>
 
@@ -156,6 +470,30 @@ export default function PersonalProfile() {
   );
 }
 
+function InputField({
+  label,
+  value,
+  onChange,
+  type = 'text',
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  type?: string;
+}) {
+  return (
+    <label className="flex flex-col gap-1.5">
+      <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-[#7E97B4]">{label}</span>
+      <input
+        type={type}
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        className="h-10 rounded-lg border border-[#D2DEED] bg-white px-3 text-sm text-[#102846] outline-none focus:border-[#6B97CD] focus:ring-2 focus:ring-[#D8E8FA]"
+      />
+    </label>
+  );
+}
+
 function InfoItem({ label, value, icon: Icon }: { label: string; value: string; icon: any }) {
   return (
     <div className="space-y-1.5">
@@ -167,9 +505,19 @@ function InfoItem({ label, value, icon: Icon }: { label: string; value: string; 
   );
 }
 
-function PreferenceToggle({ label, description, initialValue, icon: Icon }: { label: string, description: string, initialValue: boolean, icon: any }) {
-  const [enabled, setEnabled] = useState(initialValue);
-  
+function PreferenceToggle({
+  label,
+  description,
+  value,
+  onChange,
+  icon: Icon,
+}: {
+  label: string;
+  description: string;
+  value: boolean;
+  onChange: (value: boolean) => void;
+  icon: any;
+}) {
   return (
     <div className="flex items-center justify-between">
       <div className="flex items-center gap-3">
@@ -182,10 +530,11 @@ function PreferenceToggle({ label, description, initialValue, icon: Icon }: { la
         </div>
       </div>
       <button 
-        onClick={() => setEnabled(!enabled)}
-        className={`relative inline-flex h-5 w-10 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden ${enabled ? 'bg-[#165BAA]' : 'bg-gray-200'}`}
+        type="button"
+        onClick={() => onChange(!value)}
+        className={`relative inline-flex h-5 w-10 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden ${value ? 'bg-[#165BAA]' : 'bg-gray-200'}`}
       >
-        <span className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${enabled ? 'translate-x-5' : 'translate-x-0'}`} />
+        <span className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${value ? 'translate-x-5' : 'translate-x-0'}`} />
       </button>
     </div>
   );

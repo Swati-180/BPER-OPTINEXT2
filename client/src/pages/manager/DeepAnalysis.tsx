@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Loader2, AlertCircle, Download } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
 import {
   getFteAnalysisReport,
   getConsolidationAnalysisReport,
@@ -13,6 +14,41 @@ type FteTabType = 'overview' | 'tower' | 'department' | 'activities';
 type ConsolidationTabType = 'overview' | 'department' | 'candidates';
 type FitmentTabType = 'overview' | 'label' | 'profiles';
 type UtilizationTabType = 'overview' | 'frequency' | 'process' | 'employee' | 'department';
+
+function parseMainTab(value: string | null): TabType {
+  if (value === 'fte' || value === 'consolidation' || value === 'fitment' || value === 'utilization') {
+    return value;
+  }
+  return 'fte';
+}
+
+function parseFteTab(value: string | null): FteTabType {
+  if (value === 'overview' || value === 'tower' || value === 'department' || value === 'activities') {
+    return value;
+  }
+  return 'overview';
+}
+
+function parseConsolidationTab(value: string | null): ConsolidationTabType {
+  if (value === 'overview' || value === 'department' || value === 'candidates') {
+    return value;
+  }
+  return 'overview';
+}
+
+function parseFitmentTab(value: string | null): FitmentTabType {
+  if (value === 'overview' || value === 'label' || value === 'profiles') {
+    return value;
+  }
+  return 'overview';
+}
+
+function parseUtilizationTab(value: string | null): UtilizationTabType {
+  if (value === 'overview' || value === 'frequency' || value === 'process' || value === 'employee' || value === 'department') {
+    return value;
+  }
+  return 'overview';
+}
 
 interface FteAnalysisReport {
   generatedAt: string;
@@ -168,12 +204,20 @@ const safeNumber = (val: any): string => {
 };
 
 export default function DeepAnalysis() {
-  const [mainTab, setMainTab] = useState<TabType>('fte');
+  const [searchParams] = useSearchParams();
+  const initialMainTab = parseMainTab(searchParams.get('tab'));
+  const initialSubTab = searchParams.get('subTab');
+
+  const [mainTab, setMainTab] = useState<TabType>(initialMainTab);
   const [departmentFilter, setDepartmentFilter] = useState('');
   const [isExporting, setIsExporting] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   // FTE State
-  const [fteTab, setFteTab] = useState<FteTabType>('overview');
+  const [fteTab, setFteTab] = useState<FteTabType>(
+    initialMainTab === 'fte' ? parseFteTab(initialSubTab) : 'overview'
+  );
   const [fteReport, setFteReport] = useState<FteAnalysisReport | null>(null);
   const [fteLoading, setFteLoading] = useState(true);
   const [fteError, setFteError] = useState<string | null>(null);
@@ -183,7 +227,9 @@ export default function DeepAnalysis() {
   );
 
   // Consolidation State
-  const [consolidationTab, setConsolidationTab] = useState<ConsolidationTabType>('overview');
+  const [consolidationTab, setConsolidationTab] = useState<ConsolidationTabType>(
+    initialMainTab === 'consolidation' ? parseConsolidationTab(initialSubTab) : 'overview'
+  );
   const [consolidationReport, setConsolidationReport] = useState<ConsolidationAnalysisReport | null>(null);
   const [consolidationLoading, setConsolidationLoading] = useState(true);
   const [consolidationError, setConsolidationError] = useState<string | null>(null);
@@ -193,13 +239,17 @@ export default function DeepAnalysis() {
   );
 
   // Fitment State
-  const [fitmentTab, setFitmentTab] = useState<FitmentTabType>('overview');
+  const [fitmentTab, setFitmentTab] = useState<FitmentTabType>(
+    initialMainTab === 'fitment' ? parseFitmentTab(initialSubTab) : 'overview'
+  );
   const [fitmentReport, setFitmentReport] = useState<FitmentAnalysisReport | null>(null);
   const [fitmentLoading, setFitmentLoading] = useState(true);
   const [fitmentError, setFitmentError] = useState<string | null>(null);
 
   // Utilization State
-  const [utilizationTab, setUtilizationTab] = useState<UtilizationTabType>('overview');
+  const [utilizationTab, setUtilizationTab] = useState<UtilizationTabType>(
+    initialMainTab === 'utilization' ? parseUtilizationTab(initialSubTab) : 'overview'
+  );
   const [utilizationReport, setUtilizationReport] = useState<UtilizationAnalysisReport | null>(null);
   const [utilizationLoading, setUtilizationLoading] = useState(true);
   const [utilizationError, setUtilizationError] = useState<string | null>(null);
@@ -223,7 +273,7 @@ export default function DeepAnalysis() {
       }
     }
     loadFte();
-  }, [departmentFilter]);
+  }, [departmentFilter, refreshKey]);
 
   // Load Consolidation
   useEffect(() => {
@@ -240,7 +290,7 @@ export default function DeepAnalysis() {
       }
     }
     loadConsolidation();
-  }, [departmentFilter]);
+  }, [departmentFilter, refreshKey]);
 
   // Load Fitment
   useEffect(() => {
@@ -257,7 +307,7 @@ export default function DeepAnalysis() {
       }
     }
     loadFitment();
-  }, []);
+  }, [refreshKey]);
 
   // Load Utilization
   useEffect(() => {
@@ -274,16 +324,29 @@ export default function DeepAnalysis() {
       }
     }
     loadUtilization();
-  }, [departmentFilter]);
+  }, [departmentFilter, refreshKey]);
+
+  useEffect(() => {
+    const nextMainTab = parseMainTab(searchParams.get('tab'));
+    const nextSubTab = searchParams.get('subTab');
+
+    setMainTab(nextMainTab);
+
+    if (nextMainTab === 'fte') {
+      setFteTab(parseFteTab(nextSubTab));
+    } else if (nextMainTab === 'consolidation') {
+      setConsolidationTab(parseConsolidationTab(nextSubTab));
+    } else if (nextMainTab === 'fitment') {
+      setFitmentTab(parseFitmentTab(nextSubTab));
+    } else {
+      setUtilizationTab(parseUtilizationTab(nextSubTab));
+    }
+  }, [searchParams]);
 
   // Auto-refresh on data updates
   useEffect(() => {
     const refreshOnDataUpdate = () => {
-      // Reload all reports
-      if (mainTab === 'fte' || mainTab === 'consolidation' || mainTab === 'utilization') {
-        // These depend on departmentFilter, so reload will trigger via dependency
-        setDepartmentFilter(departmentFilter);
-      }
+      setRefreshKey((prev) => prev + 1);
     };
     const refreshInterval = window.setInterval(() => {
       refreshOnDataUpdate();
@@ -293,18 +356,21 @@ export default function DeepAnalysis() {
       clearInterval(refreshInterval);
       window.removeEventListener('bper:data-updated', refreshOnDataUpdate);
     };
-  }, [mainTab, departmentFilter]);
+  }, []);
 
   const handleExport = async (data: any[], filename: string) => {
+    setExportError(null);
+
     if (!data || data.length === 0) {
-      alert('No data to export.');
+      setExportError('No data available to export for this view.');
       return;
     }
+
     setIsExporting(true);
     try {
       exportToCSV(data, filename);
     } catch {
-      alert('Failed to export CSV.');
+      setExportError('Failed to export CSV. Please try again.');
     } finally {
       setIsExporting(false);
     }
@@ -327,6 +393,12 @@ export default function DeepAnalysis() {
             </div>
           </div>
         </section>
+
+        {exportError && (
+          <section className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            {exportError}
+          </section>
+        )}
 
         {/* Main Tabs Navigation */}
         <section className="rounded-2xl border border-[#D9E4F2] bg-white shadow-[0_6px_18px_rgba(16,42,80,0.08)]">
