@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Check, Download, Flag, Printer, X, Loader2 } from 'lucide-react';
-import { apiFetch } from '../../lib/api';
+import { apiFetch, exportToCSV } from '../../lib/api';
 import {
 	applyManagerReviewToSubmission,
 	loadBperSubmissions,
@@ -117,6 +117,33 @@ export default function FormsPage() {
 	const canReviewSelected = Boolean(selectedRecord && activeTab === 'pending' && selectedRecord.status === 'Under Review');
 	const canUnlockSelected = Boolean(selectedRecord && activeTab === 'history' && selectedRecord.status === 'Approved');
 	const latestReviewComment = selectedRecord?.reviewHistory[0]?.comment ?? '';
+
+	function handlePrintSelectedRecord() {
+		if (!selectedRecord) return;
+		window.print();
+	}
+
+	function handleExportSelectedRecord() {
+		if (!selectedRecord || selectedRows.length === 0) return;
+
+		const rowsForExport = selectedRows.map((row, index) => ({
+			row: index + 1,
+			referenceId: selectedRecord.referenceId,
+			employeeId: selectedRecord.employee.employeeId,
+			employeeName: selectedRecord.employee.name,
+			majorProcess: row.majorProcess || '',
+			process: row.process || '',
+			subProcess: row.subProcess || '',
+			frequency: row.frequency || '',
+			volumePerMonth: Number(row.volumePerMonth || 0),
+			timeTakenMins: Number(row.timeTakenMins || 0),
+			timeTakenHoursPerMonth: Number(row.timeTakenHoursPerMonth || 0),
+			applicationsUsed: row.applicationsUsed || '',
+			comments: row.comments || '',
+		}));
+
+		exportToCSV(rowsForExport, `wdt-${selectedRecord.referenceId}`);
+	}
 
 	function refreshQueue() {
 		setFlagRowIndex(null);
@@ -302,10 +329,18 @@ export default function FormsPage() {
 										<p className="mt-1 text-sm text-[#5D789A]">Employee: {selectedRecord.employee.name}</p>
 									</div>
 									<div className="flex gap-2">
-										<button type="button" className="h-9 w-9 rounded-lg border border-[#D2DEED] bg-white text-[#6D85A5] flex items-center justify-center hover:bg-[#F7FAFF]">
+										<button
+											type="button"
+											onClick={handlePrintSelectedRecord}
+											className="h-9 w-9 rounded-lg border border-[#D2DEED] bg-white text-[#6D85A5] flex items-center justify-center hover:bg-[#F7FAFF]"
+										>
 											<Printer className="h-4 w-4" />
 										</button>
-										<button type="button" className="h-9 w-9 rounded-lg border border-[#D2DEED] bg-white text-[#6D85A5] flex items-center justify-center hover:bg-[#F7FAFF]">
+										<button
+											type="button"
+											onClick={handleExportSelectedRecord}
+											className="h-9 w-9 rounded-lg border border-[#D2DEED] bg-white text-[#6D85A5] flex items-center justify-center hover:bg-[#F7FAFF]"
+										>
 											<Download className="h-4 w-4" />
 										</button>
 									</div>

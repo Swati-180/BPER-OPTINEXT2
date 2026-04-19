@@ -15,6 +15,9 @@ const activitiesRoutes = require('./routes/activities');
 
 const app = express();
 
+const DEFAULT_PORT = Number.parseInt(process.env.PORT || '5000', 10);
+const MAX_PORT_RETRIES = 10;
+
 // Middleware
 app.use(cors());
 app.use(express.json());
@@ -55,10 +58,24 @@ async function startServer() {
     }
   }
 
-  const PORT = process.env.PORT || 5000;
-  app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
-  });
+  const startListening = (port, retriesLeft) => {
+    const server = app.listen(port, () => {
+      console.log(`Server running on port ${port}`);
+    });
+
+    server.on('error', (err) => {
+      if (err.code === 'EADDRINUSE' && retriesLeft > 0) {
+        console.warn(`Port ${port} is already in use. Trying ${port + 1}...`);
+        startListening(port + 1, retriesLeft - 1);
+        return;
+      }
+
+      console.error(`Failed to start server on port ${port}: ${err.message}`);
+      process.exit(1);
+    });
+  };
+
+  startListening(DEFAULT_PORT, MAX_PORT_RETRIES);
 }
 
 startServer();

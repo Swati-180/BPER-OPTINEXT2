@@ -102,9 +102,102 @@ const login = async (req, res) => {
 const getMe = async (req, res) => {
   try {
     const user = await User.findById(req.user.userId).select('-password');
+    if (!user) {
+      return res.status(404).json({ message: 'User not found.' });
+    }
     res.json(user);
   } catch (err) {
     res.status(500).json({ message: err.message });
+  }
+};
+
+const updateMe = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.userId);
+    if (!user) return res.status(404).json({ message: 'User not found.' });
+
+    const allowedFields = [
+      'name',
+      'designation',
+      'location',
+      'organization',
+      'supervisorName',
+      'supervisorTitle',
+      'client',
+      'band',
+    ];
+
+    const previous = {};
+    const nextValues = {};
+
+    for (const field of allowedFields) {
+      if (!(field in req.body)) continue;
+
+      const value = typeof req.body[field] === 'string' ? req.body[field].trim() : req.body[field];
+      previous[field] = user[field] || '';
+      user[field] = value;
+      nextValues[field] = value;
+    }
+
+    if (typeof req.body.name === 'string' && !req.body.name.trim()) {
+      return res.status(400).json({ message: 'Name cannot be empty.' });
+    }
+
+    await user.save();
+
+    await logAction({
+      req,
+      action: 'PROFILE_UPDATED',
+      targetType: 'User',
+      targetId: user._id,
+      description: `User profile updated: ${Object.keys(nextValues).join(', ') || 'no fields'}`,
+      prev: previous,
+      next: nextValues,
+    });
+
+    return res.json({
+      message: 'Profile updated successfully.',
+      user: await User.findById(user._id).select('-password'),
+    });
+  } catch (err) {
+    return res.status(500).json({ message: err.message });
+  }
+};
+
+const changeMyPassword = async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ message: 'Current password and new password are required.' });
+    }
+
+    if (newPassword.length < 8) {
+      return res.status(400).json({ message: 'New password must be at least 8 characters.' });
+    }
+
+    const user = await User.findById(req.user.userId);
+    if (!user) return res.status(404).json({ message: 'User not found.' });
+
+    const isMatch = await user.comparePassword(currentPassword);
+    if (!isMatch) {
+      return res.status(401).json({ message: 'Current password is incorrect.' });
+    }
+
+    user.password = newPassword;
+    await user.save();
+
+    await logAction({
+      req,
+      action: 'PASSWORD_CHANGED',
+      targetType: 'User',
+      targetId: user._id,
+      description: 'User changed own password.',
+    });
+
+    return res.json({ message: 'Password updated successfully.' });
+  } catch (err) {
+    return res.status(500).json({ message: err.message });
   }
 };
 
@@ -168,4 +261,15 @@ const bulkUpdateUsers = async (req, res) => {
   }
 };
 
-module.exports = { register, requestAccess, login, getMe, getAllUsers, updateUser, resetUserPassword, bulkUpdateUsers };
+module.exports = {
+  register,
+  requestAccess,
+  login,
+  getMe,
+  updateMe,
+  changeMyPassword,
+  getAllUsers,
+  updateUser,
+  resetUserPassword,
+  bulkUpdateUsers,
+};
