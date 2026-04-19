@@ -7,7 +7,6 @@ import { Step3 } from "./Step3";
 import type { WdtPayload } from "./formTypes";
 import { demoEmployeeProfile } from "./demoEmployeeData";
 import { buildBperSubmission, saveBperSubmission, loadBperDraft, saveBperDraft } from "./bperSubmissionStorage";
-import { API_ENDPOINTS } from '../../lib/config';
 import { useEmployeeDraftGuard } from "../../layouts/EmployeeLayout";
 import { FormPageSkeleton } from '../../components/PortalSkeletons';
 
@@ -31,7 +30,7 @@ export default function BPERForm() {
       setIsLoadingProfile(true);
       try {
         const token = localStorage.getItem('bper.auth.token');
-        const res = await fetch(`${API_ENDPOINTS.AUTH}/me`, {
+        const res = await fetch(`${import.meta.env.VITE_API_URL}/api/auth/me`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         const data = await res.json();
@@ -40,7 +39,7 @@ export default function BPERForm() {
         }
 
         // Fetch Window Status
-        const windowRes = await fetch(`${API_ENDPOINTS.WDT}/window-status`);
+        const windowRes = await fetch(`${import.meta.env.VITE_API_URL}/api/wdt/window-status`);
         if (windowRes.ok) {
           setWindowStatus(await windowRes.json());
         }
@@ -59,7 +58,7 @@ export default function BPERForm() {
         setIsLoadingProfile(true);
         try {
           const token = localStorage.getItem('bper.auth.token');
-          const res = await fetch(`${API_ENDPOINTS.WDT}/submissions/${refId}`, {
+          const res = await fetch(`${import.meta.env.VITE_API_URL}/api/wdt/submissions/${refId}`, {
             headers: { 'Authorization': `Bearer ${token}` }
           });
           if (res.ok) {

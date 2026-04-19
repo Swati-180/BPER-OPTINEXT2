@@ -96,7 +96,7 @@ export default function SixBySixAnalysisPage() {
 			setIsLoading(true);
 			try {
 				const token = localStorage.getItem('bper.auth.token');
-				const response = await fetch(`${API_ENDPOINTS.ANALYSIS}/six-by-six?department=${encodeURIComponent(departmentFilter)}`, {
+				const response = await fetch(`${import.meta.env.VITE_API_URL}/api/analysis/six-by-six?department=${encodeURIComponent(departmentFilter)}`, {
 					headers: {
 						'Authorization': `Bearer ${token}`
 					}

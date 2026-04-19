@@ -131,7 +131,7 @@ export function buildBperSubmission(payload: WdtPayload, profile?: EmployeeSnaps
 export async function loadBperSubmissions(): Promise<BperSubmissionRecord[]> {
   try {
     const token = localStorage.getItem('bper.auth.token');
-    const response = await fetch('http://localhost:5000/api/wdt/submissions', {
+    const response = await fetch(`${import.meta.env.VITE_API_URL}/api/wdt/submissions`, {
       headers: { 'Authorization': `Bearer ${token}` }
     });
     const data = await response.json();
@@ -145,7 +145,7 @@ export async function loadBperSubmissions(): Promise<BperSubmissionRecord[]> {
 export async function saveBperSubmission(record: BperSubmissionRecord) {
   try {
     const token = localStorage.getItem('bper.auth.token');
-    const response = await fetch('http://localhost:5000/api/wdt/submit', {
+    const response = await fetch(`${import.meta.env.VITE_API_URL}/api/wdt/submit`, {
       method: 'POST',
       headers: { 
         'Content-Type': 'application/json',
@@ -201,7 +201,7 @@ export async function applyManagerReviewToSubmission(input: {
 }) {
   try {
     const token = localStorage.getItem('bper.auth.token');
-    const response = await fetch(`http://localhost:5000/api/wdt/submissions/${input.referenceId}`, {
+    const response = await fetch(`${import.meta.env.VITE_API_URL}/api/wdt/submissions/${input.referenceId}`, {
       method: 'PATCH',
       headers: { 
         'Content-Type': 'application/json',

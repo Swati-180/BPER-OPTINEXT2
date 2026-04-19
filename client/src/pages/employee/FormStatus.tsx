@@ -1,7 +1,6 @@
 import { type ReactNode, useMemo, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Clock3, Search, ShieldCheck, FileText, X, MessageSquareText, CircleAlert } from "lucide-react";
-import { API_ENDPOINTS } from "../../lib/config";
+import { Clock3, Search, ShieldCheck, FileText, X, MessageSquareText, CircleAlert, Loader2 } from "lucide-react";
 import {
   type BperSubmissionRecord,
   type BperReviewEvent,
@@ -28,7 +27,7 @@ export default function FormStatus() {
         const token = localStorage.getItem('bper.auth.token');
         
         // Fetch Profile
-        const profileRes = await fetch(`${API_ENDPOINTS.WDT}/api/auth/me`, {
+        const profileRes = await fetch(`${import.meta.env.VITE_API_URL}/api/auth/me`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         const profileData = await profileRes.json();
