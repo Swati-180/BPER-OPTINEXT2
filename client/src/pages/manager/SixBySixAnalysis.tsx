@@ -56,7 +56,11 @@ export default function SixBySixAnalysisPage() {
 			setIsLoading(true);
 			try {
 				const token = localStorage.getItem('bper.auth.token');
+<<<<<<< HEAD
 				const response = await fetch(`${API_ENDPOINTS.ANALYSIS}/six-by-six?department=${encodeURIComponent(departmentFilter)}`, {
+=======
+				const response = await fetch(`${import.meta.env.VITE_API_URL}/api/analysis/six-by-six?department=${departmentFilter}`, {
+>>>>>>> 7ba5a33 (fixed deployment path and updated frontend)
 					headers: {
 						'Authorization': `Bearer ${token}`
 					}
@@ -105,7 +109,11 @@ export default function SixBySixAnalysisPage() {
 		setIsSaving(true);
 		try {
 			const token = localStorage.getItem('bper.auth.token');
+<<<<<<< HEAD
 			const response = await fetch(`${API_ENDPOINTS.REPORTS}/six-by-six`, {
+=======
+			const response = await fetch(`${import.meta.env.VITE_API_URL}/api/analysis/six-by-six`, {
+>>>>>>> 7ba5a33 (fixed deployment path and updated frontend)
 				method: 'PUT',
 				headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
 				body: JSON.stringify({ rows: draftRows })

@@ -30,7 +30,11 @@ export default function BPERForm() {
       setIsLoadingProfile(true);
       try {
         const token = localStorage.getItem('bper.auth.token');
+<<<<<<< HEAD
         const res = await fetch(`${API_ENDPOINTS.AUTH}/me`, {
+=======
+        const res = await fetch(`${import.meta.env.VITE_API_URL}/api/auth/me`, {
+>>>>>>> 7ba5a33 (fixed deployment path and updated frontend)
           headers: { 'Authorization': `Bearer ${token}` }
         });
         const data = await res.json();
@@ -39,7 +43,11 @@ export default function BPERForm() {
         }
 
         // Fetch Window Status
+<<<<<<< HEAD
         const windowRes = await fetch(`${API_ENDPOINTS.WDT}/window-status`);
+=======
+        const windowRes = await fetch(`${import.meta.env.VITE_API_URL}/api/wdt/window-status`);
+>>>>>>> 7ba5a33 (fixed deployment path and updated frontend)
         if (windowRes.ok) {
           setWindowStatus(await windowRes.json());
         }
@@ -58,7 +66,11 @@ export default function BPERForm() {
         setIsLoadingProfile(true);
         try {
           const token = localStorage.getItem('bper.auth.token');
+<<<<<<< HEAD
           const res = await fetch(`${API_ENDPOINTS.WDT}/submissions/${refId}`, {
+=======
+          const res = await fetch(`${import.meta.env.VITE_API_URL}/api/wdt/submissions/${refId}`, {
+>>>>>>> 7ba5a33 (fixed deployment path and updated frontend)
             headers: { 'Authorization': `Bearer ${token}` }
           });
           if (res.ok) {

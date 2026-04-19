@@ -27,7 +27,11 @@ export default function FormStatus() {
         const token = localStorage.getItem('bper.auth.token');
         
         // Fetch Profile
+<<<<<<< HEAD
         const profileRes = await fetch(`${API_ENDPOINTS.WDT}/api/auth/me`, {
+=======
+        const profileRes = await fetch(`${import.meta.env.VITE_API_URL}/api/auth/me`, {
+>>>>>>> 7ba5a33 (fixed deployment path and updated frontend)
           headers: { 'Authorization': `Bearer ${token}` }
         });
         const profileData = await profileRes.json();

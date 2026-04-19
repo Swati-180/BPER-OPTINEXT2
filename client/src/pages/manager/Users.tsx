@@ -88,7 +88,11 @@ export default function UsersPage() {
 		setIsLoading(true);
 		try {
 			const token = localStorage.getItem('bper.auth.token');
+<<<<<<< HEAD
 			const response = await fetch(`${API_ENDPOINTS.AUTH}/users`, {
+=======
+			const response = await fetch(`${import.meta.env.VITE_API_URL}/api/auth/users`, {
+>>>>>>> 7ba5a33 (fixed deployment path and updated frontend)
 				headers: { 'Authorization': `Bearer ${token}` }
 			});
 			const data = await response.json();

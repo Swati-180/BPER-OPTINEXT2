@@ -61,7 +61,11 @@ export default function InviteSignupPage({ onLogin }: InviteSignupProps) {
     setIsLoading(true);
     
     try {
+<<<<<<< HEAD
       const response = await fetch(`${API_ENDPOINTS.AUTH}/signup`, {
+=======
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/auth/signup`, {
+>>>>>>> 7ba5a33 (fixed deployment path and updated frontend)
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
