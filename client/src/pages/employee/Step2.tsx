@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { ArrowLeft, ArrowRight, CircleHelp, Plus, Trash2, Sparkles } from "lucide-react";
+import { API_ENDPOINTS } from '../../lib/config';
 import type { WdtActivityRow, WdtPayload, EmployeeSnapshot } from "./formTypes";
 
 type EditorKind = "single" | "multi" | "number" | "select";
@@ -87,7 +88,7 @@ export function Step2({ employee, payload, onNext, onPrev, onPayloadChange }: St
       try {
         const token = localStorage.getItem('bper.auth.token');
         const deptParam = employee.department ? `?department=${encodeURIComponent(employee.department)}` : '';
-        const res = await fetch(`http://localhost:5000/api/taxonomy/processes${deptParam}`, {
+        const res = await fetch(`${API_ENDPOINTS.TAXONOMY}/processes${deptParam}`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         if (res.ok) {

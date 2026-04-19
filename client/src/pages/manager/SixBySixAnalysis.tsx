@@ -1,4 +1,5 @@
 import { useMemo, useState, useEffect } from 'react';
+import { API_ENDPOINTS } from '../../lib/config';
 
 type Department = 'F&A' | 'HR' | 'Logistics' | 'SCM';
 type CriteriaValue = 'H' | 'M' | 'L';
@@ -55,7 +56,7 @@ export default function SixBySixAnalysisPage() {
 			setIsLoading(true);
 			try {
 				const token = localStorage.getItem('bper.auth.token');
-				const response = await fetch(`http://localhost:5000/api/analysis/six-by-six?department=${encodeURIComponent(departmentFilter)}`, {
+				const response = await fetch(`${API_ENDPOINTS.ANALYSIS}/six-by-six?department=${encodeURIComponent(departmentFilter)}`, {
 					headers: {
 						'Authorization': `Bearer ${token}`
 					}
@@ -104,7 +105,7 @@ export default function SixBySixAnalysisPage() {
 		setIsSaving(true);
 		try {
 			const token = localStorage.getItem('bper.auth.token');
-			const response = await fetch('http://localhost:5000/api/analysis/six-by-six', {
+			const response = await fetch(`${API_ENDPOINTS.REPORTS}/six-by-six`, {
 				method: 'PUT',
 				headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
 				body: JSON.stringify({ rows: draftRows })

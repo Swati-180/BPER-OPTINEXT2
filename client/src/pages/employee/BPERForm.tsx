@@ -7,6 +7,7 @@ import { Step3 } from "./Step3";
 import type { WdtPayload } from "./formTypes";
 import { demoEmployeeProfile } from "./demoEmployeeData";
 import { buildBperSubmission, saveBperSubmission, loadBperDraft, saveBperDraft } from "./bperSubmissionStorage";
+import { API_ENDPOINTS } from '../../lib/config';
 import { useEmployeeDraftGuard } from "../../layouts/EmployeeLayout";
 
 export default function BPERForm() {
@@ -29,7 +30,7 @@ export default function BPERForm() {
       setIsLoadingProfile(true);
       try {
         const token = localStorage.getItem('bper.auth.token');
-        const res = await fetch('http://localhost:5000/api/auth/me', {
+        const res = await fetch(`${API_ENDPOINTS.AUTH}/me`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         const data = await res.json();
@@ -38,7 +39,7 @@ export default function BPERForm() {
         }
 
         // Fetch Window Status
-        const windowRes = await fetch('http://localhost:5000/api/wdt/window-status');
+        const windowRes = await fetch(`${API_ENDPOINTS.WDT}/window-status`);
         if (windowRes.ok) {
           setWindowStatus(await windowRes.json());
         }
@@ -57,7 +58,7 @@ export default function BPERForm() {
         setIsLoadingProfile(true);
         try {
           const token = localStorage.getItem('bper.auth.token');
-          const res = await fetch(`http://localhost:5000/api/wdt/submissions/${refId}`, {
+          const res = await fetch(`${API_ENDPOINTS.WDT}/submissions/${refId}`, {
             headers: { 'Authorization': `Bearer ${token}` }
           });
           if (res.ok) {

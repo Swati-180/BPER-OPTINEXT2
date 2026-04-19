@@ -1,5 +1,6 @@
 import { useMemo, useState, useEffect } from 'react';
 import { Check, Copy, Link2, MailPlus, Search, UserPlus, X } from 'lucide-react';
+import { API_ENDPOINTS } from '../../lib/config';
 import { apiFetch } from '../../lib/api';
 import { getInviteSignupLink, loadAuthUser } from '../../lib/authStorage';
 
@@ -87,7 +88,7 @@ export default function UsersPage() {
 		setIsLoading(true);
 		try {
 			const token = localStorage.getItem('bper.auth.token');
-			const response = await fetch('http://localhost:5000/api/auth/users', {
+			const response = await fetch(`${API_ENDPOINTS.AUTH}/users`, {
 				headers: { 'Authorization': `Bearer ${token}` }
 			});
 			const data = await response.json();

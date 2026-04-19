@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { type AppAuthUser, saveAuthUser, type PortalRole } from '../lib/authStorage';
 import { clearActiveUnderReviewReferenceId } from './employee/bperSubmissionStorage';
+import { API_ENDPOINTS } from '../lib/config';
 
 function Logo() {
   return (
@@ -54,7 +55,7 @@ export default function EmployeeLoginPage({ onLogin }: EmployeeLoginProps) {
     setIsLoading(true);
 
     try {
-      const response = await fetch('http://localhost:5000/api/auth/login', {
+      const response = await fetch(`${API_ENDPOINTS.AUTH}/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
