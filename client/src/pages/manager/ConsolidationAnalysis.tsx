@@ -3,13 +3,13 @@ import {
   AlertCircle,
   Download,
   Filter,
-  Loader2,
   TrendingDown,
   Target,
   DollarSign,
   Building2,
 } from 'lucide-react';
 import { getConsolidationAnalysisReport, exportToCSV } from '../../lib/api';
+import { DashboardSkeleton } from '../../components/PortalSkeletons';
 
 type TabType = 'overview' | 'byDepartment' | 'candidates';
 
@@ -132,16 +132,7 @@ export default function ConsolidationAnalysisPage() {
   }
 
   if (isLoading && !report) {
-    return (
-      <div className="space-y-4 animate-in fade-in duration-500">
-        <section className="rounded-2xl border border-[#D9E4F2] bg-white p-5 shadow-[0_6px_18px_rgba(16,42,80,0.08)]">
-          <div className="flex items-center gap-3">
-            <Loader2 className="h-5 w-5 animate-spin text-[#1E5EAB]" />
-            <span className="text-sm font-medium text-[#5D789A]">Loading consolidation analysis...</span>
-          </div>
-        </section>
-      </div>
-    );
+    return <DashboardSkeleton />;
   }
 
   if (error) {

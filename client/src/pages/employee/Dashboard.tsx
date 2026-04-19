@@ -1,7 +1,8 @@
 import { useMemo, useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, BookOpenCheck, CircleHelp, ClipboardCheck, FilePenLine, Loader2 } from 'lucide-react';
+import { ArrowRight, BookOpenCheck, CircleHelp, ClipboardCheck, FilePenLine } from 'lucide-react';
 import { apiFetch } from '../../lib/api';
+import { TableLoadingRow } from '../../components/PortalSkeletons';
 import {
   type BperSubmissionRecord,
   formatDateISO,
@@ -151,11 +152,6 @@ export default function Dashboard() {
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
       <div className="flex flex-col gap-2">
-        <div className="flex items-center gap-2.5 text-[11px] md:text-xs font-bold uppercase tracking-[0.18em]">
-          <span className="text-[#1E5EAB]">Overview</span>
-          <span className="text-[#AFB8C5]">/</span>
-          <span className="text-[#9AA4B2]">Dashboard</span>
-        </div>
         <div className="flex items-center gap-3 flex-wrap">
           <h1 className="text-3xl font-bold tracking-tight text-[#0F1F3D]">Dashboard</h1>
         </div>
@@ -319,12 +315,7 @@ export default function Dashboard() {
               </thead>
               <tbody>
                 {isLoading ? (
-                  <tr>
-                    <td colSpan={7} className="px-6 py-8 text-center text-sm text-slate-500">
-                      <Loader2 className="animate-spin h-5 w-5 mx-auto mb-2" />
-                      Loading submissions...
-                    </td>
-                  </tr>
+                  <TableLoadingRow colSpan={7} />
                 ) : filteredSubmissions.length === 0 ? (
                   <tr>
                     <td colSpan={7} className="px-6 py-8 text-center text-sm text-slate-500">

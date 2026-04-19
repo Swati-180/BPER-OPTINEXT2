@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
-import { AlertCircle, Loader2, Eye, EyeOff, Lock, UserCircle, ArrowLeft } from 'lucide-react';
+import { AlertCircle, Eye, EyeOff, Lock, UserCircle, ArrowLeft, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -178,10 +178,10 @@ export default function EmployeeLoginPage({ onLogin }: EmployeeLoginProps) {
                 className="w-full h-12 text-sm font-bold bg-[#165BAA] hover:bg-[#124a8a] text-white shadow-lg shadow-blue-900/10 transition-all duration-200 active:scale-[0.98] rounded-xl mt-4"
               >
                 {isLoading ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Connecting...
-                  </>
+                  <span className="inline-flex items-center gap-2">
+                    <Loader2 className="h-4 w-4 auth-spinner" />
+                    Authenticating
+                  </span>
                 ) : (
                   'Login to Employee Portal'
                 )}

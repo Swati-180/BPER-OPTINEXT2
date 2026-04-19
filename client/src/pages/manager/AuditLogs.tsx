@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
-import { Shield, Clock, User, HardDrive, Info, Search, Loader2 } from 'lucide-react';
+import { Shield, Clock, User, HardDrive, Info, Search } from 'lucide-react';
 import { apiFetch } from '../../lib/api';
+import { InlineLoadingBlock } from '../../components/PortalSkeletons';
 
 interface AuditLogEntry {
   _id: string;
@@ -23,6 +24,7 @@ export default function AuditLogs() {
   const [logs, setLogs] = useState<AuditLogEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [errorMessage, setErrorMessage] = useState('');
 
   useEffect(() => {
     fetchLogs();
@@ -30,24 +32,30 @@ export default function AuditLogs() {
 
   async function fetchLogs() {
     setIsLoading(true);
+    setErrorMessage('');
     try {
-      // Need to create this route! I'll add it to reports route or a dedicated one
       const res = await apiFetch('/reports/audit-logs');
       if (res.ok) {
         const data = await res.json();
         setLogs(data);
+      } else {
+        const data = await res.json().catch(() => null);
+        setErrorMessage(data?.message || 'Unable to load audit records.');
+        setLogs([]);
       }
     } catch (err) {
       console.error('Failed to fetch audit logs:', err);
+      setErrorMessage('Unable to load audit records. Please try again.');
+      setLogs([]);
     } finally {
       setIsLoading(false);
     }
   }
 
   const filteredLogs = logs.filter(log => 
-    log.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    log.actor.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    log.action.toLowerCase().includes(searchQuery.toLowerCase())
+    (log.description || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (log.actor?.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (log.action || '').toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   return (
@@ -77,8 +85,8 @@ export default function AuditLogs() {
 
       <div className="rounded-2xl border border-[#D9E4F2] bg-white shadow-xl shadow-blue-900/5 overflow-hidden">
         {isLoading ? (
-          <div className="flex h-96 items-center justify-center">
-             <Loader2 className="h-10 w-10 animate-spin text-[#1A5BA7]" />
+          <div className="p-8">
+            <InlineLoadingBlock />
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -93,7 +101,11 @@ export default function AuditLogs() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
-                {filteredLogs.length === 0 ? (
+                {errorMessage ? (
+                  <tr>
+                    <td colSpan={5} className="px-6 py-12 text-center text-red-500 italic">{errorMessage}</td>
+                  </tr>
+                ) : filteredLogs.length === 0 ? (
                     <tr>
                         <td colSpan={5} className="px-6 py-12 text-center text-slate-400 italic">No audit records found matching your search.</td>
                     </tr>

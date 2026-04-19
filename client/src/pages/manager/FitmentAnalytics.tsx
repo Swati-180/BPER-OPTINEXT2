@@ -6,7 +6,6 @@ import {
   CheckCircle2, 
   ClipboardList, 
   Filter,
-  Loader2, 
   Search, 
   UserX,
   XCircle,
@@ -16,6 +15,7 @@ import {
 } from 'lucide-react';
 import { getFitmentSummaryReport, getEmployeeFitment, updateEmployeeFitment } from '../../lib/api';
 import { formatDateISO } from '../employee/bperSubmissionStorage';
+import { InlineLoadingBlock } from '../../components/PortalSkeletons';
 
 type AnalysisTab = 'summary' | 'scoring';
 type DepartmentFilter = 'All Departments' | string;
@@ -251,10 +251,7 @@ export default function FitmentAnalytics() {
         <section className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
           {isSummaryLoading ? (
             <div className="flex h-64 items-center justify-center rounded-2xl border border-[#D9E4F2] bg-white shadow-sm">
-              <div className="flex items-center gap-3 text-[#1A5AA6]">
-                <Loader2 className="h-6 w-6 animate-spin" />
-                <span className="text-sm font-semibold">Loading organizational fitment...</span>
-              </div>
+              <InlineLoadingBlock className="w-full max-w-xl px-6" />
             </div>
           ) : summaryError ? (
             <div className="rounded-xl border border-red-200 bg-red-50 p-5 text-red-700 flex items-start gap-3">
@@ -421,7 +418,7 @@ export default function FitmentAnalytics() {
                   disabled={isScoringLoading || !searchQuery.trim()}
                   className="inline-flex h-11 items-center justify-center rounded-xl bg-[#165BAA] px-5 text-sm font-bold text-white shadow-sm transition-all hover:bg-[#114888] disabled:opacity-50 disabled:hover:bg-[#165BAA]"
                 >
-                  {isScoringLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Search'}
+                  Search
                 </button>
               </form>
             </div>
@@ -464,7 +461,7 @@ export default function FitmentAnalytics() {
                             disabled={isSaving}
                             className="inline-flex items-center gap-2 rounded-xl bg-[#031F45] px-4 py-2 text-xs font-semibold text-white hover:bg-[#062B5F] shadow-sm transition-all disabled:opacity-50"
                           >
-                            {isSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+                            <Save className="h-3.5 w-3.5" />
                             Save Fitment
                           </button>
                         </div>

@@ -664,6 +664,7 @@ async function getFteAnalysisReport(req, res) {
         totalFte: Number(totalFte.toFixed(2)),
         baselineHours: STANDARD_MONTHLY_HOURS,
         totalActivities: rows.length,
+        departments: byDepartmentDetail.length,
       },
       tabs: {
         byTower: byTowerDetail,
@@ -954,6 +955,7 @@ async function getUtilizationAnalysisReport(req, res) {
         totalHours: Number(totalHours.toFixed(1)),
         totalSubmissions,
         totalFte: Number((totalHours / STANDARD_MONTHLY_HOURS).toFixed(2)),
+        departments: byDepartmentDetail.length,
       },
       tabs: {
         byFrequency: byFrequencyDetail,
@@ -970,8 +972,8 @@ async function getUtilizationAnalysisReport(req, res) {
 async function getAuditLogs(req, res) {
   try {
     const requestUser = await resolveRequestUser(req);
-    if (requestUser.role !== 'admin') {
-      return res.status(403).json({ message: 'Global administrator access required for audit logs.' });
+    if (!ensureManager(requestUser.role, res)) {
+      return;
     }
 
     const AuditLog = require('../models/AuditLog');

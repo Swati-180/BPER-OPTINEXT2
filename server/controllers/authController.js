@@ -2,13 +2,70 @@ const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const { logAction } = require('../utils/auditLogger');
 
+function isMissingValue(value) {
+  if (value === null || value === undefined) return true;
+  if (typeof value !== 'string') return false;
+  const normalized = value.trim().toLowerCase();
+  return normalized === '' || normalized === 'na' || normalized === 'n/a';
+}
+
+function toTitleCaseWords(value) {
+  return value
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(' ')
+    .trim();
+}
+
+function inferNameFromEmail(email) {
+  const localPart = String(email || '').split('@')[0] || 'User';
+  const spaced = localPart.replace(/[._-]+/g, ' ');
+  return toTitleCaseWords(spaced) || 'User';
+}
+
+function inferBand(role) {
+  return role === 'manager' || role === 'admin' ? 'M1' : 'B1';
+}
+
+function inferDesignation(role) {
+  return role === 'manager' || role === 'admin' ? 'Manager' : 'Employee';
+}
+
+async function getNextBperEmployeeId() {
+  const existing = await User.find({ employeeId: { $regex: /^BPER-\d+$/ } }, 'employeeId').lean();
+  let max = 100;
+
+  existing.forEach((item) => {
+    const numericPart = Number(String(item.employeeId).split('-')[1]);
+    if (Number.isFinite(numericPart) && numericPart > max) {
+      max = numericPart;
+    }
+  });
+
+  return `BPER-${String(max + 1).padStart(3, '0')}`;
+}
+
 const requestAccess = async (req, res) => {
   return res.status(410).json({ message: 'Request access flow is deprecated. Use /api/auth/signup.' });
 };
 
 const register = async (req, res) => {
   try {
-    const { name, email, password, role = 'manager', organization = '' } = req.body;
+    const {
+      name,
+      email,
+      password,
+      role = 'manager',
+      organization = '',
+      employeeId,
+      designation,
+      band,
+      client,
+      location,
+      supervisorName,
+      supervisorTitle,
+    } = req.body;
     
     if (!name || !email || !password) {
       return res.status(400).json({ message: 'Name, email, and password are required' });
@@ -35,12 +92,31 @@ const register = async (req, res) => {
     const existing = await User.findOne({ email: email.toLowerCase().trim() });
     if (existing) return res.status(409).json({ message: 'Email already registered.' });
 
+    let resolvedEmployeeId = typeof employeeId === 'string' ? employeeId.trim() : '';
+    if (!isMissingValue(resolvedEmployeeId)) {
+      const existingEmployeeId = await User.findOne({ employeeId: resolvedEmployeeId });
+      if (existingEmployeeId) {
+        return res.status(409).json({ message: 'Employee ID already in use.' });
+      }
+    } else {
+      resolvedEmployeeId = await getNextBperEmployeeId();
+    }
+
+    const resolvedName = !isMissingValue(name) ? String(name).trim() : inferNameFromEmail(email);
+
     const user = await User.create({ 
-      name: name.trim(), 
+      name: resolvedName,
       email: email.toLowerCase().trim(), 
       password, 
       role, 
       organization: organization.trim(),
+      employeeId: resolvedEmployeeId,
+      designation: !isMissingValue(designation) ? String(designation).trim() : inferDesignation(role),
+      band: !isMissingValue(band) ? String(band).trim().toUpperCase() : inferBand(role),
+      client: !isMissingValue(client) ? String(client).trim() : 'BU011',
+      location: !isMissingValue(location) ? String(location).trim() : '',
+      supervisorName: !isMissingValue(supervisorName) ? String(supervisorName).trim() : '',
+      supervisorTitle: !isMissingValue(supervisorTitle) ? String(supervisorTitle).trim() : '',
       isActive: true
     });
     
@@ -203,8 +279,57 @@ const changeMyPassword = async (req, res) => {
 
 const getAllUsers = async (req, res) => {
   try {
-    const users = await User.find({}).select('-password');
-    res.json(users);
+    const users = await User.find({}).sort({ createdAt: 1 });
+
+    const existingBperIds = users
+      .map((user) => user.employeeId)
+      .filter((id) => /^BPER-\d+$/.test(String(id)))
+      .map((id) => Number(String(id).split('-')[1]))
+      .filter((num) => Number.isFinite(num));
+
+    let nextBperId = (existingBperIds.length > 0 ? Math.max(...existingBperIds) : 100) + 1;
+
+    for (const user of users) {
+      let shouldSave = false;
+
+      if (isMissingValue(user.name)) {
+        user.name = inferNameFromEmail(user.email);
+        shouldSave = true;
+      }
+
+      if (isMissingValue(user.employeeId)) {
+        user.employeeId = `BPER-${String(nextBperId).padStart(3, '0')}`;
+        nextBperId += 1;
+        shouldSave = true;
+      }
+
+      if (isMissingValue(user.band)) {
+        user.band = inferBand(user.role);
+        shouldSave = true;
+      }
+
+      if (isMissingValue(user.designation)) {
+        user.designation = inferDesignation(user.role);
+        shouldSave = true;
+      }
+
+      if (isMissingValue(user.client)) {
+        user.client = !isMissingValue(user.organization) ? String(user.organization).trim() : 'BU011';
+        shouldSave = true;
+      }
+
+      if (shouldSave) {
+        await user.save();
+      }
+    }
+
+    const sanitizedUsers = users.map((user) => {
+      const next = user.toObject();
+      delete next.password;
+      return next;
+    });
+
+    res.json(sanitizedUsers);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

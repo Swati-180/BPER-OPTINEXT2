@@ -140,4 +140,96 @@ const createTaxonomy = async (req, res) => {
   }
 };
 
-module.exports = { mapActivity, createTaxonomy };
+const updateTaxonomy = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { majorProcess, process, subProcesses, department } = req.body;
+
+    const entry = await Taxonomy.findById(id);
+    if (!entry) {
+      return res.status(404).json({ message: 'Taxonomy entry not found.' });
+    }
+
+    const prev = {
+      majorProcess: entry.majorProcess,
+      process: entry.process,
+      subProcesses: entry.subProcesses,
+      department: entry.department,
+    };
+
+    if (typeof majorProcess === 'string' && majorProcess.trim()) {
+      entry.majorProcess = majorProcess.trim();
+    }
+    if (typeof process === 'string' && process.trim()) {
+      entry.process = process.trim();
+    }
+    if (Array.isArray(subProcesses)) {
+      entry.subProcesses = subProcesses.map((s) => String(s).trim()).filter(Boolean);
+    }
+
+    if (department === null || department === undefined || department === 'All Departments' || String(department).trim() === '') {
+      entry.department = undefined;
+    } else {
+      entry.department = String(department).trim();
+    }
+
+    await entry.save();
+
+    await logAction({
+      req,
+      action: 'TAXONOMY_UPDATED',
+      targetType: 'Taxonomy',
+      targetId: entry._id,
+      description: `Updated taxonomy entry for ${entry.majorProcess} / ${entry.process}`,
+      prev,
+      next: {
+        majorProcess: entry.majorProcess,
+        process: entry.process,
+        subProcesses: entry.subProcesses,
+        department: entry.department,
+      },
+    });
+
+    res.json(entry);
+  } catch (err) {
+    if (err?.code === 11000) {
+      return res.status(409).json({ message: 'A taxonomy with this major process and process already exists.' });
+    }
+    res.status(500).json({ message: err.message });
+  }
+};
+
+const deleteTaxonomy = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const entry = await Taxonomy.findById(id);
+    if (!entry) {
+      return res.status(404).json({ message: 'Taxonomy entry not found.' });
+    }
+
+    entry.isActive = false;
+    await entry.save();
+
+    await logAction({
+      req,
+      action: 'TAXONOMY_DELETED',
+      targetType: 'Taxonomy',
+      targetId: entry._id,
+      description: `Soft deleted taxonomy entry for ${entry.majorProcess} / ${entry.process}`,
+      prev: {
+        majorProcess: entry.majorProcess,
+        process: entry.process,
+        isActive: true,
+      },
+      next: {
+        isActive: false,
+      },
+    });
+
+    res.json({ message: 'Taxonomy deleted successfully.' });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+module.exports = { mapActivity, createTaxonomy, updateTaxonomy, deleteTaxonomy };

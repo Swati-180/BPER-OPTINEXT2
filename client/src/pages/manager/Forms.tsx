@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Check, Download, Flag, Printer, X, Loader2 } from 'lucide-react';
+import { Check, Download, Flag, Printer, X } from 'lucide-react';
 import { apiFetch, exportToCSV } from '../../lib/api';
+import { TablePageSkeleton } from '../../components/PortalSkeletons';
 import {
 	applyManagerReviewToSubmission,
 	loadBperSubmissions,
@@ -241,9 +242,7 @@ export default function FormsPage() {
 	return (
 		<div className="space-y-4 animate-in fade-in duration-500">
 			{isLoading ? (
-				<div className="flex h-96 items-center justify-center rounded-2xl border border-[#D9E4F2] bg-white shadow-sm">
-					<Loader2 className="h-10 w-10 animate-spin text-[#1A5BA7]" />
-				</div>
+				<TablePageSkeleton rows={7} />
 			) : (
 			<section className="rounded-2xl border border-[#D9E4F2] bg-white shadow-[0_6px_18px_rgba(16,42,80,0.08)] overflow-hidden">
 				<div className="grid grid-cols-1 lg:grid-cols-[280px_1fr]">
@@ -532,7 +531,7 @@ export default function FormsPage() {
 										reviewStatus === 'Approved' ? 'bg-[#031F45] hover:bg-[#062B5F]' : reviewStatus === 'Grant Edit' ? 'bg-[#D98326] hover:bg-[#C97218]' : 'bg-[#E92D2D] hover:bg-[#CF2424]'
 									}`}
 								>
-									{isMutating ? <span className="flex items-center justify-center gap-2"><Loader2 className="h-4 w-4 animate-spin" /> Processing...</span> : `Confirm ${reviewStatus}`}
+									{`Confirm ${reviewStatus}`}
 								</button>
 							</div>
 						</div>

@@ -15,6 +15,46 @@ type ProcessRow = {
 	consolidated: boolean;
 };
 
+function normalizeCriteria(input: unknown): CriteriaValue[] {
+	const allowed: CriteriaValue[] = ['H', 'M', 'L'];
+	const parsed = Array.isArray(input)
+		? input
+		: typeof input === 'string'
+			? input.split(',')
+			: [];
+
+	const values = parsed
+		.slice(0, 12)
+		.map((value) => {
+			const next = String(value || '').trim().toUpperCase();
+			return allowed.includes(next as CriteriaValue) ? (next as CriteriaValue) : '-';
+		});
+
+	while (values.length < 12) values.push('-');
+	return values as CriteriaValue[];
+}
+
+function computeScore(criteria: CriteriaValue[]) {
+	const performanceScore = criteria.slice(0, 6).filter((value) => value === 'H').length;
+	const characteristicScore = criteria.slice(6, 12).filter((value) => value === 'L').length;
+	return performanceScore + characteristicScore;
+}
+
+function normalizeRow(raw: any): ProcessRow {
+	const criteria = normalizeCriteria(raw?.criteria);
+	const score = Number.isFinite(Number(raw?.score)) ? Number(raw.score) : computeScore(criteria);
+
+	return {
+		_id: raw?._id,
+		process: String(raw?.process || 'Unnamed Process'),
+		department: (String(raw?.department || 'HR') as Department),
+		type: String(raw?.type || 'core'),
+		criteria,
+		score,
+		consolidated: typeof raw?.consolidated === 'boolean' ? raw.consolidated : score >= 7,
+	};
+}
+
 const PERFORMANCE_LABELS: Record<string, string> = {
   'ML': 'Multiple Locations',
   'R': 'Routine',
@@ -63,8 +103,9 @@ export default function SixBySixAnalysisPage() {
 				});
 				const data = await response.json();
 				if (response.ok) {
-					setProcessData(data);
-					setDraftRows(data);
+					const safeRows = Array.isArray(data) ? data.map(normalizeRow) : [];
+					setProcessData(safeRows);
+					setDraftRows(safeRows);
 				}
 			} catch (error) {
 				console.error('Failed to fetch 6x6 data:', error);
@@ -81,7 +122,7 @@ export default function SixBySixAnalysisPage() {
 
 	const handleCriteriaToggle = (processId: string, colIndex: number) => {
 		setDraftRows(prev => prev.map(row => {
-			if (row.process !== processId) return row;
+			if ((row._id || row.process) !== processId) return row;
 			const currentVal = row.criteria[colIndex];
 			const nextVal = currentVal === '-' ? 'H' : currentVal === 'H' ? 'M' : currentVal === 'M' ? 'L' : '-';
 			const newCriteria = [...row.criteria];
@@ -105,7 +146,7 @@ export default function SixBySixAnalysisPage() {
 		setIsSaving(true);
 		try {
 			const token = localStorage.getItem('bper.auth.token');
-			const response = await fetch(`${API_ENDPOINTS.REPORTS}/six-by-six`, {
+			const response = await fetch(`${API_ENDPOINTS.ANALYSIS}/six-by-six`, {
 				method: 'PUT',
 				headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
 				body: JSON.stringify({ rows: draftRows })
@@ -370,7 +411,7 @@ export default function SixBySixAnalysisPage() {
 									</tr>
 								) : (
 									filteredRows.map((item) => (
-										<tr key={item.process} className="border-b border-[#E8EEF7] last:border-b-0">
+										<tr key={item._id || `${item.process}-${item.department}`} className="border-b border-[#E8EEF7] last:border-b-0">
 											<td className="px-3 py-3 sticky left-0 z-10 bg-white shadow-[1px_0_0_#E3EAF4]">
 												<p className="max-w-82 truncate text-xs font-semibold text-[#1E304B]">{item.process}</p>
 												<p className="text-xs text-[#7086A1]">{item.department}</p>
@@ -380,7 +421,7 @@ export default function SixBySixAnalysisPage() {
 												<td key={`${item.process}-${index}`} className="px-2 py-2.5 text-center">
 													<button
 														type="button"
-														onClick={() => handleCriteriaToggle(item.process, index)}
+														onClick={() => handleCriteriaToggle(item._id || item.process, index)}
 														className={`inline-flex h-7 w-7 items-center justify-center rounded-md text-[11px] font-bold transition-all hover:ring-2 hover:ring-offset-1 hover:ring-[#E3EAF4] ${
 															value === 'H'
 																? 'bg-emerald-100 text-emerald-700'

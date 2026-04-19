@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
-import { AlertCircle, ArrowRight, Loader2, MailCheck } from 'lucide-react';
+import { AlertCircle, ArrowRight, MailCheck, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -231,17 +231,11 @@ export default function InviteSignupPage({ onLogin }: InviteSignupProps) {
             <div className="md:col-span-2 flex flex-col gap-3 sm:flex-row sm:justify-end pt-2">
               <Button type="button" variant="outline" onClick={() => navigate('/auth/login')}>Back</Button>
               <Button type="submit" disabled={isLoading} className="bg-[#165BAA] hover:bg-[#124B8D]">
-                {isLoading ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Creating account...
-                  </>
-                ) : (
-                  <>
-                    {isEmployeeInvite ? 'Continue to Employee Portal' : 'Continue to Portal Selection'}
-                    <ArrowRight className="ml-2 h-4 w-4" />
-                  </>
-                )}
+                <>
+                  {isLoading && <Loader2 className="mr-2 h-4 w-4 auth-spinner" />}
+                  {isEmployeeInvite ? 'Continue to Employee Portal' : 'Continue to Portal Selection'}
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </>
               </Button>
             </div>
           </form>
@@ -249,8 +243,8 @@ export default function InviteSignupPage({ onLogin }: InviteSignupProps) {
           <div className="mt-8 border-t border-slate-100 pt-6 text-center">
             <p className="text-sm text-[#607A9A]">
               Already part of the organization?{' '}
-              <Link to="/auth/login/employee" className="font-bold text-[#165BAA] hover:underline">
-                Log in here
+              <Link to="/auth/login" className="font-bold text-[#165BAA] hover:underline">
+                Sign in here
               </Link>
             </p>
           </div>

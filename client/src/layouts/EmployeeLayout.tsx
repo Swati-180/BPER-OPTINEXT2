@@ -1,4 +1,4 @@
-import { ReactNode, createContext, useContext, useEffect, useMemo, useState } from 'react';
+import { ReactNode, createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { 
@@ -6,6 +6,7 @@ import {
   UserCircle, 
   FileText, 
   ClipboardCheck, 
+  ArrowLeftRight,
   LogOut, 
   Menu, 
   Bell, 
@@ -16,6 +17,7 @@ import { motion } from 'motion/react';
 import { X } from 'lucide-react';
 import { labelTransition, sidebarTransition, sidebarVariants } from './sidebarConfig';
 import { topbarBadgeClass, topbarIconButtonClass } from './topbarConfig';
+import AppErrorBoundary from '../components/AppErrorBoundary';
 
 interface EmployeeDraftGuardContextValue {
   hasUnsavedDraft: boolean;
@@ -46,9 +48,19 @@ export default function EmployeeLayout({ children, user, onLogout }: EmployeeLay
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [hasUnsavedDraft, setHasUnsavedDraft] = useState(false);
   const [pendingPath, setPendingPath] = useState<string | null>(null);
+  const [activeTopbarPanel, setActiveTopbarPanel] = useState<'messages' | 'notifications' | null>(null);
   const location = useLocation();
+  const pageTransitionKey = `${location.pathname}${location.search}`;
   const navigate = useNavigate();
   const [isSidebarHovered, setIsSidebarHovered] = useState(false);
+  const topbarPanelRef = useRef<HTMLDivElement | null>(null);
+
+  const navItems = [
+    { name: 'Dashboard', path: '/employee/dashboard', icon: LayoutDashboard },
+    { name: 'Form', path: '/employee/form', icon: FileText },
+    { name: 'Form Status', path: '/employee/status', icon: ClipboardCheck },
+    { name: 'My Profile', path: '/employee/profile', icon: UserCircle },
+  ];
 
   useEffect(() => {
     const handleBeforeUnload = (event: BeforeUnloadEvent) => {
@@ -60,6 +72,17 @@ export default function EmployeeLayout({ children, user, onLogout }: EmployeeLay
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [hasUnsavedDraft, location.pathname]);
+
+  useEffect(() => {
+    function handleOutsideClick(event: MouseEvent) {
+      if (!topbarPanelRef.current) return;
+      if (topbarPanelRef.current.contains(event.target as Node)) return;
+      setActiveTopbarPanel(null);
+    }
+
+    document.addEventListener('mousedown', handleOutsideClick);
+    return () => document.removeEventListener('mousedown', handleOutsideClick);
+  }, []);
 
   const isFormRoute = location.pathname === '/employee/form';
 
@@ -83,22 +106,31 @@ export default function EmployeeLayout({ children, user, onLogout }: EmployeeLay
   const cancelLeave = () => setPendingPath(null);
   const isSidebarExpanded = isSidebarOpen || isSidebarHovered;
 
-  const navItems = [
-    { name: 'Dashboard', path: '/employee/dashboard', icon: LayoutDashboard },
-    { name: 'Form', path: '/employee/form', icon: FileText },
-    { name: 'Form Status', path: '/employee/status', icon: ClipboardCheck },
-    { name: 'Profile', path: '/employee/profile', icon: UserCircle },
-  ];
+  const currentPageName = useMemo(() => {
+    const activeItem = navItems.find((item) => item.path === location.pathname);
+    if (activeItem) return activeItem.name;
+
+    if (location.pathname.startsWith('/employee/')) {
+      const slug = location.pathname.replace('/employee/', '');
+      if (!slug) return 'Dashboard';
+      return slug
+        .split('-')
+        .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+        .join(' ');
+    }
+
+    return 'Dashboard';
+  }, [location.pathname, navItems]);
 
   return (
-    <div className="flex h-screen bg-[#165BAA]/5 overflow-hidden">
+    <div className="flex h-screen bg-[#165BAA]/5 overflow-hidden relative">
       {/* Sidebar */}
       <motion.aside 
         initial={false}
         animate={isSidebarExpanded ? 'open' : 'closed'}
         variants={sidebarVariants}
         transition={sidebarTransition}
-        className="bg-[#001529] text-white flex flex-col shadow-xl z-20 relative border-r border-white/10"
+        className="bg-[#001529] text-white flex flex-col shadow-xl z-20 relative border-r border-white/10 flex-shrink-0"
         onMouseEnter={() => {
           if (!isSidebarOpen) setIsSidebarHovered(true);
         }}
@@ -133,13 +165,13 @@ export default function EmployeeLayout({ children, user, onLogout }: EmployeeLay
           <button
             type="button"
             onClick={() => requestNavigation('/employee/profile')}
-            className="w-full flex items-center gap-3 text-left transition-colors duration-200 rounded-md hover:bg-white/5 px-1 py-1"
+            className="w-full flex items-center gap-3 justify-start text-left transition-colors duration-200 rounded-md hover:bg-white/5 px-1 py-1"
           >
             <motion.div
               transition={sidebarTransition}
               className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center shrink-0 border border-white/10"
             >
-              <UserCircle className="w-6 h-6 text-white/60" />
+              <UserCircle className="w-6 h-6 text-white" />
             </motion.div>
             <motion.div
               animate={{
@@ -148,7 +180,7 @@ export default function EmployeeLayout({ children, user, onLogout }: EmployeeLay
                 maxWidth: isSidebarExpanded ? 150 : 0,
               }}
               transition={labelTransition}
-              className="overflow-hidden whitespace-nowrap"
+              className="overflow-hidden whitespace-nowrap min-w-0"
             >
               <p className="text-sm font-semibold truncate text-white/90">{user.name}</p>
               <p className="text-[10px] text-white/40 uppercase tracking-wider font-bold">Employee</p>
@@ -169,7 +201,7 @@ export default function EmployeeLayout({ children, user, onLogout }: EmployeeLay
                     whileHover={{ x: isSidebarOpen ? 2 : 0 }}
                     whileTap={{ scale: 0.98 }}
                     transition={{ type: 'spring', stiffness: 300, damping: 24 }}
-                    className={`flex items-center w-full h-12 gap-3 px-4 rounded-md group relative overflow-hidden transition-colors ${
+                    className={`flex items-center w-full h-12 gap-3 px-4 justify-start rounded-md group relative overflow-hidden transition-colors ${
                       isActive 
                         ? 'bg-[#165BAA] text-white shadow-lg' 
                         : 'text-white/65 hover:text-white hover:bg-white/5'
@@ -178,9 +210,9 @@ export default function EmployeeLayout({ children, user, onLogout }: EmployeeLay
                     <motion.span
                       animate={{ scale: 1 }}
                       transition={sidebarTransition}
-                      className="flex items-center justify-center shrink-0"
+                      className={`${isSidebarExpanded ? 'w-5 ' : isActive ? '-ml-2 ' : '-ml-1 '}flex items-center justify-center shrink-0`}
                     >
-                      <item.icon className={`w-5 h-5 shrink-0 ${isActive ? 'text-white' : 'text-white/40 group-hover:text-white'}`} />
+                      <item.icon className={`w-5 h-5 shrink-0 ${isActive ? 'text-white' : 'text-white/90 group-hover:text-white'}`} />
                     </motion.span>
                     <motion.span
                       animate={{
@@ -190,7 +222,7 @@ export default function EmployeeLayout({ children, user, onLogout }: EmployeeLay
                         marginLeft: 0,
                       }}
                       transition={labelTransition}
-                      className="text-sm font-medium whitespace-nowrap overflow-hidden"
+                      className="flex items-center text-sm font-medium whitespace-nowrap overflow-hidden min-w-0 leading-none"
                     >
                       {item.name}
                     </motion.span>
@@ -203,6 +235,27 @@ export default function EmployeeLayout({ children, user, onLogout }: EmployeeLay
 
         {/* Sidebar Footer - Logout */}
         <div className="p-3 border-t border-white/5 shrink-0">
+          {user.role === 'manager' && (
+            <motion.button
+              type="button"
+              onClick={() => requestNavigation('/choose-portal')}
+              className="mb-2 flex items-center w-full h-12 gap-3 px-4 justify-start rounded-md transition-colors duration-200 group text-white/65 hover:bg-white/5 hover:text-white"
+            >
+              <ArrowLeftRight className="w-5 h-5 shrink-0 text-white/90 group-hover:text-white" />
+              <motion.span
+                animate={{
+                  opacity: isSidebarExpanded ? 1 : 0,
+                  x: isSidebarExpanded ? 0 : -8,
+                  maxWidth: isSidebarExpanded ? 150 : 0,
+                }}
+                transition={labelTransition}
+                className="flex items-center text-sm font-medium whitespace-nowrap overflow-hidden min-w-0 leading-none"
+              >
+                Go to Portal Selection
+              </motion.span>
+            </motion.button>
+          )}
+
           <motion.button
             onClick={() => {
               if (isFormRoute && hasUnsavedDraft) {
@@ -212,9 +265,9 @@ export default function EmployeeLayout({ children, user, onLogout }: EmployeeLay
 
               onLogout();
             }}
-            className="flex items-center w-full h-12 gap-3 px-4 rounded-md transition-colors duration-200 group text-white/65 hover:bg-white/5 hover:text-white"
+            className="flex items-center w-full h-12 gap-3 px-4 justify-start rounded-md transition-colors duration-200 group text-white/65 hover:bg-white/5 hover:text-white"
           >
-            <LogOut className="w-5 h-5 shrink-0 text-white/40 group-hover:text-white" />
+            <LogOut className="w-5 h-5 shrink-0 text-white/90 group-hover:text-white" />
             <motion.span
               animate={{
                 opacity: isSidebarExpanded ? 1 : 0,
@@ -222,7 +275,7 @@ export default function EmployeeLayout({ children, user, onLogout }: EmployeeLay
                 maxWidth: isSidebarExpanded ? 150 : 0,
               }}
               transition={labelTransition}
-              className="text-sm font-medium whitespace-nowrap overflow-hidden"
+              className="flex items-center text-sm font-medium whitespace-nowrap overflow-hidden min-w-0 leading-none"
             >
               Logout
             </motion.span>
@@ -252,15 +305,42 @@ export default function EmployeeLayout({ children, user, onLogout }: EmployeeLay
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            <Button variant="ghost" size="icon" className={topbarIconButtonClass}>
+          <div ref={topbarPanelRef} className="relative flex items-center gap-2">
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className={topbarIconButtonClass}
+              onClick={() => setActiveTopbarPanel((prev) => (prev === 'messages' ? null : 'messages'))}
+            >
               <MessagesSquare className="w-4.5 h-4.5" />
               <span className={topbarBadgeClass}>0</span>
             </Button>
-            <Button variant="ghost" size="icon" className={`${topbarIconButtonClass} ml-1`}>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className={`${topbarIconButtonClass} ml-1`}
+              onClick={() => setActiveTopbarPanel((prev) => (prev === 'notifications' ? null : 'notifications'))}
+            >
               <Bell className="w-4.5 h-4.5" />
               <span className={topbarBadgeClass}>0</span>
             </Button>
+
+            {activeTopbarPanel && (
+              <div className="absolute right-0 top-full z-30 mt-2 w-80 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl">
+                <div className="border-b border-slate-100 px-4 py-3">
+                  <p className="text-sm font-bold text-slate-800">
+                    {activeTopbarPanel === 'messages' ? 'Messages' : 'Notifications'}
+                  </p>
+                </div>
+                <div className="px-4 py-5 text-sm text-slate-500">
+                  {activeTopbarPanel === 'messages'
+                    ? 'No messages right now.'
+                    : 'No notifications right now.'}
+                </div>
+              </div>
+            )}
           </div>
         </header>
 
@@ -268,7 +348,17 @@ export default function EmployeeLayout({ children, user, onLogout }: EmployeeLay
         <main className="flex-1 overflow-y-auto p-6 md:p-8 custom-scrollbar">
           <div className="max-w-7xl mx-auto min-h-full flex flex-col">
             <EmployeeDraftGuardContext.Provider value={{ hasUnsavedDraft, setHasUnsavedDraft }}>
-              <div className="flex-1">{children}</div>
+              <div className="mb-4 md:mb-5">
+                <div className="flex items-center gap-2.5 text-[11px] md:text-xs font-bold uppercase tracking-[0.18em]">
+                  <span className="text-[#1E5EAB]">Overview</span>
+                  <span className="text-[#AFB8C5]">/</span>
+                  <span className="text-[#9AA4B2]">{currentPageName}</span>
+                </div>
+              </div>
+
+              <div key={pageTransitionKey} className="flex-1 app-page app-page-stagger">
+                <AppErrorBoundary>{children}</AppErrorBoundary>
+              </div>
               <footer className="mt-10 pt-6 border-t border-slate-200/70 text-center">
                 <p className="text-xs font-bold tracking-[0.16em] uppercase text-slate-400">
                   Business Process and Efforts Review © 2026

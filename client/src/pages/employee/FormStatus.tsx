@@ -1,6 +1,6 @@
 import { type ReactNode, useMemo, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Clock3, Search, ShieldCheck, FileText, X, MessageSquareText, CircleAlert, Loader2 } from "lucide-react";
+import { Clock3, Search, ShieldCheck, FileText, X, MessageSquareText, CircleAlert } from "lucide-react";
 import { API_ENDPOINTS } from "../../lib/config";
 import {
   type BperSubmissionRecord,
@@ -10,6 +10,7 @@ import {
   formatDateISO,
   getActiveUnderReviewReferenceId,
 } from "./bperSubmissionStorage";
+import { TablePageSkeleton } from '../../components/PortalSkeletons';
 
 export default function FormStatus() {
   const navigate = useNavigate();
@@ -84,25 +85,13 @@ export default function FormStatus() {
   const activeCommentsRecord = visibleRecords.find((record) => record.referenceId === activeCommentsRef) || null;
 
   if (isLoading) {
-    return (
-      <div className="flex h-96 items-center justify-center">
-        <div className="flex flex-col items-center gap-3">
-          <Loader2 className="h-10 w-10 animate-spin text-[#165BAA]" />
-          <span className="text-slate-500 font-semibold">Loading submissions...</span>
-        </div>
-      </div>
-    );
+    return <TablePageSkeleton rows={6} />;
   }
 
   if (!selectedRecord) {
     return (
       <div className="space-y-6 animate-in fade-in duration-500">
-        <div className="flex flex-col gap-1 mb-7">
-          <nav className="flex items-center text-[10px] font-bold text-[#165BAA] uppercase tracking-[0.15em] mb-2">
-            <span className="hover:opacity-80 cursor-pointer transition-opacity">OVERVIEW</span>
-            <span className="mx-2 text-gray-300">/</span>
-            <span className="text-gray-400">FORM STATUS</span>
-          </nav>
+        <div className="mb-7">
           <h1 className="text-3xl font-bold text-gray-900">BPER Form Status</h1>
           <p className="text-sm text-slate-500">No submitted BPER form is available yet. Submit a form first to view its status.</p>
         </div>
@@ -129,11 +118,6 @@ export default function FormStatus() {
     <div className="space-y-6 animate-in fade-in duration-500">
       <div className="flex items-start justify-between gap-4 flex-col lg:flex-row mb-7">
         <div>
-          <nav className="flex items-center text-[10px] font-bold text-[#165BAA] uppercase tracking-[0.15em] mb-2">
-            <span className="hover:opacity-80 cursor-pointer transition-opacity">OVERVIEW</span>
-            <span className="mx-2 text-gray-300">/</span>
-            <span className="text-gray-400">FORM STATUS</span>
-          </nav>
           <h1 className="text-3xl font-bold text-gray-900">BPER Form Status</h1>
           <p className="mt-2 text-sm text-slate-500 max-w-3xl">
             Track the selected submission, review its timeline, and act on any requested changes.

@@ -1,9 +1,8 @@
-import { useEffect, useMemo, useState, useCallback } from 'react';
+import { useEffect, useMemo, useState, useCallback, useRef } from 'react';
 import {
   AlertCircle,
   ChevronDown,
   ChevronRight,
-  Loader2,
   Plus,
   Search,
   X,
@@ -21,11 +20,12 @@ import {
   type Activity,
   type SearchActivity,
 } from '../../lib/api';
+import { SkeletonBlock, TablePageSkeleton } from '../../components/PortalSkeletons';
 
 const DEPARTMENTS = [
-  { id: 'All', name: 'All' },
-  { id: 'HR', name: 'HR' },
-  { id: 'Finance & Accounting', name: 'Finance & Accounts' },
+  { id: 'All', label: 'All' },
+  { id: 'HR', label: 'HR' },
+  { id: 'Finance & Accounting', label: 'Finance & Accounts' },
 ];
 
 type ExpandedState = {
@@ -42,16 +42,25 @@ export default function ProcessManagementPage() {
   const [treeData, setTreeData] = useState<TreeData>({ towers: {} });
   const [expanded, setExpanded] = useState<ExpandedState>({ towers: new Set(), processes: new Set() });
   const [isLoading, setIsLoading] = useState(true);
+  const [isContentLoading, setIsContentLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [searchResults, setSearchResults] = useState<SearchActivity[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [showModal, setShowModal] = useState(false);
+  const hasLoadedRef = useRef(false);
 
   // Load towers on department change
   useEffect(() => {
     async function loadTowers() {
-      setIsLoading(true);
+      const isFirstLoad = !hasLoadedRef.current;
+
+      if (isFirstLoad) {
+        setIsLoading(true);
+      } else {
+        setIsContentLoading(true);
+      }
+
       setError(null);
       setSearchTerm('');
       setSearchResults([]);
@@ -72,6 +81,8 @@ export default function ProcessManagementPage() {
         setError(err?.message || 'Failed to load towers');
       } finally {
         setIsLoading(false);
+        setIsContentLoading(false);
+        hasLoadedRef.current = true;
       }
     }
 
@@ -238,14 +249,7 @@ export default function ProcessManagementPage() {
   }, [treeData, searchResults]);
 
   if (isLoading) {
-    return (
-      <div className="flex h-96 items-center justify-center">
-        <div className="flex flex-col items-center gap-3">
-          <Loader2 className="h-8 w-8 animate-spin text-[#165BAA]" />
-          <p className="text-sm text-[#617C9E]">Loading process hierarchy...</p>
-        </div>
-      </div>
-    );
+    return <TablePageSkeleton rows={9} />;
   }
 
   if (error) {
@@ -284,18 +288,19 @@ export default function ProcessManagementPage() {
 
         {/* Department Tabs */}
         <div className="border-b border-[#E3EBF6] px-4 py-3">
-          <div className="flex gap-2 flex-wrap">
+          <div className="inline-flex flex-wrap gap-2 rounded-xl bg-[#F3F8FF] p-1.5">
             {DEPARTMENTS.map((dept) => (
               <button
                 key={dept.id}
                 onClick={() => setDepartment(dept.id)}
-                className={`rounded-lg px-3 py-2 text-sm font-semibold transition ${
+                disabled={isContentLoading}
+                className={`min-w-24 sm:w-40 rounded-lg border px-3 py-2 text-sm font-semibold text-center transition-all ${
                   department === dept.id
-                    ? 'bg-[#2367AE] text-white'
-                    : 'border border-[#D9E4F2] bg-white text-[#5E7594] hover:bg-[#F5F8FD]'
+                    ? 'border-[#2367AE] bg-[#2367AE] text-white shadow-sm'
+                    : 'border-[#CFE0F6] bg-white text-[#5E7594] hover:border-[#9FC0E8] hover:bg-[#F8FBFF]'
                 }`}
               >
-                [{dept.name}]
+                {dept.label}
               </button>
             ))}
           </div>
@@ -351,7 +356,7 @@ export default function ProcessManagementPage() {
           <div className="border-b border-[#E3EBF6] bg-[#F0F6FF] px-4 py-4">
             <div className="mb-3 flex items-center justify-between">
               <p className="text-sm font-bold text-[#1C334E]">{searchResults.length} result{searchResults.length !== 1 ? 's' : ''} found</p>
-              {isSearching && <Loader2 className="h-4 w-4 animate-spin text-[#165BAA]" />}
+              {isSearching && <span className="text-xs font-semibold text-[#5E7594]">Searching...</span>}
             </div>
             <div className="space-y-2 max-h-80 overflow-y-auto">
               {searchResults.map((result) => (
@@ -396,10 +401,18 @@ export default function ProcessManagementPage() {
 
         {/* Tree Browser - Only show when no search results */}
         {searchResults.length === 0 && (
-        <div className="divide-y divide-[#E3EBF6]">
+        <div
+          className={`relative divide-y divide-[#E3EBF6] transition-opacity duration-300 ${
+            isContentLoading ? 'opacity-60 pointer-events-none' : 'opacity-100'
+          }`}
+        >
           {visibleTowers.length === 0 ? (
-            <div className="px-4 py-8 text-center text-sm text-[#8AA0BA]">
-              No processes found
+            <div className="px-4 py-10 text-center">
+              <div className="mx-auto flex max-w-md flex-col items-center rounded-xl border border-dashed border-[#D9E4F2] bg-[#FBFDFF] px-6 py-8">
+                <Search className="h-7 w-7 text-[#9CB2CB]" />
+                <p className="mt-3 text-sm font-semibold text-[#5E7594]">No processes found</p>
+                <p className="mt-1 text-xs text-[#8AA0BA]">Try switching the department or clear your search term.</p>
+              </div>
             </div>
           ) : (
             visibleTowers.map((towerName) => {
@@ -689,8 +702,8 @@ function AddCustomProcessModal({ onClose, onSuccess }: { onClose: () => void; on
                 </label>
                 {isLoading ? (
                   <div className="mt-2 flex items-center gap-2">
-                    <Loader2 className="h-4 w-4 animate-spin text-[#165BAA]" />
-                    <span className="text-xs text-[#8AA0BA]">Loading...</span>
+                    <SkeletonBlock className="h-2 w-2" />
+                    <SkeletonBlock className="h-2 w-16" />
                   </div>
                 ) : showNewTower ? (
                   <div className="mt-2 space-y-2">
@@ -752,8 +765,8 @@ function AddCustomProcessModal({ onClose, onSuccess }: { onClose: () => void; on
                   </label>
                   {isLoading ? (
                     <div className="mt-2 flex items-center gap-2">
-                      <Loader2 className="h-4 w-4 animate-spin text-[#165BAA]" />
-                      <span className="text-xs text-[#8AA0BA]">Loading...</span>
+                      <SkeletonBlock className="h-2 w-2" />
+                      <SkeletonBlock className="h-2 w-16" />
                     </div>
                   ) : showNewProcess ? (
                     <div className="mt-2 space-y-2">
@@ -893,7 +906,6 @@ function AddCustomProcessModal({ onClose, onSuccess }: { onClose: () => void; on
               disabled={isSaving || !activityName.trim()}
               className="flex items-center gap-2 rounded-lg bg-[#2367AE] px-4 py-2 text-sm font-semibold text-white hover:bg-[#1a4f8a] disabled:opacity-50"
             >
-              {isSaving && <Loader2 className="h-4 w-4 animate-spin" />}
               Save Process
             </button>
           )}

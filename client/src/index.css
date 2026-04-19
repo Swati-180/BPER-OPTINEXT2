@@ -69,6 +69,18 @@
     --input: oklch(0.9 0.01 240);
     --ring: #165BAA;
     --radius: 0.5rem;
+
+    /* Global UI consistency tokens */
+    --ui-surface: #ffffff;
+    --ui-surface-muted: #f7faff;
+    --ui-border-soft: #d9e4f2;
+    --ui-shadow-card: 0 6px 16px rgba(16, 42, 80, 0.06);
+
+    /* Motion consistency tokens */
+    --motion-duration-enter: 360ms;
+    --motion-duration-interactive: 220ms;
+    --motion-duration-loading: 1100ms;
+    --motion-ease-standard: cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
 .dark {
@@ -116,3 +128,181 @@
     @apply font-sans;
     }
 }
+
+@layer utilities {
+  .app-page {
+    animation: app-reveal-down var(--motion-duration-enter) var(--motion-ease-standard);
+    will-change: opacity, transform;
+  }
+
+  .app-page-stagger > * {
+    opacity: 0;
+    animation: app-reveal-down calc(var(--motion-duration-enter) + 40ms) var(--motion-ease-standard) forwards;
+    will-change: opacity, transform;
+  }
+
+  .app-page-stagger > * > * {
+    opacity: 0;
+    animation: app-reveal-down calc(var(--motion-duration-enter) + 70ms) var(--motion-ease-standard) forwards;
+    will-change: opacity, transform;
+  }
+
+  .app-page-stagger > *:nth-child(1),
+  .app-page-stagger > * > *:nth-child(1) { animation-delay: 40ms; }
+  .app-page-stagger > *:nth-child(2),
+  .app-page-stagger > * > *:nth-child(2) { animation-delay: 95ms; }
+  .app-page-stagger > *:nth-child(3),
+  .app-page-stagger > * > *:nth-child(3) { animation-delay: 150ms; }
+  .app-page-stagger > *:nth-child(4),
+  .app-page-stagger > * > *:nth-child(4) { animation-delay: 205ms; }
+  .app-page-stagger > *:nth-child(5),
+  .app-page-stagger > * > *:nth-child(5) { animation-delay: 260ms; }
+  .app-page-stagger > *:nth-child(6),
+  .app-page-stagger > * > *:nth-child(6) { animation-delay: 315ms; }
+  .app-page-stagger > *:nth-child(7),
+  .app-page-stagger > * > *:nth-child(7) { animation-delay: 370ms; }
+  .app-page-stagger > *:nth-child(8),
+  .app-page-stagger > * > *:nth-child(8) { animation-delay: 425ms; }
+  .app-page-stagger > *:nth-child(9),
+  .app-page-stagger > * > *:nth-child(9) { animation-delay: 480ms; }
+  .app-page-stagger > *:nth-child(10),
+  .app-page-stagger > * > *:nth-child(10) { animation-delay: 535ms; }
+  .app-page-stagger > *:nth-child(11),
+  .app-page-stagger > * > *:nth-child(11) { animation-delay: 590ms; }
+  .app-page-stagger > *:nth-child(12),
+  .app-page-stagger > * > *:nth-child(12) { animation-delay: 645ms; }
+
+  .app-reveal-down {
+    animation: app-reveal-down var(--motion-duration-enter) var(--motion-ease-standard);
+  }
+
+  .app-no-reveal {
+    animation: none !important;
+  }
+
+  .app-card-surface {
+    border: 1px solid var(--ui-border-soft);
+    background: var(--ui-surface);
+    box-shadow: var(--ui-shadow-card);
+    border-radius: 1rem;
+  }
+
+  .transition-all,
+  .transition-colors,
+  .transition-transform,
+  .transition-opacity {
+    transition-duration: var(--motion-duration-interactive) !important;
+    transition-timing-function: var(--motion-ease-standard) !important;
+  }
+
+  .animate-in {
+    animation-duration: var(--motion-duration-enter) !important;
+    animation-timing-function: var(--motion-ease-standard) !important;
+  }
+
+  /* Replace circular spinner behavior with smooth top-to-bottom loading motion */
+  .animate-spin {
+    animation: app-loading-vertical var(--motion-duration-loading) var(--motion-ease-standard) infinite !important;
+  }
+
+  .app-loading-line {
+    border-radius: 999px;
+    background: #dbe6f4;
+    opacity: 0.85;
+    animation: app-loading-vertical var(--motion-duration-loading) var(--motion-ease-standard) infinite;
+  }
+  
+  .app-skeleton-line {
+    border-radius: 999px;
+    background: linear-gradient(180deg, #eaf1fb 0%, #d8e6f7 46%, #edf4fd 100%);
+    background-size: 100% 240%;
+    animation: app-skeleton-sweep 1200ms ease-in-out infinite;
+  }
+
+  .app-loading-dot {
+    display: inline-block;
+    height: 0.5rem;
+    width: 0.5rem;
+    border-radius: 999px;
+    background: #3b82f6;
+    animation: app-loading-vertical 900ms var(--motion-ease-standard) infinite;
+  }
+
+  .auth-spinner {
+    animation: auth-spinner-rotate 0.9s linear infinite;
+  }
+
+  .custom-scrollbar {
+    scrollbar-gutter: stable both-edges;
+  }
+
+  .app-stable-panel {
+    width: 100%;
+    min-width: 0;
+    overflow-x: clip;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-page,
+  .app-reveal-down,
+  .app-page-stagger > *,
+  .app-page-stagger > * > *,
+  .app-skeleton-line,
+  .app-loading-dot {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}
+
+@keyframes app-reveal-down {
+  from {
+    opacity: 0;
+    transform: translateY(-12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes app-loading-vertical {
+  0% {
+    transform: translateY(-4px);
+    opacity: 0.5;
+  }
+  50% {
+    transform: translateY(3px);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-4px);
+    opacity: 0.5;
+  }
+}
+
+@keyframes app-skeleton-sweep {
+  0% {
+    background-position: 50% 0%;
+    opacity: 0.68;
+  }
+  50% {
+    background-position: 50% 55%;
+    opacity: 1;
+  }
+  100% {
+    background-position: 50% 100%;
+    opacity: 0.68;
+  }
+}
+
+@keyframes auth-spinner-rotate {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+

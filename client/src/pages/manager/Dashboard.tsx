@@ -5,7 +5,6 @@ import {
   Check,
   Clock3,
   FileCheck2,
-  Loader2,
   TrendingUp,
   Users,
   X,
@@ -18,6 +17,7 @@ import {
 } from '../../lib/api';
 import { useNavigate } from 'react-router-dom';
 import { formatDateISO } from '../employee/bperSubmissionStorage';
+import { DashboardSkeleton, InlineUpdatingBadge } from '../../components/PortalSkeletons';
 
 type Trend = 'up' | 'steady' | 'down';
 
@@ -110,10 +110,15 @@ export default function Dashboard() {
   const [fteConsolidation, setFteConsolidation] = useState<FteConsolidationReport | null>(null);
   const [fitmentSummary, setFitmentSummary] = useState<FitmentSummaryReport | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function loadReports() {
-    setIsLoading(true);
+  async function loadReports(blocking = false) {
+    if (blocking || !dashboard) {
+      setIsLoading(true);
+    } else {
+      setIsRefreshing(true);
+    }
     setError(null);
     try {
       const [dashboardData, fteSummaryData, consolidationData, fitmentData] = await Promise.all([
@@ -131,20 +136,21 @@ export default function Dashboard() {
       setError(err?.message || 'Failed to load dashboard reports.');
     } finally {
       setIsLoading(false);
+      setIsRefreshing(false);
     }
   }
 
   useEffect(() => {
-    loadReports();
+    loadReports(true);
   }, []);
 
   useEffect(() => {
     const refreshOnDataUpdate = () => {
-      loadReports();
+      loadReports(false);
     };
 
     const refreshInterval = window.setInterval(() => {
-      loadReports();
+      loadReports(false);
     }, 30000);
 
     window.addEventListener('bper:data-updated', refreshOnDataUpdate as EventListener);
@@ -226,11 +232,7 @@ export default function Dashboard() {
   const fitmentCoverage = safeNumber(fitmentSummary?.summary?.coveragePct);
 
   if (isLoading) {
-    return (
-      <div className="flex h-screen items-center justify-center bg-[#165BAA]/5">
-        <Loader2 className="h-10 w-10 animate-spin text-[#165BAA]" />
-      </div>
-    );
+    return <DashboardSkeleton />;
   }
 
   if (error) {
@@ -266,9 +268,12 @@ export default function Dashboard() {
           </div>
 
           <div className="flex flex-col gap-1.5 text-[11px] font-semibold md:items-end">
-            <span className="inline-flex items-center rounded-xl border border-[#D6E2F0] bg-[#F7FAFE] px-3 py-1.5 text-[#5F7898]">
-              Last Updated: {formatDateISO(dashboard?.generatedAt || new Date().toISOString())}
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="inline-flex items-center rounded-xl border border-[#D6E2F0] bg-[#F7FAFE] px-3 py-1.5 text-[#5F7898]">
+                Last Updated: {formatDateISO(dashboard?.generatedAt || new Date().toISOString())}
+              </span>
+              <InlineUpdatingBadge show={isRefreshing} />
+            </div>
             <span
               className={`inline-flex items-center rounded-xl border px-3 py-1.5 ${
                 windowStatus?.isOpen

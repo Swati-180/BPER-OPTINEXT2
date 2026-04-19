@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
-import { Search, Plus, Trash2, Edit2, Check, X, Loader2, ChevronRight, LayoutGrid } from 'lucide-react';
+import { Search, Plus, Trash2, Edit2, Check, X, ChevronRight, LayoutGrid } from 'lucide-react';
 import { apiFetch } from '../../lib/api';
+import { InlineLoadingBlock } from '../../components/PortalSkeletons';
 
 interface TaxonomyItem {
     _id: string;
@@ -16,6 +17,8 @@ export default function TaxonomyManagement() {
     const [isLoading, setIsLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
     const [isAdding, setIsAdding] = useState(false);
+    const [editingId, setEditingId] = useState<string | null>(null);
+    const [formError, setFormError] = useState('');
     
     // Form state for new/edit
     const [formData, setFormData] = useState({
@@ -51,14 +54,22 @@ export default function TaxonomyManagement() {
     );
 
     async function handleSave() {
-        if (!formData.majorProcess || !formData.process) return;
+        if (!formData.majorProcess || !formData.process) {
+            setFormError('Major Process and Process Grouping are required.');
+            return;
+        }
+
+        setFormError('');
         
         setIsLoading(true);
         try {
             const subProcesses = formData.subProcessesString.split(',').map(s => s.trim()).filter(s => s.length > 0);
-            
-            const res = await apiFetch('/taxonomy/create', {
-                method: 'POST',
+
+            const endpoint = editingId ? `/taxonomy/${editingId}` : '/taxonomy/create';
+            const method = editingId ? 'PUT' : 'POST';
+
+            const res = await apiFetch(endpoint, {
+                method,
                 body: JSON.stringify({
                     majorProcess: formData.majorProcess,
                     process: formData.process,
@@ -69,11 +80,49 @@ export default function TaxonomyManagement() {
 
             if (res.ok) {
                 setIsAdding(false);
+                setEditingId(null);
                 setFormData({ majorProcess: '', process: '', subProcessesString: '', department: 'All Departments' });
                 fetchTaxonomy();
+            } else {
+                const data = await res.json().catch(() => null);
+                setFormError(data?.message || 'Failed to save taxonomy hierarchy.');
             }
         } catch (err) {
             console.error('Failed to save taxonomy:', err);
+            setFormError('Failed to save taxonomy hierarchy.');
+        } finally {
+            setIsLoading(false);
+        }
+    }
+
+    function handleEdit(item: TaxonomyItem) {
+        setIsAdding(true);
+        setEditingId(item._id);
+        setFormError('');
+        setFormData({
+            majorProcess: item.majorProcess,
+            process: item.process,
+            subProcessesString: (item.subProcesses || []).join(', '),
+            department: item.department || 'All Departments',
+        });
+    }
+
+    async function handleDelete(item: TaxonomyItem) {
+        const confirmed = window.confirm(`Delete taxonomy "${item.majorProcess} / ${item.process}"?`);
+        if (!confirmed) return;
+
+        setIsLoading(true);
+        try {
+            const res = await apiFetch(`/taxonomy/${item._id}`, { method: 'DELETE' });
+            if (res.ok) {
+                fetchTaxonomy();
+            } else {
+                const data = await res.json().catch(() => null);
+                alert(data?.message || 'Failed to delete taxonomy.');
+            }
+        } catch (err) {
+            console.error('Failed to delete taxonomy:', err);
+            alert('Failed to delete taxonomy.');
         } finally {
             setIsLoading(false);
         }
@@ -87,11 +136,16 @@ export default function TaxonomyManagement() {
                     <p className="text-sm text-[#647D9D]">Manage the global organizational process hierarchy and AI training data.</p>
                 </div>
                 <button 
-                    onClick={() => setIsAdding(true)}
+                    onClick={() => {
+                        setIsAdding(true);
+                        setEditingId(null);
+                        setFormError('');
+                        setFormData({ majorProcess: '', process: '', subProcessesString: '', department: 'All Departments' });
+                    }}
                     className="inline-flex items-center gap-2 rounded-xl bg-[#1A5BA7] px-4 py-2.5 text-sm font-bold text-white shadow-lg shadow-blue-900/10 transition-transform hover:scale-[1.02] active:scale-[0.98]"
                 >
                     <Plus className="h-4 w-4" />
-                    Add Hierarchy
+                    {editingId ? 'Edit Hierarchy' : 'Add Hierarchy'}
                 </button>
             </header>
 
@@ -138,16 +192,29 @@ export default function TaxonomyManagement() {
                         </div>
                     </div>
                     <div className="mt-6 flex justify-end gap-3">
-                        <button onClick={() => setIsAdding(false)} className="px-4 py-2 text-sm font-bold text-[#647D9D] hover:text-[#0F2649]">Cancel</button>
-                        <button onClick={handleSave} className="rounded-xl bg-[#1A5BA7] px-6 py-2 text-sm font-bold text-white">Save Hierarchy</button>
+                        <button
+                            onClick={() => {
+                                setIsAdding(false);
+                                setEditingId(null);
+                                setFormError('');
+                                setFormData({ majorProcess: '', process: '', subProcessesString: '', department: 'All Departments' });
+                            }}
+                            className="px-4 py-2 text-sm font-bold text-[#647D9D] hover:text-[#0F2649]"
+                        >
+                            Cancel
+                        </button>
+                        <button onClick={handleSave} className="rounded-xl bg-[#1A5BA7] px-6 py-2 text-sm font-bold text-white">{editingId ? 'Update Hierarchy' : 'Save Hierarchy'}</button>
                     </div>
+                    {formError && (
+                        <p className="mt-3 text-sm font-semibold text-red-600">{formError}</p>
+                    )}
                 </div>
             )}
 
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
                 {isLoading ? (
-                    <div className="col-span-2 flex h-64 items-center justify-center rounded-2xl border border-[#D9E4F2] bg-white">
-                        <Loader2 className="h-10 w-10 animate-spin text-[#1A5BA7]" />
+                    <div className="col-span-2">
+                        <InlineLoadingBlock className="rounded-2xl p-6" />
                     </div>
                 ) : filteredTaxonomy.length === 0 ? (
                     <div className="col-span-2 flex h-64 flex-col items-center justify-center rounded-2xl border-2 border-dashed border-[#D9E4F2] bg-white text-[#647D9D]">
@@ -170,8 +237,18 @@ export default function TaxonomyManagement() {
                                     </div>
                                 </div>
                                 <div className="flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <button className="rounded-lg p-2 text-[#647D9D] hover:bg-slate-50 hover:text-blue-600"><Edit2 size={16} /></button>
-                                    <button className="rounded-lg p-2 text-[#647D9D] hover:bg-red-50 hover:text-red-500"><Trash2 size={16} /></button>
+                                    <button
+                                        onClick={() => handleEdit(item)}
+                                        className="rounded-lg p-2 text-[#647D9D] hover:bg-slate-50 hover:text-blue-600"
+                                    >
+                                        <Edit2 size={16} />
+                                    </button>
+                                    <button
+                                        onClick={() => handleDelete(item)}
+                                        className="rounded-lg p-2 text-[#647D9D] hover:bg-red-50 hover:text-red-500"
+                                    >
+                                        <Trash2 size={16} />
+                                    </button>
                                 </div>
                             </div>
 

@@ -3,6 +3,7 @@ import { Check, Copy, Link2, MailPlus, Search, UserPlus, X } from 'lucide-react'
 import { API_ENDPOINTS } from '../../lib/config';
 import { apiFetch } from '../../lib/api';
 import { getInviteSignupLink, loadAuthUser } from '../../lib/authStorage';
+import { TableLoadingRow } from '../../components/PortalSkeletons';
 
 type UserRole = 'Employee' | 'Manager';
 type UserStatus = 'Active' | 'Inactive';
@@ -95,12 +96,12 @@ export default function UsersPage() {
 			if (response.ok) {
 				// Map backend users to frontend UserRow structure
 				const mapped: UserRow[] = data.map((u: any) => ({
-					employeeId: u.employeeId || 'NA',
-					name: u.name,
+					employeeId: u.employeeId || '-',
+					name: u.name || 'Unknown User',
 					email: u.email,
 					client: u.client || 'BU011',
-					band: u.band || 'NA',
-					designation: u.designation || 'NA',
+					band: u.band || 'B1',
+					designation: u.designation || 'Employee',
 					role: (u.role.charAt(0).toUpperCase() + u.role.slice(1)) as UserRole,
 					status: u.isActive ? 'Active' : 'Inactive'
 				}));
@@ -318,14 +319,7 @@ export default function UsersPage() {
 							</thead>
 							<tbody>
 								{isLoading ? (
-									<tr>
-										<td colSpan={7} className="px-4 py-12 text-center text-sm text-[#6B829E]">
-											<div className="flex flex-col items-center gap-3">
-												<div className="h-6 w-6 animate-spin rounded-full border-2 border-[#1E5EAB] border-t-transparent"></div>
-												<span>Loading workforce ledger...</span>
-											</div>
-										</td>
-									</tr>
+									<TableLoadingRow colSpan={7} />
 								) : filteredUsers.length === 0 ? (
 									<tr>
 										<td colSpan={7} className="px-4 py-7 text-center text-xs text-[#6B829E]">

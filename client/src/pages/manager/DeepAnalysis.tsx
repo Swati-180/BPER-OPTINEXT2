@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Loader2, AlertCircle, Download } from 'lucide-react';
+import { AlertCircle, Download } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 import {
   getFteAnalysisReport,
@@ -8,6 +8,7 @@ import {
   getUtilizationAnalysisReport,
   exportToCSV,
 } from '@/src/lib/api';
+import { InlineLoadingBlock } from '../../components/PortalSkeletons';
 
 type TabType = 'fte' | 'consolidation' | 'fitment' | 'utilization';
 type FteTabType = 'overview' | 'tower' | 'department' | 'activities';
@@ -465,8 +466,8 @@ export default function DeepAnalysis() {
                 </button>
               </div>
             ) : fteLoading ? (
-              <div className="flex justify-center py-12">
-                <Loader2 className="w-8 h-8 animate-spin text-[#165BAA]" />
+              <div className="py-6">
+                <InlineLoadingBlock className="mx-auto max-w-xl" />
               </div>
             ) : !fteReport ? (
               <div className="bg-[#F7FAFE] border border-[#D9E4F2] rounded-2xl p-8 text-center">
@@ -497,8 +498,8 @@ export default function DeepAnalysis() {
                   </div>
                   <div className="rounded-2xl border border-[#D9E4F2] bg-white p-5 shadow-[0_4px_12px_rgba(16,42,80,0.06)] hover:shadow-[0_6px_16px_rgba(16,42,80,0.1)] transition-all">
                     <p className="text-xs font-bold text-[#637F9F] uppercase tracking-wide">Departments</p>
-                    <p className="text-3xl font-bold text-[#2367AE] mt-3">{fteReport.summary.departments}</p>
-                    <p className="text-xs text-[#8898AF] mt-2">Org coverage</p>
+                    <p className="text-3xl font-bold text-[#2367AE] mt-3">{fteReport.summary.departments ?? fteReport.tabs.byDepartment.length}</p>
+                    <p className="text-xs text-[#8898AF] mt-2">Active departments</p>
                   </div>
                 </div>
 
@@ -672,8 +673,8 @@ export default function DeepAnalysis() {
                 </div>
               </div>
             ) : consolidationLoading ? (
-              <div className="flex justify-center py-16">
-                <Loader2 className="w-10 h-10 animate-spin text-[#165BAA]" />
+              <div className="py-6">
+                <InlineLoadingBlock className="mx-auto max-w-xl" />
               </div>
             ) : !consolidationReport ? (
               <div className="bg-[#F7FAFE] border border-[#D9E4F2] rounded-2xl p-8 text-center">
@@ -847,8 +848,8 @@ export default function DeepAnalysis() {
                 </div>
               </div>
             ) : fitmentLoading ? (
-              <div className="flex justify-center py-16">
-                <Loader2 className="w-10 h-10 animate-spin text-[#165BAA]" />
+              <div className="py-6">
+                <InlineLoadingBlock className="mx-auto max-w-xl" />
               </div>
             ) : !fitmentReport ? (
               <div className="bg-[#F7FAFE] border border-[#D9E4F2] rounded-2xl p-8 text-center">
@@ -1058,8 +1059,8 @@ export default function DeepAnalysis() {
                 </div>
               </div>
             ) : utilizationLoading ? (
-              <div className="flex justify-center py-16">
-                <Loader2 className="w-10 h-10 animate-spin text-[#165BAA]" />
+              <div className="py-6">
+                <InlineLoadingBlock className="mx-auto max-w-xl" />
               </div>
             ) : !utilizationReport ? (
               <div className="bg-[#F7FAFE] border border-[#D9E4F2] rounded-2xl p-8 text-center">
@@ -1092,8 +1093,8 @@ export default function DeepAnalysis() {
                   </div>
                   <div className="rounded-2xl border border-[#D9E4F2] bg-white p-5 shadow-[0_4px_12px_rgba(16,42,80,0.06)] hover:shadow-[0_6px_16px_rgba(16,42,80,0.1)] transition-all">
                     <p className="text-xs font-bold text-[#637F9F] uppercase tracking-wide">Departments</p>
-                    <p className="text-3xl font-bold text-[#2367AE] mt-3">{utilizationReport.summary.departments}</p>
-                    <p className="text-xs text-[#8898AF] mt-2">Org coverage</p>
+                    <p className="text-3xl font-bold text-[#2367AE] mt-3">{utilizationReport.summary.departments ?? utilizationReport.tabs.byDepartment.length}</p>
+                    <p className="text-xs text-[#8898AF] mt-2">Active departments</p>
                   </div>
                 </div>
 

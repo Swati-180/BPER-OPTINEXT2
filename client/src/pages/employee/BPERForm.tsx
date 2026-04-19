@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Check, CheckCircle2, Download, ExternalLink, X, Loader2 } from "lucide-react";
+import { Check, CheckCircle2, Download, ExternalLink, X } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Step1 } from "./Step1";
 import { Step2 } from "./Step2";
@@ -9,6 +9,7 @@ import { demoEmployeeProfile } from "./demoEmployeeData";
 import { buildBperSubmission, saveBperSubmission, loadBperDraft, saveBperDraft } from "./bperSubmissionStorage";
 import { API_ENDPOINTS } from '../../lib/config';
 import { useEmployeeDraftGuard } from "../../layouts/EmployeeLayout";
+import { FormPageSkeleton } from '../../components/PortalSkeletons';
 
 export default function BPERForm() {
   const navigate = useNavigate();
@@ -223,21 +224,12 @@ export default function BPERForm() {
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
-      <div className="flex flex-col gap-1 mb-7">
-        <nav className="flex items-center text-[10px] font-bold text-[#165BAA] uppercase tracking-[0.15em] mb-2">
-          <span className="hover:opacity-80 cursor-pointer transition-opacity">OVERVIEW</span>
-          <span className="mx-2 text-gray-300">/</span>
-          <span className="text-gray-400">BPER FORM</span>
-        </nav>
-        <div className="space-y-2">
-          <h1 className="text-3xl font-bold text-gray-900">BPER Form</h1>
-        </div>
+      <div className="mb-7">
+        <h1 className="text-3xl font-bold text-gray-900">BPER Form</h1>
       </div>
 
       {isLoadingProfile ? (
-        <div className="flex h-64 items-center justify-center rounded-xl border border-slate-200 bg-white shadow-sm">
-          <Loader2 className="h-8 w-8 animate-spin text-blue-700" />
-        </div>
+        <FormPageSkeleton />
       ) : (
       <>
       <div className="w-full relative shadow-sm rounded-md">

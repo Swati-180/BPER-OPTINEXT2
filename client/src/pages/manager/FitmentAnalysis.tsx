@@ -2,13 +2,13 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   AlertCircle,
   Download,
-  Loader2,
   BarChart3,
   Users,
   TrendingUp,
   Award,
 } from 'lucide-react';
 import { getFitmentAnalysisReport, exportToCSV } from '../../lib/api';
+import { DashboardSkeleton } from '../../components/PortalSkeletons';
 
 type TabType = 'overview' | 'byLabel' | 'allProfiles';
 
@@ -139,16 +139,7 @@ export default function FitmentAnalysisPage() {
   }
 
   if (isLoading && !report) {
-    return (
-      <div className="space-y-4 animate-in fade-in duration-500">
-        <section className="rounded-2xl border border-[#D9E4F2] bg-white p-5 shadow-[0_6px_18px_rgba(16,42,80,0.08)]">
-          <div className="flex items-center gap-3">
-            <Loader2 className="h-5 w-5 animate-spin text-[#1E5EAB]" />
-            <span className="text-sm font-medium text-[#5D789A]">Loading fitment analysis...</span>
-          </div>
-        </section>
-      </div>
-    );
+    return <DashboardSkeleton />;
   }
 
   if (error) {

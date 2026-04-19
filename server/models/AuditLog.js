@@ -8,21 +8,11 @@ const auditLogSchema = new mongoose.Schema({
   },
   action: { 
     type: String, 
-    required: true,
-    enum: [
-      'TAXONOMY_SAVED', 
-      'TAXONOMY_DELETED', 
-      'SUBMISSION_REVIEWED', 
-      'USER_ACTIVATED', 
-      'USER_DEACTIVATED',
-      'USER_ROLE_CHANGED',
-      'FORM_WINDOW_OVERRIDE'
-    ]
+    required: true
   },
   targetType: { 
     type: String, 
-    required: true,
-    enum: ['Taxonomy', 'WDTSubmission', 'User', 'SystemConfig']
+    required: true
   },
   targetId: { type: String, required: true },
   description: { type: String },

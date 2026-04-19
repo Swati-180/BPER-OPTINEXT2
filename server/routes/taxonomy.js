@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const Taxonomy = require('../models/Taxonomy');
 const verifyToken = require('../middleware/verifyToken');
-const { mapActivity, createTaxonomy } = require('../controllers/taxonomyController');
+const { mapActivity, createTaxonomy, updateTaxonomy, deleteTaxonomy } = require('../controllers/taxonomyController');
 
 router.get('/processes', verifyToken, async (req, res) => {
   try {
@@ -26,5 +26,7 @@ router.get('/processes', verifyToken, async (req, res) => {
 
 router.post('/map', verifyToken, mapActivity);
 router.post('/create', verifyToken, createTaxonomy);
+router.put('/:id', verifyToken, updateTaxonomy);
+router.delete('/:id', verifyToken, deleteTaxonomy);
 
 module.exports = router;

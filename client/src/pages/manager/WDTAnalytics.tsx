@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
-import { AlertCircle, BarChart3, BriefcaseBusiness, Clock3, Filter, Layers3, Loader2, UserRound } from 'lucide-react';
+import { AlertCircle, BarChart3, BriefcaseBusiness, Clock3, Filter, Layers3, UserRound } from 'lucide-react';
 import { getUtilizationReport } from '../../lib/api';
 import { formatDateISO } from '../employee/bperSubmissionStorage';
+import { DashboardSkeleton } from '../../components/PortalSkeletons';
 
 type DepartmentFilter = 'All Departments' | string;
 
@@ -114,11 +115,7 @@ export default function WDTAnalyticsPage() {
   const supportPercent = coreSupportTotal === 0 ? 0 : (supportHours / coreSupportTotal) * 100;
 
   if (isLoading) {
-    return (
-      <div className="flex h-96 items-center justify-center rounded-2xl border border-[#D9E4F2] bg-white">
-        <Loader2 className="h-10 w-10 animate-spin text-[#1A5BA7]" />
-      </div>
-    );
+    return <DashboardSkeleton />;
   }
 
   if (error) {

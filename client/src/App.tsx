@@ -11,7 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { motion, AnimatePresence } from 'motion/react';
-import { AlertCircle, Loader2, Eye, EyeOff } from 'lucide-react';
+import { AlertCircle, Eye, EyeOff, Loader2 } from 'lucide-react';
 
 // Layouts & Components
 import EmployeeLayout from './layouts/EmployeeLayout';
@@ -19,7 +19,6 @@ import ManagerLayout from './layouts/ManagerLayout';
 import ProtectedRoute from './components/ProtectedRoute';
 import PortalSelectionPage from './pages/PortalSelection';
 import InviteSignupPage from './pages/InviteSignup';
-import EmployeeLoginPage from './pages/EmployeeLogin';
 
 // Pages
 import EmployeeDashboard from './pages/employee/Dashboard';
@@ -33,9 +32,7 @@ import ManagerForms from './pages/manager/Forms';
 import ManagerWDTAnalytics from './pages/manager/WDTAnalytics';
 import ManagerSixBySixAnalysis from './pages/manager/SixBySixAnalysis';
 import DeepAnalysis from './pages/manager/DeepAnalysis';
-import ProcessManagementPage from './pages/manager/ProcessManagementPage';
-import TaxonomyManagement from './pages/manager/TaxonomyManagement';
-import AuditLogs from './pages/manager/AuditLogs';
+import ProcessOperationsHub from './pages/manager/ProcessOperationsHub';
 import PersonalProfile from './pages/manager/PersonalProfile';
 
 import Unauthorized from './pages/Unauthorized';
@@ -118,13 +115,13 @@ function LoginPage({ onLogin }: { onLogin: (user: AppAuthUser) => void }) {
         window.localStorage.setItem('bper.auth.token', data.token);
       }
       
-      if (nextUser.role === 'employee') {
-        throw new Error('This portal is for Managers only. Employees must login using their dedicated URL.');
-      }
-      
       saveAuthUser(nextUser);
       onLogin(nextUser);
-      navigate('/choose-portal', { replace: true });
+      if (nextUser.role === 'employee') {
+        navigate('/employee/dashboard', { replace: true });
+      } else {
+        navigate('/choose-portal', { replace: true });
+      }
     } catch (err: any) {
       setGeneralError(err.message || 'Invalid credentials. Please check your email and password.');
     } finally {
@@ -225,21 +222,24 @@ function LoginPage({ onLogin }: { onLogin: (user: AppAuthUser) => void }) {
                 className="w-full h-12 text-base font-bold bg-[#165BAA] hover:bg-[#124a8a] shadow-lg transition-all duration-200 active:scale-[0.98] rounded-lg"
               >
                 {isLoading ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Authenticating...
-                  </>
+                  <span className="inline-flex items-center gap-2">
+                    <Loader2 className="h-4 w-4 auth-spinner" />
+                    Authenticating
+                  </span>
                 ) : (
                   'Sign In'
                 )}
               </Button>
 
-              <p className="text-center text-sm text-[#7A7A7A]">
-                Don&apos;t Have An Account?{' '}
-                <Link to="/auth/signup" className="font-semibold text-[#3C45C6] hover:underline">
-                  Register Now.
-                </Link>
-              </p>
+              <div className="text-center space-y-2">
+                <p className="text-sm text-[#7A7A7A]">
+                  Don&apos;t Have An Account?{' '}
+                  <Link to="/auth/signup" className="font-semibold text-[#3C45C6] hover:underline">
+                    Register Now.
+                  </Link>
+                </p>
+                <p className="text-xs text-[#8A97AA]">Employees need a manager invite link for account creation.</p>
+              </div>
             </form>
           </CardContent>
         </Card>
@@ -296,7 +296,7 @@ export default function App() {
         />
         <Route 
           path="/auth/login/employee" 
-          element={<EmployeeLoginPage onLogin={handleLogin} />} 
+          element={<Navigate to="/auth/login" replace />} 
         />
         <Route path="/auth/signup" element={<InviteSignupPage onLogin={handleLogin} />} />
         <Route path="/choose-portal" element={<ManagerChoosePortalRoute user={user} />} />
@@ -356,9 +356,10 @@ export default function App() {
                   <Route path="wdt-analytics" element={<ManagerWDTAnalytics />} />
                   <Route path="6x6-analysis" element={<ManagerSixBySixAnalysis />} />
                   <Route path="deep-analysis" element={<DeepAnalysis />} />
-                                    <Route path="process-management" element={<ProcessManagementPage />} />
-                  <Route path="taxonomy" element={<TaxonomyManagement />} />
-                  <Route path="audit-logs" element={<AuditLogs />} />
+                  <Route path="process-operations" element={<ProcessOperationsHub />} />
+                  <Route path="process-management" element={<Navigate to="/manager/process-operations?tab=process" replace />} />
+                  <Route path="taxonomy" element={<Navigate to="/manager/process-operations?tab=taxonomy" replace />} />
+                  <Route path="audit-logs" element={<Navigate to="/manager/process-operations?tab=audit" replace />} />
                   <Route path="my-profile" element={<PersonalProfile />} />
                   <Route path="*" element={<Navigate to="dashboard" replace />} />
                 </Routes>
