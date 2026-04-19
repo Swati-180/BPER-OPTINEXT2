@@ -130,7 +130,7 @@ export default function EmployeeLayout({ children, user, onLogout }: EmployeeLay
         animate={isSidebarExpanded ? 'open' : 'closed'}
         variants={sidebarVariants}
         transition={sidebarTransition}
-        className="bg-[#001529] text-white flex flex-col shadow-xl z-20 relative border-r border-white/10 flex-shrink-0"
+        className="bg-[#001529] text-white flex flex-col shadow-xl z-20 relative border-r border-white/10 shrink-0"
         onMouseEnter={() => {
           if (!isSidebarOpen) setIsSidebarHovered(true);
         }}
@@ -400,7 +400,7 @@ export default function EmployeeLayout({ children, user, onLogout }: EmployeeLay
 
 function LeaveWarningModal({ onStay, onLeave, title, message }: { onStay: () => void; onLeave: () => void; title: string; message: string }) {
   return (
-    <div className="fixed inset-0 z-50 bg-slate-900/45 backdrop-blur-sm flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-50 bg-slate-900/45 flex items-center justify-center p-4">
       <div className="w-full max-w-xl overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
         <div className="flex items-center justify-between border-b border-slate-100 bg-linear-to-r from-blue-50 to-white px-6 py-5">
           <div>

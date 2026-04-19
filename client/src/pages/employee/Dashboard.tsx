@@ -87,23 +87,21 @@ export default function Dashboard() {
     async function init() {
       setIsLoading(true);
       try {
-        // Fetch Profile
-        const profileRes = await apiFetch('/auth/me');
+        const [profileRes, subsData, windowRes] = await Promise.all([
+          apiFetch('/auth/me'),
+          loadBperSubmissions(),
+          apiFetch('/wdt/window-status'),
+        ]);
+
         const profileData = await profileRes.json();
-        
+
         if (profileRes.ok) {
           setProfile(profileData);
-          
-          // Fetch Submissions
-          const subsData = await loadBperSubmissions();
-          // Filter by real employeeId
           setSubmissions(subsData.filter((item) => item.employee.employeeId === profileData.employeeId));
+        }
 
-          // Fetch Window Status
-          const windowRes = await apiFetch('/wdt/window-status');
-          if (windowRes.ok) {
-            setWindowStatus(await windowRes.json());
-          }
+        if (windowRes.ok) {
+          setWindowStatus(await windowRes.json());
         }
       } catch (error) {
         console.error('Dashboard init failed:', error);

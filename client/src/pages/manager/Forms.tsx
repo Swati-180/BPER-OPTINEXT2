@@ -55,12 +55,15 @@ export default function FormsPage() {
 		async function init() {
 			setIsLoading(true);
 			try {
-				const profileRes = await apiFetch('/auth/me');
+				const [profileRes, subsData] = await Promise.all([
+					apiFetch('/auth/me'),
+					loadBperSubmissions(),
+				]);
+
 				if (profileRes.ok) {
 					const profileData = await profileRes.json();
 					setManagerProfile(profileData);
 					
-					// Fetch pending users if admin/manager
 					if (profileData.role === 'admin' || profileData.userType === 'manager') {
 						const usersRes = await apiFetch('/auth/users');
 						if (usersRes.ok) {
@@ -76,8 +79,6 @@ export default function FormsPage() {
 					}
 				}
 
-				// Fetch Submissions
-				const subsData = await loadBperSubmissions();
 				setAllSubmissions(subsData);
 			} catch (error) {
 				console.error('Forms init failed:', error);
@@ -493,7 +494,7 @@ export default function FormsPage() {
 			)}
 
 			{isReviewModalOpen && (
-				<div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm">
+				<div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">
 					<div className="w-full max-w-lg rounded-2xl border border-[#DDE7F3] bg-white shadow-2xl">
 						<div className="flex items-center justify-between border-b border-[#E1EAF6] px-6 py-4">
 							<h3 className="text-xl font-bold text-[#102846]">Confirm {reviewStatus}</h3>

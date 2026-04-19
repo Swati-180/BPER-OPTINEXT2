@@ -1,5 +1,6 @@
 import type { EmployeeSnapshot, WdtPayload } from "./formTypes";
 import { demoEmployeeProfile } from "./demoEmployeeData";
+import { API_BASE_URL } from "../../lib/config";
 
 export type BperSubmissionStatus = "Under Review" | "Approved" | "Changes Requested";
 
@@ -28,6 +29,12 @@ export interface BperSubmissionRecord {
 const STORAGE_KEY = "bper.employee.submissions";
 const ACTIVE_UNDER_REVIEW_KEY = "bper.employee.activeUnderReviewRef";
 const DRAFT_KEY = "bper.employee.formDraft";
+
+async function readJson<T>(response: Response): Promise<T | null> {
+  const contentType = response.headers.get('content-type') || '';
+  if (!contentType.includes('application/json')) return null;
+  return response.json().catch(() => null);
+}
 
 function emitDataUpdatedEvent() {
   if (typeof window === 'undefined') return;
@@ -131,10 +138,10 @@ export function buildBperSubmission(payload: WdtPayload, profile?: EmployeeSnaps
 export async function loadBperSubmissions(): Promise<BperSubmissionRecord[]> {
   try {
     const token = localStorage.getItem('bper.auth.token');
-    const response = await fetch(`${import.meta.env.VITE_API_URL}/api/wdt/submissions`, {
+    const response = await fetch(`${API_BASE_URL}/api/wdt/submissions`, {
       headers: { 'Authorization': `Bearer ${token}` }
     });
-    const data = await response.json();
+    const data = await readJson<BperSubmissionRecord[]>(response);
     return response.ok ? data : [];
   } catch (error) {
     console.error('Failed to load submissions:', error);
@@ -145,7 +152,7 @@ export async function loadBperSubmissions(): Promise<BperSubmissionRecord[]> {
 export async function saveBperSubmission(record: BperSubmissionRecord) {
   try {
     const token = localStorage.getItem('bper.auth.token');
-    const response = await fetch(`${import.meta.env.VITE_API_URL}/api/wdt/submit`, {
+    const response = await fetch(`${API_BASE_URL}/api/wdt/submit`, {
       method: 'POST',
       headers: { 
         'Content-Type': 'application/json',
@@ -155,9 +162,11 @@ export async function saveBperSubmission(record: BperSubmissionRecord) {
     });
     
     if (response.ok) {
-      const data = await response.json();
+      const data = await readJson<{ referenceId?: string }>(response);
       if (typeof window !== 'undefined') {
-        window.localStorage.setItem(ACTIVE_UNDER_REVIEW_KEY, data.referenceId);
+        if (data?.referenceId) {
+          window.localStorage.setItem(ACTIVE_UNDER_REVIEW_KEY, data.referenceId);
+        }
       }
       emitDataUpdatedEvent();
       return data;
@@ -201,7 +210,7 @@ export async function applyManagerReviewToSubmission(input: {
 }) {
   try {
     const token = localStorage.getItem('bper.auth.token');
-    const response = await fetch(`${import.meta.env.VITE_API_URL}/api/wdt/submissions/${input.referenceId}`, {
+    const response = await fetch(`${API_BASE_URL}/api/wdt/submissions/${input.referenceId}`, {
       method: 'PATCH',
       headers: { 
         'Content-Type': 'application/json',
@@ -216,7 +225,7 @@ export async function applyManagerReviewToSubmission(input: {
     
     if (response.ok) {
       clearActiveUnderReviewReferenceId();
-      const updated = await response.json();
+      const updated = await readJson<BperSubmissionRecord>(response);
       emitDataUpdatedEvent();
       return updated;
     }

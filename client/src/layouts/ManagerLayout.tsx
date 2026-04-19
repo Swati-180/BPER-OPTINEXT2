@@ -87,7 +87,7 @@ export default function ManagerLayout({ children, user, onLogout }: ManagerLayou
         animate={isSidebarExpanded ? 'open' : 'closed'}
         variants={sidebarVariants}
         transition={sidebarTransition}
-        className="bg-[#001529] text-white flex flex-col shadow-xl z-20 relative border-r border-white/10 flex-shrink-0"
+        className="bg-[#001529] text-white flex flex-col shadow-xl z-20 relative border-r border-white/10 shrink-0"
         onMouseEnter={() => {
           if (!isSidebarOpen) setIsSidebarHovered(true);
         }}
@@ -299,7 +299,7 @@ export default function ManagerLayout({ children, user, onLogout }: ManagerLayou
         </header>
 
         {/* Page Content */}
-        <main className="flex-1 overflow-y-auto p-6 md:p-8 custom-scrollbar">
+        <main id="manager-content-root" className="relative flex-1 overflow-y-auto p-6 md:p-8 custom-scrollbar">
           <div className="max-w-7xl mx-auto min-h-full flex flex-col">
             <div className="mb-4 md:mb-5">
               <div className="flex items-center gap-2.5 text-[11px] md:text-xs font-bold uppercase tracking-[0.18em]">

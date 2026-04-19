@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, useCallback, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import {
   AlertCircle,
   ChevronDown,
@@ -49,6 +50,7 @@ export default function ProcessManagementPage() {
   const [isSearching, setIsSearching] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const hasLoadedRef = useRef(false);
+  const modalRoot = typeof document !== 'undefined' ? document.body : null;
 
   // Load towers on department change
   useEffect(() => {
@@ -519,7 +521,10 @@ export default function ProcessManagementPage() {
       </section>
 
       {/* Modal */}
-      {showModal && <AddCustomProcessModal onClose={() => setShowModal(false)} onSuccess={() => {}} />}
+      {showModal && modalRoot && createPortal(
+        <AddCustomProcessModal onClose={() => setShowModal(false)} onSuccess={() => {}} />,
+        modalRoot
+      )}
     </div>
   );
 }
@@ -656,7 +661,7 @@ function AddCustomProcessModal({ onClose, onSuccess }: { onClose: () => void; on
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 p-4 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 p-4">
       <div className="w-full max-w-lg rounded-2xl border border-[#D9E4F2] bg-white shadow-[0_20px_40px_rgba(16,42,80,0.15)]">
         <div className="border-b border-[#E3EBF6] px-6 py-4">
           <h2 className="text-xl font-bold text-[#0F2649]">Add Custom Process</h2>

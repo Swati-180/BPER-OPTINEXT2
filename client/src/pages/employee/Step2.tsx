@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { ArrowLeft, ArrowRight, CircleHelp, Plus, Trash2, Sparkles } from "lucide-react";
 import type { WdtActivityRow, WdtPayload, EmployeeSnapshot } from "./formTypes";
+import { apiFetch } from "../../lib/api";
 
 type EditorKind = "single" | "multi" | "number" | "select";
 
@@ -85,13 +86,10 @@ export function Step2({ employee, payload, onNext, onPrev, onPayloadChange }: St
   useEffect(() => {
     async function fetchTaxonomy() {
       try {
-        const token = localStorage.getItem('bper.auth.token');
         const deptParam = employee.department ? `?department=${encodeURIComponent(employee.department)}` : '';
-        const res = await fetch(`${import.meta.env.VITE_API_URL}/api/taxonomy/processes${deptParam}`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
+        const res = await apiFetch(`/taxonomy/processes${deptParam}`);
         if (res.ok) {
-          setTaxonomy(await res.json());
+          setTaxonomy(await res.json().catch(() => null));
         }
       } catch (err) {
         console.error('Failed to fetch taxonomy:', err);
@@ -254,17 +252,15 @@ export function Step2({ employee, payload, onNext, onPrev, onPayloadChange }: St
     setIsMapping(true);
     setMapSuggestion(null);
     try {
-      const token = localStorage.getItem('bper.auth.token');
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/taxonomy/map`, {
+      const res = await apiFetch('/taxonomy/map', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({ text, context: "subProcess" })
       });
       if (res.ok) {
-        const data = await res.json();
+        const data = await res.json().catch(() => null);
         if (data.mapped) setMapSuggestion(data);
       }
     } catch (err) {
@@ -709,7 +705,7 @@ export function Step2({ employee, payload, onNext, onPrev, onPayloadChange }: St
       {editor &&
         typeof document !== "undefined" &&
         createPortal(
-          <div className="fixed inset-0 z-120 bg-slate-900/45 backdrop-blur-sm p-4 flex items-center justify-center">
+          <div className="fixed inset-0 z-120 bg-slate-900/45 p-4 flex items-center justify-center">
             <div className="w-full max-w-3xl rounded-2xl border border-slate-200 bg-white shadow-2xl overflow-hidden max-h-[82vh] overflow-y-auto">
               <div className="px-6 py-5 border-b border-slate-100 bg-linear-to-r from-blue-50 to-white">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Expanded field editor</p>

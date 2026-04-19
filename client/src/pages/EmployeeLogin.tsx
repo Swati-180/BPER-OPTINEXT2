@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { type AppAuthUser, saveAuthUser, type PortalRole } from '../lib/authStorage';
 import { clearActiveUnderReviewReferenceId } from './employee/bperSubmissionStorage';
-import { API_ENDPOINTS } from '../lib/config';
+import { apiFetch } from '../lib/api';
 
 function Logo() {
   return (
@@ -47,16 +47,19 @@ export default function EmployeeLoginPage({ onLogin }: EmployeeLoginProps) {
     setIsLoading(true);
 
     try {
-      const response = await fetch(`${API_ENDPOINTS.AUTH}/login`, {
+      const response = await apiFetch('/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
       });
 
-      const data = await response.json();
+      const contentType = response.headers.get('content-type') || '';
+      const data = contentType.includes('application/json')
+        ? await response.json().catch(() => null)
+        : null;
 
       if (!response.ok) {
-        throw new Error(data.message || 'Authentication failed');
+        throw new Error(data?.message || 'Authentication failed');
       }
 
       // Check if user is actually an employee or has access

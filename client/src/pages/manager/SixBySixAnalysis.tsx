@@ -1,5 +1,5 @@
 import { useMemo, useState, useEffect } from 'react';
-import { API_ENDPOINTS } from '../../lib/config';
+import { apiFetch } from '../../lib/api';
 
 type Department = 'F&A' | 'HR' | 'Logistics' | 'SCM';
 type CriteriaValue = 'H' | 'M' | 'L';
@@ -95,13 +95,8 @@ export default function SixBySixAnalysisPage() {
 		const fetchData = async () => {
 			setIsLoading(true);
 			try {
-				const token = localStorage.getItem('bper.auth.token');
-				const response = await fetch(`${import.meta.env.VITE_API_URL}/api/analysis/six-by-six?department=${encodeURIComponent(departmentFilter)}`, {
-					headers: {
-						'Authorization': `Bearer ${token}`
-					}
-				});
-				const data = await response.json();
+				const response = await apiFetch(`/analysis/six-by-six?department=${encodeURIComponent(departmentFilter)}`);
+				const data = await response.json().catch(() => null);
 				if (response.ok) {
 					const safeRows = Array.isArray(data) ? data.map(normalizeRow) : [];
 					setProcessData(safeRows);
@@ -145,14 +140,13 @@ export default function SixBySixAnalysisPage() {
 	const saveChanges = async () => {
 		setIsSaving(true);
 		try {
-			const token = localStorage.getItem('bper.auth.token');
-			const response = await fetch(`${API_ENDPOINTS.ANALYSIS}/six-by-six`, {
+			const response = await apiFetch('/analysis/six-by-six', {
 				method: 'PUT',
-				headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({ rows: draftRows })
 			});
 			if (response.ok) {
-				const saved = await response.json();
+				const saved = await response.json().catch(() => null);
 				// Ideally refetch or just sync
 				setProcessData(draftRows);
 			}

@@ -3,7 +3,8 @@
  * Centralizes authentication headers and error handling.
  */
 
-const BASE_URL = `${import.meta.env.VITE_API_URL}/api`;
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const BASE_URL = `${API_BASE_URL}/api`;
 
 export async function apiFetch(endpoint: string, options: RequestInit = {}) {
   const token = localStorage.getItem('bper.auth.token');
@@ -38,7 +39,10 @@ export async function apiFetch(endpoint: string, options: RequestInit = {}) {
 
 export async function apiGetJson<T>(endpoint: string): Promise<T> {
   const response = await apiFetch(endpoint);
-  const data = await response.json().catch(() => null);
+  const contentType = response.headers.get('content-type') || '';
+  const data = contentType.includes('application/json')
+    ? await response.json().catch(() => null)
+    : null;
 
   if (!response.ok) {
     const message = data?.message || `Request failed with status ${response.status}`;
@@ -92,9 +96,12 @@ export async function updateEmployeeFitment(employeeId: string, parameters: any[
     method: 'POST',
     body: JSON.stringify({ employeeId, parameters })
   });
-  const data = await response.json();
+  const contentType = response.headers.get('content-type') || '';
+  const data = contentType.includes('application/json')
+    ? await response.json().catch(() => null)
+    : null;
   if (!response.ok) {
-    throw new Error(data.message || 'Failed to save fitment profile');
+    throw new Error(data?.message || 'Failed to save fitment profile');
   }
   return data;
 }
@@ -189,7 +196,10 @@ export async function createCustomActivity(payload: {
     body: JSON.stringify(payload),
   });
 
-  const data = await response.json();
+  const contentType = response.headers.get('content-type') || '';
+  const data = contentType.includes('application/json')
+    ? await response.json().catch(() => null)
+    : null;
 
   if (!response.ok) {
     throw new Error(data?.message || 'Failed to create custom activity');
@@ -207,7 +217,10 @@ export async function createCustomTower(payload: {
     body: JSON.stringify(payload),
   });
 
-  const data = await response.json();
+  const contentType = response.headers.get('content-type') || '';
+  const data = contentType.includes('application/json')
+    ? await response.json().catch(() => null)
+    : null;
 
   if (!response.ok) {
     throw new Error(data?.message || 'Failed to create tower');
@@ -226,7 +239,10 @@ export async function createCustomProcess(payload: {
     body: JSON.stringify(payload),
   });
 
-  const data = await response.json();
+  const contentType = response.headers.get('content-type') || '';
+  const data = contentType.includes('application/json')
+    ? await response.json().catch(() => null)
+    : null;
 
   if (!response.ok) {
     throw new Error(data?.message || 'Failed to create process');

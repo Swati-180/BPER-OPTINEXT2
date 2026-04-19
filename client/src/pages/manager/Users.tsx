@@ -1,4 +1,5 @@
 import { useMemo, useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Check, Copy, Link2, MailPlus, Search, UserPlus, X } from 'lucide-react';
 import { apiFetch } from '../../lib/api';
 import { getInviteSignupLink, loadAuthUser } from '../../lib/authStorage';
@@ -83,18 +84,16 @@ export default function UsersPage() {
 	const [inviteError, setInviteError] = useState('');
 	const [inviteCopied, setInviteCopied] = useState(false);
 	const [generatedInviteUrl, setGeneratedInviteUrl] = useState('');
+	const modalRoot = typeof document !== 'undefined' ? document.body : null;
 
 	const fetchUsers = async () => {
 		setIsLoading(true);
 		try {
-			const token = localStorage.getItem('bper.auth.token');
-			const response = await fetch(`${import.meta.env.VITE_API_URL}/api/auth/users`, {
-				headers: { 'Authorization': `Bearer ${token}` }
-			});
-			const data = await response.json();
+			const response = await apiFetch('/auth/users');
+			const data = await response.json().catch(() => null);
 			if (response.ok) {
 				// Map backend users to frontend UserRow structure
-				const mapped: UserRow[] = data.map((u: any) => ({
+				const mapped: UserRow[] = (Array.isArray(data) ? data : []).map((u: any) => ({
 					employeeId: u.employeeId || '-',
 					name: u.name || 'Unknown User',
 					email: u.email,
@@ -205,9 +204,9 @@ export default function UsersPage() {
 				})
 			});
 
-			const data = await response.json();
+			const data = await response.json().catch(() => null);
 			if (!response.ok) {
-				throw new Error(data.message || 'Failed to create user');
+				throw new Error(data?.message || 'Failed to create user');
 			}
 
 			// Refresh list
@@ -395,30 +394,31 @@ export default function UsersPage() {
 				</div>
 			</section>
 
-			{isCreateUserOpen && (
-				<div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0F203B]/45 p-4 backdrop-blur-[2px]" onClick={closeCreateUserModal}>
-					<div
-						className="w-full max-w-4xl overflow-hidden rounded-2xl border border-[#D7E2F0] bg-white shadow-[0_24px_64px_rgba(15,32,59,0.28)]"
-						onClick={(event) => event.stopPropagation()}
-					>
-						<div className="flex items-start justify-between border-b border-[#E3EBF7] px-6 py-5">
-							<div>
-								<h2 className="text-4xl font-bold tracking-tight text-[#152542]">Create New User</h2>
-								<p className="mt-1 text-lg text-[#667C99]">
-									Fill in the details to register a new member to the workforce ledger.
-								</p>
+			{isCreateUserOpen && modalRoot && createPortal(
+				<div className="fixed inset-0 z-50 bg-[#0F203B]/45 px-4 py-6 md:px-6 md:py-10" onClick={closeCreateUserModal}>
+					<div className="flex min-h-full items-center justify-center overflow-y-auto">
+						<div
+							className="w-full max-w-5xl overflow-hidden rounded-2xl border border-[#D7E2F0] bg-white shadow-[0_24px_64px_rgba(15,32,59,0.28)] max-h-[calc(100vh-3rem)] flex flex-col"
+							onClick={(event) => event.stopPropagation()}
+						>
+							<div className="flex items-start justify-between border-b border-[#E3EBF7] px-6 py-5">
+								<div>
+									<h2 className="text-2xl md:text-3xl font-bold tracking-tight text-[#152542]">Create New User</h2>
+									<p className="mt-1 text-sm md:text-base text-[#667C99]">
+										Fill in the details to register a new member to the workforce ledger.
+									</p>
+								</div>
+								<button
+									type="button"
+									onClick={closeCreateUserModal}
+									className="rounded-md p-2 text-[#8FA2BC] transition-colors hover:bg-[#F1F5FB] hover:text-[#607A9E]"
+								>
+									<X className="h-5 w-5" />
+								</button>
 							</div>
-							<button
-								type="button"
-								onClick={closeCreateUserModal}
-								className="rounded-md p-2 text-[#8FA2BC] transition-colors hover:bg-[#F1F5FB] hover:text-[#607A9E]"
-							>
-								<X className="h-5 w-5" />
-							</button>
-						</div>
 
-						<div className="bg-[#F3F7FC] px-6 py-6">
-							<form className="grid grid-cols-1 gap-5 md:grid-cols-6">
+							<div className="bg-[#F3F7FC] px-6 py-6 overflow-y-auto">
+								<form className="grid grid-cols-1 gap-5 md:grid-cols-6">
 								<label className="md:col-span-2 space-y-1.5">
 									<span className="text-[11px] font-bold uppercase tracking-[0.14em] text-[#6A809E]">Employee ID</span>
 									<input
@@ -572,10 +572,12 @@ export default function UsersPage() {
 						</div>
 					</div>
 				</div>
-			)}
+			</div>,
+			modalRoot
+		)}
 
-			{isInviteOpen && (
-				<div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0F203B]/45 p-4 backdrop-blur-[2px]" onClick={closeInviteModal}>
+			{isInviteOpen && modalRoot && createPortal(
+				<div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0F203B]/45 p-4" onClick={closeInviteModal}>
 					<div
 						className="w-full max-w-2xl overflow-hidden rounded-2xl border border-[#D7E2F0] bg-white shadow-[0_24px_64px_rgba(15,32,59,0.28)]"
 						onClick={(event) => event.stopPropagation()}
@@ -640,7 +642,8 @@ export default function UsersPage() {
 							</div>
 						</div>
 					</div>
-				</div>
+				</div>,
+				modalRoot
 			)}
 		</div>
 	);

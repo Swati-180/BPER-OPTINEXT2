@@ -38,6 +38,7 @@ import PersonalProfile from './pages/manager/PersonalProfile';
 import Unauthorized from './pages/Unauthorized';
 import { clearActiveUnderReviewReferenceId } from './pages/employee/bperSubmissionStorage';
 import { clearAuthUser, loadAuthUser, saveAuthUser, type AppAuthUser, type PortalRole } from './lib/authStorage';
+import { API_ENDPOINTS } from './lib/config';
 
 const LOGIN_SESSION_KEY = 'bper.session.loginAt';
 
@@ -90,16 +91,19 @@ function LoginPage({ onLogin }: { onLogin: (user: AppAuthUser) => void }) {
     setIsLoading(true);
 
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/auth/login`, {
+      const response = await fetch(`${API_ENDPOINTS.AUTH}/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
       });
 
-      const data = await response.json();
+      const contentType = response.headers.get('content-type') || '';
+      const data = contentType.includes('application/json')
+        ? await response.json().catch(() => null)
+        : null;
 
       if (!response.ok) {
-        throw new Error(data.message || 'Login failed');
+        throw new Error(data?.message || 'Login failed');
       }
 
       const nextUser: AppAuthUser = {

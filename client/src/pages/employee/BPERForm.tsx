@@ -9,6 +9,7 @@ import { demoEmployeeProfile } from "./demoEmployeeData";
 import { buildBperSubmission, saveBperSubmission, loadBperDraft, saveBperDraft } from "./bperSubmissionStorage";
 import { useEmployeeDraftGuard } from "../../layouts/EmployeeLayout";
 import { FormPageSkeleton } from '../../components/PortalSkeletons';
+import { apiFetch } from "../../lib/api";
 
 export default function BPERForm() {
   const navigate = useNavigate();
@@ -29,19 +30,18 @@ export default function BPERForm() {
     async function fetchProfile() {
       setIsLoadingProfile(true);
       try {
-        const token = localStorage.getItem('bper.auth.token');
-        const res = await fetch(`${import.meta.env.VITE_API_URL}/api/auth/me`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        const data = await res.json();
+        const [res, windowRes] = await Promise.all([
+          apiFetch('/auth/me'),
+          apiFetch('/wdt/window-status'),
+        ]);
+
+        const data = await res.json().catch(() => null);
         if (res.ok) {
           setProfile(data);
         }
 
-        // Fetch Window Status
-        const windowRes = await fetch(`${import.meta.env.VITE_API_URL}/api/wdt/window-status`);
         if (windowRes.ok) {
-          setWindowStatus(await windowRes.json());
+          setWindowStatus(await windowRes.json().catch(() => null));
         }
       } catch (error) {
         console.error('Failed to fetch profile/window for form:', error);
@@ -57,12 +57,9 @@ export default function BPERForm() {
       if (refId) {
         setIsLoadingProfile(true);
         try {
-          const token = localStorage.getItem('bper.auth.token');
-          const res = await fetch(`${import.meta.env.VITE_API_URL}/api/wdt/submissions/${refId}`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-          });
+          const res = await apiFetch(`/wdt/submissions/${refId}`);
           if (res.ok) {
-            const data = await res.json();
+            const data = await res.json().catch(() => null);
             setPayload(data.payload);
             setCurrentStep(2); // Jump to details for revision
           }
@@ -317,7 +314,7 @@ export default function BPERForm() {
       </div>
 
       {showSuccessOverlay && (
-        <div className="fixed inset-0 z-50 bg-slate-900/45 backdrop-blur-sm flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 bg-slate-900/45 flex items-center justify-center p-4">
           <div className="w-full max-w-3xl overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl">
             <div className="border-b border-slate-100 bg-linear-to-r from-blue-50 via-white to-slate-50 px-6 py-6 sm:px-8">
               <div className="flex items-start justify-between gap-4">

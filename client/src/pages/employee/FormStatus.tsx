@@ -10,6 +10,7 @@ import {
   getActiveUnderReviewReferenceId,
 } from "./bperSubmissionStorage";
 import { TablePageSkeleton } from '../../components/PortalSkeletons';
+import { apiFetch } from '../../lib/api';
 
 export default function FormStatus() {
   const navigate = useNavigate();
@@ -24,20 +25,16 @@ export default function FormStatus() {
     async function init() {
       setIsLoading(true);
       try {
-        const token = localStorage.getItem('bper.auth.token');
-        
-        // Fetch Profile
-        const profileRes = await fetch(`${import.meta.env.VITE_API_URL}/api/auth/me`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        const profileData = await profileRes.json();
-        
+        const [profileRes, subsData] = await Promise.all([
+          apiFetch('/auth/me'),
+          loadBperSubmissions(),
+        ]);
+
+        const profileData = await profileRes.json().catch(() => null);
+
         if (profileRes.ok) {
           setProfile(profileData);
-          
-          // Fetch Submissions
-          const subsData = await loadBperSubmissions();
-          // Filter by real employeeId
+
           const filtered = subsData.filter((item) => item.employee.employeeId === profileData.employeeId);
           setRecords(filtered);
           if (filtered.length > 0) {
@@ -410,7 +407,7 @@ function CommentsModal({ record, onClose }: { record: BperSubmissionRecord; onCl
   const isUnderReview = record.status === "Under Review" && record.reviewHistory.length === 0;
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-50 bg-slate-900/50 flex items-center justify-center p-4">
       <div className="w-full max-w-4xl rounded-2xl border border-slate-200 bg-white shadow-2xl overflow-hidden">
         <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4 sm:px-8">
           <div className="flex items-center gap-3">

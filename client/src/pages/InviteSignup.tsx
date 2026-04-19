@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { type AppAuthUser } from '../lib/authStorage';
+import { apiFetch } from '../lib/api';
 
 interface InviteSignupProps {
   onLogin: (user: AppAuthUser) => void;
@@ -60,7 +61,7 @@ export default function InviteSignupPage({ onLogin }: InviteSignupProps) {
     setIsLoading(true);
     
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/auth/signup`, {
+      const response = await apiFetch('/auth/signup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -72,10 +73,13 @@ export default function InviteSignupPage({ onLogin }: InviteSignupProps) {
         })
       });
 
-      const data = await response.json();
+      const contentType = response.headers.get('content-type') || '';
+      const data = contentType.includes('application/json')
+        ? await response.json().catch(() => null)
+        : null;
 
       if (!response.ok) {
-        throw new Error(data.message || 'Signup failed');
+        throw new Error(data?.message || 'Signup failed');
       }
 
       const nextUser: AppAuthUser = {
