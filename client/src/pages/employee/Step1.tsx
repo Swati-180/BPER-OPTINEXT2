@@ -38,35 +38,35 @@ export function Step1({ employee, windowStatus, onNext, onPrev }: StepProps) {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5 mb-10">
           <div className={fieldClass}>
             <p className={labelClass}>Employee ID</p>
-            <p className={`${valueClass} break-all`}>{employee.employeeId}</p>
+            <p className={`${valueClass} break-all`}>{employee.employeeId || "N/A"}</p>
           </div>
           <div className={fieldClass}>
             <p className={labelClass}>Name</p>
-            <p className={valueClass}>{employee.name}</p>
+            <p className={valueClass}>{employee.name || "N/A"}</p>
           </div>
           <div className={fieldClass}>
             <p className={labelClass}>Institutional Email</p>
-            <p className={valueClass}>{employee.email}</p>
+            <p className={valueClass}>{employee.email || "N/A"}</p>
           </div>
           <div className={fieldClass}>
             <p className={labelClass}>Title</p>
-            <p className={valueClass}>{employee.title}</p>
+            <p className={valueClass}>{employee.title || "N/A"}</p>
           </div>
           <div className={fieldClass}>
             <p className={labelClass}>Department</p>
-            <p className={valueClass}>{employee.department}</p>
+            <p className={valueClass}>{employee.department || "N/A"}</p>
           </div>
           <div className={fieldClass}>
             <p className={labelClass}>Primary Location</p>
-            <p className={valueClass}>{employee.location}</p>
+            <p className={valueClass}>{employee.location || "N/A"}</p>
           </div>
           <div className={fieldClass}>
             <p className={labelClass}>Primary Tower / Function</p>
-            <p className={valueClass}>{employee.primaryTower}</p>
+            <p className={valueClass}>{employee.primaryTower || "N/A"}</p>
           </div>
           <div className={fieldClass}>
             <p className={labelClass}>Pay Band / Grade</p>
-            <p className={valueClass}>Grade {employee.band}</p>
+            <p className={valueClass}>{employee.band ? `Grade ${employee.band}` : "N/A"}</p>
           </div>
           <div className={fieldClass}>
             <p className={labelClass}>Supervisor Name</p>
@@ -78,11 +78,11 @@ export function Step1({ employee, windowStatus, onNext, onPrev }: StepProps) {
           </div>
           <div className={fieldClass}>
             <p className={labelClass}>Employee Type</p>
-            <p className={valueClass}>{employee.employeeType}</p>
+            <p className={valueClass}>{employee.employeeType || "N/A"}</p>
           </div>
           <div className={fieldClass}>
             <p className={labelClass}>Assigned Client</p>
-            <p className={valueClass}>{employee.assignedClient}</p>
+            <p className={valueClass}>{employee.assignedClient || "N/A"}</p>
           </div>
         </div>
 

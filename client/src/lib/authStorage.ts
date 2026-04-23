@@ -3,10 +3,17 @@ export type PortalRole = 'employee' | 'manager' | 'admin';
 export type AuthSource = 'normal' | 'invite' | 'demo';
 
 export interface AppAuthUser {
+  _id?: string;
+  id?: string;
   name: string;
   email: string;
-  role: PortalRole;
+  role: string;
   organization?: string;
+  employeeId?: string;
+  designation?: string;
+  band?: string;
+  location?: string;
+  maxMonthlyHours?: number;
   source: AuthSource;
   inviteToken?: string;
 }

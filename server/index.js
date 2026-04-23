@@ -12,6 +12,7 @@ const fitmentRoutes = require('./routes/fitment');
 const taxonomyRoutes = require('./routes/taxonomy');
 const reportRoutes = require('./routes/reports');
 const activitiesRoutes = require('./routes/activities');
+const exportRoutes = require('./routes/export');
 
 const app = express();
 
@@ -30,6 +31,7 @@ app.use('/api/fitment', fitmentRoutes);
 app.use('/api/taxonomy', taxonomyRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/activities', activitiesRoutes);
+app.use('/api/export', exportRoutes);
 
 async function startServer() {
   let mongoUri = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/bper';

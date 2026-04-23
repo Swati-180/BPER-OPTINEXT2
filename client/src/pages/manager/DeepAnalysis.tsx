@@ -7,6 +7,7 @@ import {
   getFitmentAnalysisReport,
   getUtilizationAnalysisReport,
   exportToCSV,
+  exportToExcelClient,
 } from '@/src/lib/api';
 import { InlineLoadingBlock } from '../../components/PortalSkeletons';
 
@@ -80,10 +81,13 @@ interface FteAnalysisReport {
       tower: string;
       department: string;
       process: string;
+      subProcess: string;
       frequency: string;
       monthlyHours: number;
       fte: number;
       activityCategory: string;
+      employeeName: string;
+      employeeId: string;
     }>;
   };
 }
@@ -205,7 +209,7 @@ const safeNumber = (val: any): string => {
 };
 
 export default function DeepAnalysis() {
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const initialMainTab = parseMainTab(searchParams.get('tab'));
   const initialSubTab = searchParams.get('subTab');
 
@@ -214,6 +218,7 @@ export default function DeepAnalysis() {
   const [isExporting, setIsExporting] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [selectedActivity, setSelectedActivity] = useState<any | null>(null);
 
   // FTE State
   const [fteTab, setFteTab] = useState<FteTabType>(
@@ -369,9 +374,9 @@ export default function DeepAnalysis() {
 
     setIsExporting(true);
     try {
-      exportToCSV(data, filename);
+      exportToExcelClient(data, filename);
     } catch {
-      setExportError('Failed to export CSV. Please try again.');
+      setExportError('Failed to export Excel. Please try again.');
     } finally {
       setIsExporting(false);
     }
@@ -546,7 +551,14 @@ export default function DeepAnalysis() {
                           </thead>
                           <tbody>
                             {fteReport.tabs.byTower.map((row, idx) => (
-                              <tr key={idx} className="border-b border-[#D9E4F2] hover:bg-[#F7FAFE] transition-colors">
+                              <tr 
+                                key={idx} 
+                                className="border-b border-[#D9E4F2] hover:bg-[#F7FAFE] transition-colors cursor-pointer"
+                                onClick={() => {
+                                  setFteTab('activities');
+                                  setSearchParams({ tab: 'fte', subTab: 'activities', towerFilter: row.tower });
+                                }}
+                              >
                                 <td className="px-4 py-3 text-[#0F2649] font-semibold">{row.tower}</td>
                                 <td className="px-4 py-3 text-right text-[#637F9F]">{safeNumber(row.hours)}</td>
                                 <td className="px-4 py-3 text-right text-[#165BAA] font-semibold">{safeNumber(row.fte)}</td>
@@ -564,10 +576,10 @@ export default function DeepAnalysis() {
                             )
                           }
                           disabled={isExporting}
-                          className="mt-4 px-5 py-2.5 bg-[#165BAA] text-white rounded-lg flex items-center gap-2 hover:bg-[#124a8a] disabled:opacity-50 font-semibold text-sm shadow-[0_4px_12px_rgba(22,91,170,0.3)] transition-all"
+                          className="mt-4 inline-flex items-center gap-2 h-11 rounded-xl border border-[#D6E2F0] bg-white px-4 text-sm font-semibold text-[#243A59] hover:bg-[#F4F8FF] disabled:opacity-60 transition-colors"
                         >
                           <Download className="w-4 h-4" />
-                          Export CSV
+                          {isExporting ? 'Exporting...' : 'Excel'}
                         </button>
                       </div>
                     )}
@@ -603,10 +615,10 @@ export default function DeepAnalysis() {
                             )
                           }
                           disabled={isExporting}
-                          className="mt-4 px-4 py-2 bg-[#165BAA] text-white rounded flex items-center gap-2 hover:bg-[#0F4A8A] disabled:opacity-50"
+                          className="mt-4 inline-flex items-center gap-2 h-11 rounded-xl border border-[#D6E2F0] bg-white px-4 text-sm font-semibold text-[#243A59] hover:bg-[#F4F8FF] disabled:opacity-60 transition-colors"
                         >
                           <Download className="w-4 h-4" />
-                          Export
+                          {isExporting ? 'Exporting...' : 'Excel'}
                         </button>
                       </div>
                     )}
@@ -615,7 +627,8 @@ export default function DeepAnalysis() {
                         <table className="w-full text-sm">
                           <thead className="bg-[#F8FBFF] border-b border-[#E3EAF4]">
                             <tr>
-                              <th className="px-4 py-2 text-left font-semibold text-[#0F2649]">Activity</th>
+                              <th className="px-4 py-2 text-left font-semibold text-[#0F2649]">Sub Process</th>
+                              <th className="px-4 py-2 text-left font-semibold text-[#0F2649]">Process Name</th>
                               <th className="px-4 py-2 text-left font-semibold text-[#0F2649]">Tower</th>
                               <th className="px-4 py-2 text-left font-semibold text-[#0F2649]">Department</th>
                               <th className="px-4 py-2 text-right font-semibold text-[#0F2649]">Hours</th>
@@ -623,13 +636,20 @@ export default function DeepAnalysis() {
                             </tr>
                           </thead>
                           <tbody>
-                            {fteReport.tabs.allActivities.map((row, idx) => (
-                              <tr key={idx} className="border-b border-[#E3EAF4] hover:bg-[#F8FBFF]">
-                                <td className="px-4 py-2 text-[#0F2649]">{row.name}</td>
-                                <td className="px-4 py-2 text-[#0F2649]">{row.tower}</td>
-                                <td className="px-4 py-2 text-[#0F2649]">{row.department}</td>
+                            {fteReport.tabs.allActivities
+                              .filter(row => !searchParams.get('towerFilter') || row.tower === searchParams.get('towerFilter'))
+                              .map((row, idx) => (
+                              <tr 
+                                key={idx} 
+                                className="border-b border-[#E3EAF4] hover:bg-[#F8FBFF] cursor-pointer"
+                                onClick={() => setSelectedActivity(row)}
+                              >
+                                <td className="px-4 py-2 text-[#5D789A]">{row.subProcess || '—'}</td>
+                                <td className="px-4 py-2 text-[#0F2649] font-medium">{row.process || row.name || '—'}</td>
+                                <td className="px-4 py-2 text-[#0F2649]">{row.tower || '—'}</td>
+                                <td className="px-4 py-2 text-[#0F2649]">{row.department || '—'}</td>
                                 <td className="px-4 py-2 text-right text-[#0F2649]">{safeNumber(row.monthlyHours)}</td>
-                                <td className="px-4 py-2 text-right text-[#0F2649]">{safeNumber(row.fte)}</td>
+                                <td className="px-4 py-2 text-right text-[#1E5EAB] font-semibold">{safeNumber(row.fte)}</td>
                               </tr>
                             ))}
                           </tbody>
@@ -642,10 +662,10 @@ export default function DeepAnalysis() {
                             )
                           }
                           disabled={isExporting}
-                          className="mt-4 px-4 py-2 bg-[#165BAA] text-white rounded flex items-center gap-2 hover:bg-[#0F4A8A] disabled:opacity-50"
+                          className="mt-4 inline-flex items-center gap-2 h-11 rounded-xl border border-[#D6E2F0] bg-white px-4 text-sm font-semibold text-[#243A59] hover:bg-[#F4F8FF] disabled:opacity-60 transition-colors"
                         >
                           <Download className="w-4 h-4" />
-                          Export
+                          {isExporting ? 'Exporting...' : 'Excel'}
                         </button>
                       </div>
                     )}
@@ -774,10 +794,10 @@ export default function DeepAnalysis() {
                             )
                           }
                           disabled={isExporting}
-                          className="mt-4 px-4 py-2 bg-[#165BAA] text-white rounded flex items-center gap-2 hover:bg-[#0F4A8A] disabled:opacity-50"
+                          className="mt-4 inline-flex items-center gap-2 h-11 rounded-xl border border-[#D6E2F0] bg-white px-4 text-sm font-semibold text-[#243A59] hover:bg-[#F4F8FF] disabled:opacity-60 transition-colors"
                         >
                           <Download className="w-4 h-4" />
-                          Export
+                          {isExporting ? 'Exporting...' : 'Excel'}
                         </button>
                       </div>
                     )}
@@ -817,10 +837,10 @@ export default function DeepAnalysis() {
                             )
                           }
                           disabled={isExporting}
-                          className="mt-4 px-4 py-2 bg-[#165BAA] text-white rounded flex items-center gap-2 hover:bg-[#0F4A8A] disabled:opacity-50"
+                          className="mt-4 inline-flex items-center gap-2 h-11 rounded-xl border border-[#D6E2F0] bg-white px-4 text-sm font-semibold text-[#243A59] hover:bg-[#F4F8FF] disabled:opacity-60 transition-colors"
                         >
                           <Download className="w-4 h-4" />
-                          Export
+                          {isExporting ? 'Exporting...' : 'Excel'}
                         </button>
                       </div>
                     )}
@@ -1288,6 +1308,87 @@ export default function DeepAnalysis() {
           </div>
         )}
       </div>
+
+      {/* Drill-down slide panel for Activity detail */}
+      {selectedActivity && fteReport && (
+        <>
+          <div className="fixed inset-0 bg-[#0F2649]/20 backdrop-blur-sm z-40 transition-opacity" onClick={() => setSelectedActivity(null)} />
+          <div className="fixed inset-y-0 right-0 w-full sm:w-[450px] bg-white shadow-2xl z-50 transform transition-transform duration-300 flex flex-col border-l border-[#D9E4F2]">
+            <div className="flex items-center justify-between px-6 py-5 border-b border-[#E3EAF4] bg-[#F8FBFF]">
+              <div>
+                <h2 className="text-lg font-bold text-[#0F2649]">Activity Details</h2>
+                <p className="text-xs text-[#5D789A] mt-1">{selectedActivity.process || selectedActivity.name}</p>
+              </div>
+              <button 
+                onClick={() => setSelectedActivity(null)}
+                className="w-8 h-8 flex items-center justify-center rounded-full bg-white border border-[#D9E4F2] text-[#5D789A] hover:bg-[#F0F5FA] hover:text-[#0F2649] transition-colors"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-6 space-y-6">
+              
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="rounded-xl border border-[#D9E4F2] bg-white p-4 shadow-sm">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-[#8AA0BA]">Tower</p>
+                    <p className="mt-1 text-sm font-semibold text-[#0F2649]">{selectedActivity.tower || '—'}</p>
+                  </div>
+                  <div className="rounded-xl border border-[#D9E4F2] bg-white p-4 shadow-sm">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-[#8AA0BA]">Department</p>
+                    <p className="mt-1 text-sm font-semibold text-[#0F2649]">{selectedActivity.department || '—'}</p>
+                  </div>
+                  <div className="col-span-2 rounded-xl border border-[#D9E4F2] bg-white p-4 shadow-sm">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-[#8AA0BA]">Sub Process</p>
+                    <p className="mt-1 text-sm font-semibold text-[#0F2649]">{selectedActivity.subProcess || '—'}</p>
+                  </div>
+                  <div className="col-span-2 rounded-xl border border-[#D9E4F2] bg-[#F5F8FD] p-4 shadow-sm border-[#B1C8E6]">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-[#617D9D]">Total FTE</p>
+                    <p className="mt-1 text-lg font-bold text-[#1E5EAB]">
+                      {fteReport.tabs.allActivities
+                        .filter(a => a.process === selectedActivity.process && a.subProcess === selectedActivity.subProcess && a.tower === selectedActivity.tower)
+                        .reduce((sum, a) => sum + Number(a.fte), 0)
+                        .toFixed(2)}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Employees who submitted this activity */}
+              <div className="rounded-xl border border-[#D9E4F2] bg-white overflow-hidden shadow-sm">
+                <div className="bg-[#F8FBFF] px-4 py-3 border-b border-[#E3EAF4]">
+                  <h3 className="text-xs font-bold uppercase tracking-[0.1em] text-[#617D9D]">Employees Contributing</h3>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full border-collapse text-left text-sm">
+                    <thead>
+                      <tr className="bg-[#F5F8FD] text-[10px] font-bold uppercase tracking-[0.13em] text-[#617D9D] border-b border-[#E3EAF4]">
+                        <th className="px-4 py-2">Employee</th>
+                        <th className="px-4 py-2 text-right">Hours</th>
+                        <th className="px-4 py-2 text-right">FTE</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {fteReport.tabs.allActivities
+                        .filter(a => a.process === selectedActivity.process && a.subProcess === selectedActivity.subProcess && a.tower === selectedActivity.tower)
+                        .map((a, i) => (
+                        <tr key={i} className="border-b border-[#E3EAF4] last:border-0 hover:bg-[#F8FBFF]">
+                          <td className="px-4 py-2">
+                            <p className="font-medium text-[#0F2649]">{a.employeeName}</p>
+                            <p className="text-[10px] text-[#5D789A]">{a.employeeId}</p>
+                          </td>
+                          <td className="px-4 py-2 text-right text-[#5D789A]">{a.monthlyHours}</td>
+                          <td className="px-4 py-2 text-right text-[#1E5EAB] font-semibold">{a.fte}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }

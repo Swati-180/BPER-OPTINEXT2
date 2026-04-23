@@ -7,6 +7,8 @@ import {
   Plus,
   Search,
   X,
+  List,
+  FolderTree,
 } from 'lucide-react';
 import {
   getTowersForDepartment,
@@ -16,6 +18,7 @@ import {
   createCustomActivity,
   createCustomTower,
   createCustomProcess,
+  getTaxonomyProcesses,
   type Tower,
   type Process,
   type Activity,
@@ -49,8 +52,76 @@ export default function ProcessManagementPage() {
   const [searchResults, setSearchResults] = useState<SearchActivity[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [showModal, setShowModal] = useState(false);
+  
+  const [viewMode, setViewMode] = useState<'tree' | 'list'>(() => {
+    if (typeof window !== 'undefined') {
+      return (localStorage.getItem('bper.processManagement.viewMode') as 'tree' | 'list') || 'tree';
+    }
+    return 'tree';
+  });
+  const [flatData, setFlatData] = useState<any[]>([]);
+
   const hasLoadedRef = useRef(false);
   const modalRoot = typeof document !== 'undefined' ? document.body : null;
+
+  useEffect(() => {
+    localStorage.setItem('bper.processManagement.viewMode', viewMode);
+  }, [viewMode]);
+
+  // Load flat data if view mode is list
+  useEffect(() => {
+    if (viewMode === 'list') {
+      setIsContentLoading(true);
+      getTaxonomyProcesses(department)
+        .then(data => {
+          const flattened: any[] = [];
+          data.forEach(item => {
+            flattened.push({
+              _id: `major-${item._id}-${item.majorProcess}`,
+              name: item.majorProcess,
+              tower: item.majorProcess,
+              department: item.department || 'All',
+              level: 'Major Process',
+              category: '-',
+            });
+            flattened.push({
+              _id: `proc-${item._id}-${item.process}`,
+              name: item.process,
+              tower: item.majorProcess,
+              department: item.department || 'All',
+              level: 'Process',
+              category: '-',
+            });
+            (item.subProcesses || []).forEach((sub: string) => {
+              flattened.push({
+                _id: `sub-${item._id}-${sub}`,
+                name: sub,
+                tower: item.majorProcess,
+                department: item.department || 'All',
+                level: 'Sub-Process',
+                category: 'Core',
+              });
+            });
+          });
+          const unique = flattened.filter((v, i, a) => a.findIndex(t => t.name === v.name && t.level === v.level && t.tower === v.tower) === i);
+          setFlatData(unique);
+        })
+        .catch(err => {
+          console.error('Error loading flat processes:', err);
+          setError(err?.message || 'Failed to load flat process list');
+        })
+        .finally(() => setIsContentLoading(false));
+    }
+  }, [viewMode, department]);
+
+  const filteredFlatData = useMemo(() => {
+    if (!searchTerm.trim()) return flatData;
+    const q = searchTerm.toLowerCase();
+    return flatData.filter(item => 
+      item.name.toLowerCase().includes(q) || 
+      item.tower.toLowerCase().includes(q)
+    );
+  }, [flatData, searchTerm]);
 
   // Load towers on department change
   useEffect(() => {
@@ -343,18 +414,43 @@ export default function ProcessManagementPage() {
             <div className="flex gap-2">
               {searchResults.length === 0 && (
                 <>
-                  <button
-                    onClick={expandAll}
-                    className="rounded-lg border border-[#D9E4F2] bg-white px-3 py-2 text-sm font-semibold text-[#5E7594] hover:bg-[#F5F8FD]"
-                  >
-                    Expand All
-                  </button>
-                  <button
-                    onClick={collapseAll}
-                    className="rounded-lg border border-[#D9E4F2] bg-white px-3 py-2 text-sm font-semibold text-[#5E7594] hover:bg-[#F5F8FD]"
-                  >
-                    Collapse All
-                  </button>
+                  <div className="flex rounded-lg border border-[#D9E4F2] bg-white p-1">
+                    <button
+                      onClick={() => setViewMode('tree')}
+                      className={`rounded-md p-1.5 transition-colors ${
+                        viewMode === 'tree' ? 'bg-[#F3F8FF] text-[#2367AE]' : 'text-[#8AA0BA] hover:text-[#5E7594]'
+                      }`}
+                      title="Tree View"
+                    >
+                      <FolderTree className="h-4 w-4" />
+                    </button>
+                    <button
+                      onClick={() => setViewMode('list')}
+                      className={`rounded-md p-1.5 transition-colors ${
+                        viewMode === 'list' ? 'bg-[#F3F8FF] text-[#2367AE]' : 'text-[#8AA0BA] hover:text-[#5E7594]'
+                      }`}
+                      title="List View"
+                    >
+                      <List className="h-4 w-4" />
+                    </button>
+                  </div>
+                  
+                  {viewMode === 'tree' && (
+                    <>
+                      <button
+                        onClick={expandAll}
+                        className="rounded-lg border border-[#D9E4F2] bg-white px-3 py-2 text-sm font-semibold text-[#5E7594] hover:bg-[#F5F8FD]"
+                      >
+                        Expand All
+                      </button>
+                      <button
+                        onClick={collapseAll}
+                        className="rounded-lg border border-[#D9E4F2] bg-white px-3 py-2 text-sm font-semibold text-[#5E7594] hover:bg-[#F5F8FD]"
+                      >
+                        Collapse All
+                      </button>
+                    </>
+                  )}
                 </>
               )}
             </div>
@@ -409,8 +505,56 @@ export default function ProcessManagementPage() {
           </div>
         )}
 
-        {/* Tree Browser - Only show when no search results */}
-        {searchResults.length === 0 && (
+        {/* Flat List View */}
+        {searchResults.length === 0 && viewMode === 'list' && (
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse text-left">
+              <thead>
+                <tr className="bg-[#F5F8FD] text-xs font-bold uppercase tracking-[0.05em] text-[#617C9E] border-b border-[#E3EBF6]">
+                  <th className="px-4 py-3">Process Name</th>
+                  <th className="px-4 py-3">Tower</th>
+                  <th className="px-4 py-3">Department</th>
+                  <th className="px-4 py-3">Category</th>
+                  <th className="px-4 py-3">Level</th>
+                  <th className="px-4 py-3">Actions</th>
+                </tr>
+              </thead>
+              <tbody className={isContentLoading ? 'opacity-50 pointer-events-none' : ''}>
+                {filteredFlatData.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="px-4 py-8 text-center text-sm text-[#8AA0BA]">
+                      No processes available in list view.
+                    </td>
+                  </tr>
+                ) : (
+                  filteredFlatData.map((item) => (
+                    <tr key={item._id} className="border-b border-[#E8EEF7] last:border-b-0 hover:bg-[#F9FBFD]">
+                      <td className="px-4 py-3 text-sm font-semibold text-[#1C334E]">{item.name}</td>
+                      <td className="px-4 py-3 text-sm text-[#5E7594]">{item.tower}</td>
+                      <td className="px-4 py-3 text-sm text-[#5E7594]">{item.department}</td>
+                      <td className="px-4 py-3 text-sm text-[#5E7594]">{item.category}</td>
+                      <td className="px-4 py-3 text-sm">
+                        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                          item.level === 'Major Process' ? 'bg-[#E3EBF6] text-[#2367AE]' :
+                          item.level === 'Process' ? 'bg-[#F0F6FF] text-[#36506F]' :
+                          'bg-[#F8FBFF] text-[#617C9E]'
+                        }`}>
+                          {item.level}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-sm">
+                        <span className="text-xs text-[#8AA0BA]">-</span>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {/* Tree Browser - Only show when no search results and viewMode is tree */}
+        {searchResults.length === 0 && viewMode === 'tree' && (
         <div
           className={`relative divide-y divide-[#E3EBF6] transition-opacity duration-300 ${
             isContentLoading ? 'opacity-60 pointer-events-none' : 'opacity-100'
@@ -428,7 +572,7 @@ export default function ProcessManagementPage() {
             visibleTowers.map((towerName) => {
               const towerData = treeData.towers[towerName];
               const isExpanded = expanded.towers.has(towerName);
-              const processes = towerData?.processes || {};
+              const processes = (towerData?.processes || {}) as Record<string, { data: Process; activities?: Activity[] }>;
 
               return (
                 <div key={towerName}>

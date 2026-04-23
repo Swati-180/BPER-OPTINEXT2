@@ -1,6 +1,9 @@
 import { useMemo, useState } from "react";
-import { ArrowLeft, CheckCircle2, Edit3, Save, Send } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Save, Send } from "lucide-react";
 import type { WdtPayload } from "./formTypes";
+import { ProcessListToggle } from "../../components/ProcessListToggle";
+import { loadAuthUser } from "../../lib/authStorage";
+import { FTEProgressBar } from "../../components/charts/FTECharts";
 
 interface StepProps {
   payload: WdtPayload | null;
@@ -16,7 +19,9 @@ export function Step3({ payload, onPrev, onSubmit, onSaveDraft, onEditSection, s
 
   const rows = payload?.rows || [];
   const totalHours = useMemo(() => rows.reduce((sum, row) => sum + Number(row.timeTakenHoursPerMonth || 0), 0), [rows]);
-  const totalFte = useMemo(() => totalHours / 160, [totalHours]);
+  const authUser = loadAuthUser();
+  const maxHours = authUser?.maxMonthlyHours || 160;
+  const totalFte = useMemo(() => totalHours / maxHours, [totalHours, maxHours]);
   const coreRows = useMemo(() => rows.filter((row) => row.activityCategory !== "support"), [rows]);
   const supportRows = useMemo(() => rows.filter((row) => row.activityCategory === "support"), [rows]);
   const coreHours = useMemo(
@@ -32,6 +37,9 @@ export function Step3({ payload, onPrev, onSubmit, onSaveDraft, onEditSection, s
     return `ROWS-${rows.length}-HRS-${Math.round(totalHours)}`;
   }, [rows, totalHours]);
 
+  const utilizationFte = maxHours > 0 ? totalHours / maxHours : 0;
+  const isOverLimit = totalHours > maxHours;
+
   return (
     <div className="bg-white rounded-b-md border-x border-b border-slate-200 shadow-sm font-sans flex flex-col relative overflow-hidden">
       <div className="grid gap-0 lg:grid-cols-[minmax(0,1fr)_22rem]">
@@ -42,77 +50,21 @@ export function Step3({ payload, onPrev, onSubmit, onSaveDraft, onEditSection, s
             <p className="text-sm text-slate-500 leading-relaxed">Review all process metrics before final submission in the portal.</p>
           </div>
 
-          <div className="mb-8">
-            <div className="flex items-center justify-between mb-3 bg-slate-50 px-3 py-2 border-l-2 border-blue-700">
-              <h3 className="text-[11px] font-semibold text-slate-700 tracking-[0.2em] uppercase">Core Activities</h3>
-              <button
-                type="button"
-                onClick={() => onEditSection("core")}
-                className="text-[11px] font-semibold text-blue-700 hover:text-blue-800 inline-flex items-center gap-1"
-              >
-                <Edit3 size={12} /> Edit
-              </button>
-            </div>
-            <table className="w-full text-left">
-              <thead>
-                <tr className="text-[10px] font-semibold text-slate-500 uppercase tracking-[0.18em] border-b border-slate-100">
-                  <th className="pb-2">Sub-Process</th>
-                  <th className="pb-2 text-right">FTE Count</th>
-                  <th className="pb-2 text-right">Allocated Hours</th>
-                </tr>
-              </thead>
-              <tbody className="text-sm">
-                {coreRows.map((row, index) => (
-                  <tr key={`${row.subProcess}-${index}`} className="border-b border-slate-100 last:border-0">
-                    <td className="py-2.5 text-slate-700 font-medium">{row.subProcess}</td>
-                    <td className="py-2.5 text-right text-slate-500 tabular-nums">-</td>
-                    <td className="py-2.5 text-right font-medium text-slate-900 tabular-nums">{Number(row.timeTakenHoursPerMonth || 0).toFixed(1)}</td>
-                  </tr>
-                ))}
-                {coreRows.length === 0 && (
-                  <tr>
-                    <td colSpan={3} className="py-4 text-center text-slate-500">No core activities found.</td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
+          <ProcessListToggle
+            rows={coreRows}
+            title="Core Activities"
+            accentColor="#165BAA"
+            onEdit={() => onEditSection("core")}
+            showFTE
+          />
 
-          <div className="mb-8">
-            <div className="flex items-center justify-between mb-3 bg-slate-50 px-3 py-2 border-l-2 border-slate-400">
-              <h3 className="text-[11px] font-semibold text-slate-700 tracking-[0.2em] uppercase">Support Activities</h3>
-              <button
-                type="button"
-                onClick={() => onEditSection("support")}
-                className="text-[11px] font-semibold text-blue-700 hover:text-blue-800 inline-flex items-center gap-1"
-              >
-                <Edit3 size={12} /> Edit
-              </button>
-            </div>
-            <table className="w-full text-left">
-              <thead>
-                <tr className="text-[10px] font-semibold text-slate-500 uppercase tracking-[0.18em] border-b border-slate-100">
-                  <th className="pb-2">Sub-Process</th>
-                  <th className="pb-2 text-right">FTE Count</th>
-                  <th className="pb-2 text-right">Allocated Hours</th>
-                </tr>
-              </thead>
-              <tbody className="text-sm">
-                {supportRows.map((row, index) => (
-                  <tr key={`${row.subProcess}-${index}`} className="border-b border-slate-100 last:border-0">
-                    <td className="py-2.5 text-slate-700 font-medium">{row.subProcess}</td>
-                    <td className="py-2.5 text-right text-slate-500 tabular-nums">-</td>
-                    <td className="py-2.5 text-right font-medium text-slate-900 tabular-nums">{Number(row.timeTakenHoursPerMonth || 0).toFixed(1)}</td>
-                  </tr>
-                ))}
-                {supportRows.length === 0 && (
-                  <tr>
-                    <td colSpan={3} className="py-4 text-center text-slate-500">No support activities found.</td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
+          <ProcessListToggle
+            rows={supportRows}
+            title="Support Activities"
+            accentColor="#64748b"
+            onEdit={() => onEditSection("support")}
+            showFTE
+          />
         </div>
 
         <div className="w-full bg-slate-50/60 p-6 sm:p-8 flex flex-col gap-6">
@@ -140,18 +92,30 @@ export function Step3({ payload, onPrev, onSubmit, onSaveDraft, onEditSection, s
             </div>
           </div>
 
-          <div className="bg-white border border-slate-200 rounded-md p-6 shadow-sm">
+            <div className="bg-white border border-slate-200 rounded-md p-6 shadow-sm">
             <h4 className="text-[11px] font-semibold text-slate-500 tracking-[0.2em] uppercase mb-4">Metric Breakdown</h4>
             <div className="space-y-3 text-sm">
               <div className="flex justify-between">
                 <span className="text-slate-600">Core Processes</span>
-                <span className="font-medium text-slate-900 tabular-nums">{coreHours.toFixed(1)}h</span>
+                <span className="font-medium text-slate-900 tabular-nums">{coreHours.toFixed(1)}h ({(coreHours / maxHours).toFixed(2)} FTE)</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-slate-600">Support Functions</span>
-                <span className="font-medium text-slate-900 tabular-nums">{supportHours.toFixed(1)}h</span>
+                <span className="font-medium text-slate-900 tabular-nums">{supportHours.toFixed(1)}h ({(supportHours / maxHours).toFixed(2)} FTE)</span>
               </div>
-              <div className="pt-4 mt-4 border-t border-slate-100 flex justify-between items-center">
+              <div className="pt-3 mt-2 border-t border-slate-100 space-y-2">
+                <div className="flex justify-between text-xs">
+                  <span className="text-slate-500">Utilization vs. Limit ({maxHours}h)</span>
+                  <span className={`font-semibold ${isOverLimit ? 'text-red-600' : 'text-blue-700'}`}>
+                    {totalHours.toFixed(1)} / {maxHours}h
+                  </span>
+                </div>
+                <FTEProgressBar fte={utilizationFte} showValue={false} height={6} />
+                {isOverLimit && (
+                  <p className="text-[11px] text-red-600 font-semibold">⚠ Exceeds your configured monthly limit</p>
+                )}
+              </div>
+              <div className="pt-2 border-t border-slate-100 flex justify-between items-center">
                 <span className="text-slate-600 font-semibold">Draft ID</span>
                 <span className="text-xs font-semibold text-blue-700 bg-blue-50 px-2 py-1 rounded-md tabular-nums">{draftLabel}</span>
               </div>

@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState } from 'react';
-import { AlertCircle, BarChart3, BriefcaseBusiness, Clock3, Filter, Layers3, UserRound } from 'lucide-react';
-import { getUtilizationReport } from '../../lib/api';
+import React, { useEffect, useMemo, useState } from 'react';
+import { AlertCircle, BarChart3, BriefcaseBusiness, Clock3, Download, Filter, Layers3, TrendingUp, UserRound } from 'lucide-react';
+import { downloadExcel, getUtilizationReport } from '../../lib/api';
 import { formatDateISO } from '../employee/bperSubmissionStorage';
 import { DashboardSkeleton } from '../../components/PortalSkeletons';
+import { FTEBandChart } from '../../components/charts/FTECharts';
 
 type DepartmentFilter = 'All Departments' | string;
 
@@ -58,6 +59,7 @@ export default function WDTAnalyticsPage() {
   const [report, setReport] = useState<UtilizationReport | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isDownloading, setIsDownloading] = useState(false);
 
   async function loadReport(department: DepartmentFilter) {
     setIsLoading(true);
@@ -105,7 +107,7 @@ export default function WDTAnalyticsPage() {
 
   const departments = useMemo(() => {
     const options = byDepartment.map((item) => item.label).filter(Boolean);
-    return ['All Departments', ...Array.from(new Set(options)).sort((a, b) => a.localeCompare(b))];
+    return ['All Departments', ...Array.from(new Set(options)).sort((a, b) => (a as string).localeCompare(b as string))];
   }, [byDepartment]);
 
   const coreHours = safeNumber(coreSupport.coreHours);
@@ -113,6 +115,22 @@ export default function WDTAnalyticsPage() {
   const coreSupportTotal = safeNumber(coreSupport.totalHours) || coreHours + supportHours;
   const corePercent = coreSupportTotal === 0 ? 0 : (coreHours / coreSupportTotal) * 100;
   const supportPercent = coreSupportTotal === 0 ? 0 : (supportHours / coreSupportTotal) * 100;
+  const totalFte = coreSupportTotal / 160;
+
+  // Build per-employee FTE data for band chart
+  const employeeFteData = byEmployee.map(item => ({ label: item.label, fte: safeNumber(item.hours) / 160 }));
+
+  async function handleExcelDownload() {
+    setIsDownloading(true);
+    try {
+      const params = departmentFilter !== 'All Departments' ? { department: departmentFilter } : undefined;
+      await downloadExcel('/export/wdt-submissions', 'bper-wdt', params);
+    } catch (err: any) {
+      console.error('Excel download failed:', err.message);
+    } finally {
+      setIsDownloading(false);
+    }
+  }
 
   if (isLoading) {
     return <DashboardSkeleton />;
@@ -150,24 +168,36 @@ export default function WDTAnalyticsPage() {
             </p>
           </div>
 
-          <label className="relative w-full md:w-72">
-            <Filter className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#8CA0BA]" />
-            <select
-              value={departmentFilter}
-              onChange={(event) => setDepartmentFilter(event.target.value)}
-              className="h-11 w-full rounded-xl border border-[#D6E2F0] bg-white pl-10 pr-3 text-sm font-medium text-[#243A59] outline-none focus:border-[#6E97CB] focus:ring-2 focus:ring-[#D7E6F7]"
+          <div className="flex items-center gap-2">
+            <label className="relative w-full md:w-64">
+              <Filter className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#8CA0BA]" />
+              <select
+                value={departmentFilter}
+                onChange={(event) => setDepartmentFilter(event.target.value)}
+                className="h-11 w-full rounded-xl border border-[#D6E2F0] bg-white pl-10 pr-3 text-sm font-medium text-[#243A59] outline-none focus:border-[#6E97CB] focus:ring-2 focus:ring-[#D7E6F7]"
+              >
+                {departments.map((department) => (
+                  <option key={department} value={department}>
+                    {department}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <button
+              type="button"
+              onClick={handleExcelDownload}
+              disabled={isDownloading}
+              className="inline-flex items-center gap-2 h-11 rounded-xl border border-[#D6E2F0] bg-white px-4 text-sm font-semibold text-[#243A59] hover:bg-[#F4F8FF] disabled:opacity-60 transition-colors"
             >
-              {departments.map((department) => (
-                <option key={department} value={department}>
-                  {department}
-                </option>
-              ))}
-            </select>
-          </label>
+              <Download className="h-4 w-4" />
+              {isDownloading ? 'Downloading...' : 'Excel'}
+            </button>
+          </div>
         </div>
 
-        <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5">
           <KpiCard icon={Clock3} label="Total Hours" value={safeNumber(summary.totalHours).toFixed(1)} helper="Tracked WDT hours" />
+          <KpiCard icon={TrendingUp} label="Total FTE" value={totalFte.toFixed(2)} helper="Hours ÷ 160 baseline" />
           <KpiCard icon={BriefcaseBusiness} label="Submissions" value={String(safeNumber(summary.totalSubmissions))} helper="Department-filtered records" />
           <KpiCard icon={BarChart3} label="Avg Hours / Submission" value={safeNumber(summary.avgHoursPerSubmission).toFixed(1)} helper="Operational workload average" />
           <KpiCard icon={Layers3} label="Approval Rate" value={`${safeNumber(summary.approvalRatePct)}%`} helper="Approved vs total submissions" />
@@ -206,11 +236,11 @@ export default function WDTAnalyticsPage() {
             {byFrequency.length === 0 ? (
               <EmptyChartState />
             ) : (
-              byFrequency.map((item) => {
+              byFrequency.map((item, idx) => {
                 const max = byFrequency[0]?.hours || 1;
                 return (
                   <BarRow
-                    key={item.label}
+                    key={item.label || idx}
                     label={item.label}
                     value={safeNumber(item.hours)}
                     widthPercent={(safeNumber(item.hours) / max) * 100}
@@ -230,11 +260,11 @@ export default function WDTAnalyticsPage() {
             {byEmployee.length === 0 ? (
               <EmptyChartState />
             ) : (
-              byEmployee.map((item) => {
+              byEmployee.map((item, idx) => {
                 const max = byEmployee[0]?.hours || 1;
                 return (
                   <BarRow
-                    key={item.label}
+                    key={item.label || idx}
                     label={item.label}
                     value={safeNumber(item.hours)}
                     widthPercent={(safeNumber(item.hours) / max) * 100}
@@ -253,11 +283,11 @@ export default function WDTAnalyticsPage() {
             {byProcess.length === 0 ? (
               <EmptyChartState />
             ) : (
-              byProcess.map((item) => {
+              byProcess.map((item, idx) => {
                 const max = byProcess[0]?.hours || 1;
                 return (
                   <BarRow
-                    key={item.label}
+                    key={item.label || idx}
                     label={item.label}
                     value={safeNumber(item.hours)}
                     widthPercent={(safeNumber(item.hours) / max) * 100}
@@ -319,6 +349,16 @@ export default function WDTAnalyticsPage() {
           </table>
         </div>
       </section>
+
+      {employeeFteData.length > 0 && (
+        <section className="rounded-2xl border border-[#D9E4F2] bg-white p-4 shadow-[0_6px_16px_rgba(16,42,80,0.06)]">
+          <h3 className="text-lg font-bold text-[#102846]">FTE Band Distribution</h3>
+          <p className="mt-1 text-xs text-[#6E86A3]">Distribution of employee FTE values across 5 utilization bands (based on 160h/month baseline)</p>
+          <div className="mt-4">
+            <FTEBandChart data={employeeFteData} height={200} />
+          </div>
+        </section>
+      )}
     </div>
   );
 }
@@ -351,13 +391,24 @@ function KpiCard({
 }
 
 function LegendRow({ label, value, colorClass }: { label: string; value: string; colorClass: string }) {
+  const fte = Number(value) / 160;
   return (
-    <div className="flex items-center justify-between rounded-lg border border-[#E3EBF7] bg-[#F9FBFF] px-3 py-2.5">
-      <div className="flex items-center gap-2">
-        <span className={`h-2.5 w-2.5 rounded-full ${colorClass}`} />
-        <span className="text-sm font-medium text-[#355173]">{label}</span>
+    <div className="flex flex-col justify-center rounded-lg border border-[#E3EBF7] bg-[#F9FBFF] px-3 py-2.5">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <span className={`h-2.5 w-2.5 rounded-full ${colorClass}`} />
+          <span className="text-sm font-medium text-[#355173]">{label}</span>
+        </div>
+        <span className="text-sm font-semibold text-[#102846]">{value}h</span>
       </div>
-      <span className="text-sm font-semibold text-[#102846]">{value}h</span>
+      <div className="mt-1 flex items-center justify-between">
+        <div className="pl-4 text-xs font-semibold text-[#6E86A3]">
+          {label.replace(' Activities', '')} FTE
+        </div>
+        <div className="text-xs font-bold text-[#4B6889]">
+          {fte.toFixed(2)}
+        </div>
+      </div>
     </div>
   );
 }
@@ -375,6 +426,7 @@ function BarRow({
   colorClass: string;
   icon?: React.ComponentType<{ className?: string }>;
 }) {
+  const fte = value / 160;
   return (
     <div className="space-y-1.5">
       <div className="flex items-center justify-between gap-2 text-sm">
@@ -382,7 +434,10 @@ function BarRow({
           {Icon ? <Icon className="h-3.5 w-3.5 text-[#6A83A3]" /> : null}
           <span className="truncate text-[#355173]">{label}</span>
         </div>
-        <span className="font-semibold text-[#102846]">{value.toFixed(1)}h</span>
+        <div className="text-right whitespace-nowrap">
+          <span className="font-semibold text-[#102846]">{value.toFixed(1)}h</span>
+          <span className="font-bold text-[#718BAB]"> / {fte.toFixed(2)} FTE</span>
+        </div>
       </div>
       <div className="h-2.5 rounded-full bg-[#E7EEF8] overflow-hidden">
         <div className={`h-full rounded-full ${colorClass}`} style={{ width: `${Math.max(8, widthPercent)}%` }} />

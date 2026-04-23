@@ -34,11 +34,9 @@ export default function FormStatus() {
 
         if (profileRes.ok) {
           setProfile(profileData);
-
-          const filtered = subsData.filter((item) => item.employee.employeeId === profileData.employeeId);
-          setRecords(filtered);
-          if (filtered.length > 0) {
-            setSelectedReferenceId(filtered[0].referenceId);
+          setRecords(subsData);
+          if (subsData.length > 0) {
+            setSelectedReferenceId(subsData[0].referenceId);
           }
         }
       } catch (error) {
@@ -344,6 +342,7 @@ function SubmissionRow({
   onOpenComments: () => void;
   onResubmit: () => void;
   hasManagerComments: boolean;
+  key?: any;
 }) {
   return (
     <tr
@@ -470,7 +469,7 @@ function CommentsModal({ record, onClose }: { record: BperSubmissionRecord; onCl
   );
 }
 
-function ReviewEventCard({ event }: { event: BperReviewEvent }) {
+function ReviewEventCard({ event }: { event: BperReviewEvent; key?: any }) {
   return (
     <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
       <div className="px-4 py-2 border-b border-slate-100 bg-slate-50 text-xs font-semibold text-slate-500 uppercase tracking-[0.14em]">

@@ -4,7 +4,7 @@ const { logAction } = require('../utils/auditLogger');
 
 const submitWDT = async (req, res) => {
   try {
-    const { employee, month, year } = req.body;
+    const { employee, month, year, payload } = req.body;
     
     // 1. Check Submission Window (20th to 31st)
     const today = new Date().getDate();
@@ -13,9 +13,32 @@ const submitWDT = async (req, res) => {
       return res.status(403).json({ message: 'Submission window is not yet open for this period.' });
     }
 
-    // 2. Check for Duplicates (Allow updates for 'Changes Requested')
+    // 2. Validate hours against user's configured maximum
+    const submittingUser = await User.findOne({
+      $or: [
+        { employeeId: employee?.employeeId },
+        { email: employee?.email?.toLowerCase() }
+      ]
+    }).select('maxMonthlyHours role');
+
+    const isAdmin = submittingUser?.role === 'admin';
+    const maxHours = submittingUser?.maxMonthlyHours || 160;
+
+    const rows = Array.isArray(payload?.rows) ? payload.rows : [];
+    const totalHours = rows.reduce((sum, row) => sum + Number(row.timeTakenHoursPerMonth || 0), 0);
+
+    if (!isAdmin && totalHours > maxHours) {
+      return res.status(400).json({
+        message: `Total submitted hours (${totalHours.toFixed(1)}h) exceeds your configured monthly limit of ${maxHours}h. Please review your entries.`
+      });
+    }
+
+    // 3. Check for Duplicates (Allow updates for 'Changes Requested')
     const existing = await WDTSubmission.findOne({ 
-      'employee.employeeId': employee.employeeId, 
+      $or: [
+        { 'employee.employeeId': employee.employeeId },
+        { 'employee.email': employee.email?.toLowerCase() }
+      ],
       month, 
       year 
     });
@@ -29,8 +52,17 @@ const submitWDT = async (req, res) => {
         // Perform Update instead of Create
         Object.assign(existing, req.body);
         existing.status = 'Under Review';
-        existing.pendingFrom = 'Manager'; // Reset to manager
+        existing.pendingFrom = employee.supervisorName || 'Manager'; // Route to supervisor
         await existing.save();
+
+        // Send resubmission notification email
+        try {
+          const { sendResubmissionEmail } = require('../utils/emailService');
+          await sendResubmissionEmail(existing.employee, existing.referenceId);
+        } catch (emailErr) {
+          console.warn('[Email] Resubmission email failed silently:', emailErr.message);
+        }
+
         return res.status(200).json(existing);
       }
 
@@ -38,6 +70,15 @@ const submitWDT = async (req, res) => {
     }
 
     const record = await WDTSubmission.create(req.body);
+
+    // Send submission confirmation email
+    try {
+      const { sendSubmissionConfirmationEmail } = require('../utils/emailService');
+      await sendSubmissionConfirmationEmail(record.employee, record.referenceId);
+    } catch (emailErr) {
+      console.warn('[Email] Submission confirmation email failed silently:', emailErr.message);
+    }
+
     res.status(201).json(record);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -91,10 +132,19 @@ const getSubmissions = async (req, res) => {
          ];
        } else {
          // Employees only see their own submissions
+         const employeeQuery = [];
          if (currentUser.employeeId) {
-             query['employee.employeeId'] = currentUser.employeeId;
+           employeeQuery.push({ 'employee.employeeId': currentUser.employeeId });
+         }
+         if (currentUser.email) {
+           employeeQuery.push({ 'employee.email': currentUser.email.toLowerCase() });
+         }
+
+         if (employeeQuery.length > 0) {
+           query['$or'] = employeeQuery;
          } else {
-             query['employee.email'] = currentUser.email;
+           // Should not happen if authenticated, but for safety:
+           return res.json([]);
          }
        }
     }
@@ -139,6 +189,14 @@ const updateSubmissionStatus = async (req, res) => {
     }
     
     await submission.save();
+
+    // Send review notification email to employee
+    try {
+      const { sendReviewNotificationEmail } = require('../utils/emailService');
+      await sendReviewNotificationEmail(submission.employee, submission.referenceId, finalStatus, actualComment, managerName);
+    } catch (emailErr) {
+      console.warn('[Email] Review notification email failed silently:', emailErr.message);
+    }
 
     // AUDIT LOG
     await logAction({

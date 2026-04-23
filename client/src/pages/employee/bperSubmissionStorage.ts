@@ -67,6 +67,8 @@ const seededRecords: BperSubmissionRecord[] = [
   {
     referenceId: "BPER-1004-6AGZI",
     submittedAt: "2025-10-20T09:00:00.000Z",
+    month: 10,
+    year: 2025,
     status: "Changes Requested",
     employee: {
       ...demoEmployeeProfile,
@@ -87,6 +89,7 @@ const seededRecords: BperSubmissionRecord[] = [
           subProcess: "Validation and Posting",
           frequency: "Daily",
           volumesMonthly: 840,
+          timePerTransactionMinutes: 2.57,
           timeTakenHoursPerMonth: 36,
           applicationsUsed: "SAP",
           comments: "Existing baseline submission used for demo workflow.",
@@ -108,7 +111,7 @@ const seededRecords: BperSubmissionRecord[] = [
   },
 ];
 
-export function buildBperSubmission(payload: WdtPayload, profile?: EmployeeSnapshot): BperSubmissionRecord {
+export function buildBperSubmission(payload: WdtPayload, profile?: EmployeeSnapshot, existingRefId?: string): BperSubmissionRecord {
   const emp = profile || payload.employee;
   const totalHours = payload.rows.reduce((sum, row) => sum + Number(row.timeTakenHoursPerMonth || 0), 0);
   const coreCount = payload.rows.filter((row) => row.activityCategory !== "support").length;
@@ -117,7 +120,7 @@ export function buildBperSubmission(payload: WdtPayload, profile?: EmployeeSnaps
   const submittedAt = now.toISOString();
   const month = now.getMonth() + 1;
   const year = now.getFullYear();
-  const referenceId = `BPER-${emp.employeeId || "NEW"}-${Date.now().toString().slice(-5)}`;
+  const referenceId = existingRefId || `BPER-${emp.employeeId || "NEW"}-${Date.now().toString().slice(-5)}`;
 
   return {
     referenceId,
@@ -161,18 +164,22 @@ export async function saveBperSubmission(record: BperSubmissionRecord) {
       body: JSON.stringify(record)
     });
     
-    if (response.ok) {
-      const data = await readJson<{ referenceId?: string }>(response);
-      if (typeof window !== 'undefined') {
-        if (data?.referenceId) {
-          window.localStorage.setItem(ACTIVE_UNDER_REVIEW_KEY, data.referenceId);
-        }
-      }
-      emitDataUpdatedEvent();
-      return data;
+    if (!response.ok) {
+      const errorData = await readJson<{ message?: string }>(response);
+      throw new Error(errorData?.message || `Server error: ${response.status}`);
     }
-  } catch (error) {
+    
+    const data = await readJson<{ referenceId?: string }>(response);
+    if (typeof window !== 'undefined') {
+      if (data?.referenceId) {
+        window.localStorage.setItem(ACTIVE_UNDER_REVIEW_KEY, data.referenceId);
+      }
+    }
+    emitDataUpdatedEvent();
+    return data;
+  } catch (error: any) {
     console.error('Failed to save submission:', error);
+    throw error;
   }
 }
 
@@ -235,13 +242,13 @@ export async function applyManagerReviewToSubmission(input: {
   }
 }
 
-export function resetEmployeeReviewQueueToSinglePending(input: {
+export async function resetEmployeeReviewQueueToSinglePending(input: {
   employeeId: string;
   payload: WdtPayload;
 }) {
   if (typeof window === "undefined") return null;
 
-  const records = loadBperSubmissions();
+  const records = await loadBperSubmissions();
   const pending = buildBperSubmission(input.payload);
 
   const next = [pending, ...records.filter((record) => record.employee.employeeId !== input.employeeId)];
@@ -289,6 +296,8 @@ function normalizeRecord(value: unknown): BperSubmissionRecord | null {
         : normalizedStatus === "Under Review"
           ? DEFAULT_MANAGER_NAME
           : "NA",
+    month: Number(record.month || 0),
+    year: Number(record.year || 0),
     reviewHistory: normalizedHistory,
   };
 }

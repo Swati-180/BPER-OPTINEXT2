@@ -19,6 +19,7 @@ import ManagerLayout from './layouts/ManagerLayout';
 import ProtectedRoute from './components/ProtectedRoute';
 import PortalSelectionPage from './pages/PortalSelection';
 import InviteSignupPage from './pages/InviteSignup';
+import EmployeeLoginPage from './pages/EmployeeLogin';
 
 // Pages
 import EmployeeDashboard from './pages/employee/Dashboard';
@@ -59,6 +60,7 @@ interface FormErrors {
   email?: string;
   password?: string;
 }
+
 
 function LoginPage({ onLogin }: { onLogin: (user: AppAuthUser) => void }) {
   const navigate = useNavigate();
@@ -121,12 +123,14 @@ function LoginPage({ onLogin }: { onLogin: (user: AppAuthUser) => void }) {
       }
       
       saveAuthUser(nextUser);
-      onLogin(nextUser);
+      
       if (nextUser.role === 'employee') {
-        navigate('/employee/dashboard', { replace: true });
-      } else {
-        navigate('/choose-portal', { replace: true });
+        clearAuthUser();
+        throw new Error('Access denied. Employees must use the dedicated employee portal.');
       }
+      
+      onLogin(nextUser);
+      navigate('/choose-portal', { replace: true });
     } catch (err: any) {
       setGeneralError(err.message || 'Invalid credentials. Please check your email and password.');
     } finally {
@@ -235,16 +239,6 @@ function LoginPage({ onLogin }: { onLogin: (user: AppAuthUser) => void }) {
                   'Sign In'
                 )}
               </Button>
-
-              <div className="text-center space-y-2">
-                <p className="text-sm text-[#7A7A7A]">
-                  Don&apos;t Have An Account?{' '}
-                  <Link to="/auth/signup" className="font-semibold text-[#3C45C6] hover:underline">
-                    Register Now.
-                  </Link>
-                </p>
-                <p className="text-xs text-[#8A97AA]">Employees need a manager invite link for account creation.</p>
-              </div>
             </form>
           </CardContent>
         </Card>
@@ -252,6 +246,7 @@ function LoginPage({ onLogin }: { onLogin: (user: AppAuthUser) => void }) {
     </div>
   );
 }
+
 
 function ManagerChoosePortalRoute({ user }: { user: AppAuthUser | null }) {
   if (!user) {
@@ -301,7 +296,7 @@ export default function App() {
         />
         <Route 
           path="/auth/login/employee" 
-          element={<Navigate to="/auth/login" replace />} 
+          element={<EmployeeLoginPage onLogin={handleLogin} />} 
         />
         <Route path="/auth/signup" element={<InviteSignupPage onLogin={handleLogin} />} />
         <Route path="/choose-portal" element={<ManagerChoosePortalRoute user={user} />} />

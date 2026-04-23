@@ -154,7 +154,7 @@ export default function Dashboard() {
           <h1 className="text-3xl font-bold tracking-tight text-[#0F1F3D]">Dashboard</h1>
         </div>
         <p className="text-base text-[#4A607C]">
-          Hi {profile?.name || 'User'}, submit from Forms to start this cycle. Once approved by manager, your deadline will be marked finished.
+          Hi {profile?.name || (profile?.user && profile.user.name) || 'User'}, submit from Forms to start this cycle. Once approved by manager, your deadline will be marked finished.
         </p>
       </div>
 

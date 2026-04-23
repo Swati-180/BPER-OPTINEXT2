@@ -131,7 +131,12 @@ const register = async (req, res) => {
         name: user.name,
         email: user.email,
         role: user.role,
-        organization: user.organization
+        organization: user.organization,
+        employeeId: user.employeeId,
+        designation: user.designation,
+        band: user.band,
+        location: user.location,
+        maxMonthlyHours: user.maxMonthlyHours
       }
     });
   } catch (err) {
@@ -167,7 +172,12 @@ const login = async (req, res) => {
         name: user.name,
         email: user.email,
         role: user.role,
-        organization: user.organization
+        organization: user.organization,
+        employeeId: user.employeeId,
+        designation: user.designation,
+        band: user.band,
+        location: user.location,
+        maxMonthlyHours: user.maxMonthlyHours
       }
     });
   } catch (err) {
@@ -201,6 +211,7 @@ const updateMe = async (req, res) => {
       'supervisorTitle',
       'client',
       'band',
+      'maxMonthlyHours',
     ];
 
     const previous = {};

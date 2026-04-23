@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   AlertCircle,
   ArrowRight,
@@ -18,6 +18,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { formatDateISO } from '../employee/bperSubmissionStorage';
 import { DashboardSkeleton, InlineUpdatingBadge } from '../../components/PortalSkeletons';
+import { FTEBandChart } from '../../components/charts/FTECharts';
 
 type Trend = 'up' | 'steady' | 'down';
 
@@ -55,6 +56,7 @@ type DashboardReport = {
       count: number;
       percent: number;
     }>;
+    employeeFteData?: Array<{ label: string; fte: number }>;
   };
   tables?: {
     recentSubmissions?: Array<{
@@ -293,9 +295,9 @@ export default function Dashboard() {
           <KpiCard icon={Check} label="Approved" value={String(safeNumber(summary.approved))} helper={safeNumber(summary.approved) > 0 ? 'Review completed' : 'Awaiting approvals'} />
           <KpiCard
             icon={TrendingUp}
-            label="Avg Utilization"
-            value={toPercent(safeNumber(summary.avgUtilizationPct))}
-            helper={`${safeNumber(summary.totalFte).toFixed(2)} FTE from 160h baseline`}
+            label="Total FTE"
+            value={safeNumber(summary.totalFte).toFixed(2)}
+            helper={`${toPercent(safeNumber(summary.avgUtilizationPct))} Avg Utilization`}
             highlight
           />
         </div>
@@ -311,7 +313,11 @@ export default function Dashboard() {
               <EmptyBlock label="No tower-level FTE data available." />
             ) : (
               towerDistribution.map((tower) => (
-                <div key={tower.tower} className="grid grid-cols-[130px_1fr_auto] items-center gap-2.5">
+                <div 
+                  key={tower.tower} 
+                  className="grid grid-cols-[130px_1fr_auto] items-center gap-2.5 cursor-pointer hover:bg-[#F8FBFF] p-1.5 -mx-1.5 rounded-lg transition-colors"
+                  onClick={() => navigate(`/manager/deep-analysis?tab=fte&subTab=activities&towerFilter=${encodeURIComponent(tower.tower)}`)}
+                >
                   <p className="text-xs font-semibold text-[#5E7594] leading-tight">{tower.tower}</p>
                   <div className="h-7 rounded-lg bg-[#EEF4FC] overflow-hidden border border-[#DFE9F7]">
                     <div
@@ -346,13 +352,23 @@ export default function Dashboard() {
             </div>
 
             <div className="space-y-2.5">
-              {statusSegments.rows.map((row) => (
-                <StatusRow key={row.key} label={row.label} value={row.percent} colorClass={row.colorClass} count={row.count} />
+              {statusSegments.rows.map((row, idx) => (
+                <StatusRow key={row.key || idx} label={row.label} value={row.percent} colorClass={row.colorClass} count={row.count} />
               ))}
             </div>
           </div>
         </article>
       </section>
+
+      {dashboard?.charts?.employeeFteData && dashboard.charts.employeeFteData.length > 0 && (
+        <section className="rounded-2xl border border-[#D9E4F2] bg-white p-4 shadow-[0_5px_14px_rgba(16,42,80,0.06)]">
+          <h3 className="text-xl font-bold text-[#102846]">FTE Band Distribution</h3>
+          <p className="mt-1 text-xs text-[#6E86A3]">Distribution of employee FTE values across 5 utilization bands (based on 160h/month baseline)</p>
+          <div className="mt-4">
+            <FTEBandChart data={dashboard.charts.employeeFteData} height={200} />
+          </div>
+        </section>
+      )}
 
       <section className="grid grid-cols-1 gap-3.5 xl:grid-cols-[2fr_1.2fr]">
         <article className="rounded-2xl border border-[#D9E4F2] bg-white shadow-[0_5px_14px_rgba(16,42,80,0.06)] overflow-hidden">
@@ -362,14 +378,14 @@ export default function Dashboard() {
           </div>
 
           <div className="overflow-x-auto">
-            <table className="w-full min-w-180 border-collapse text-left">
+            <table className="w-full border-collapse text-left">
               <thead>
                 <tr className="bg-[#F5F8FD] text-[11px] font-bold uppercase tracking-[0.13em] text-[#748DAA] border-b border-[#E3EAF4]">
-                  <th className="px-4 py-2.5">Activity Name</th>
-                  <th className="px-4 py-2.5">Tower</th>
-                  <th className="px-4 py-2.5 text-right">FTE</th>
-                  <th className="px-4 py-2.5 text-center">Trend</th>
-                  <th className="px-4 py-2.5 text-center">Consolidate</th>
+                  <th className="px-3 py-2.5">Activity Name</th>
+                  <th className="px-3 py-2.5">Tower</th>
+                  <th className="px-2 py-2.5 text-right">FTE</th>
+                  <th className="px-2 py-2.5 text-center">Trend</th>
+                  <th className="px-2 py-2.5 text-center">Consolidate</th>
                 </tr>
               </thead>
               <tbody>
@@ -382,13 +398,13 @@ export default function Dashboard() {
                 ) : (
                   topActivities.map((activity) => (
                     <tr key={`${activity.name}-${activity.tower}`} className="border-b border-[#E8EEF7] last:border-b-0">
-                      <td className="px-4 py-3 text-xs font-semibold text-[#1C334E]">{activity.name}</td>
-                      <td className="px-4 py-3 text-xs text-[#4E6787]">{activity.tower}</td>
-                      <td className="px-4 py-3 text-right text-xs font-bold text-[#1E5EA9]">{safeNumber(activity.fte).toFixed(2)}</td>
-                      <td className="px-4 py-3">
+                      <td className="px-3 py-3 text-xs font-semibold text-[#1C334E]">{activity.name}</td>
+                      <td className="px-3 py-3 text-xs text-[#4E6787]">{activity.tower}</td>
+                      <td className="px-2 py-3 text-right text-xs font-bold text-[#1E5EA9]">{safeNumber(activity.fte).toFixed(2)}</td>
+                      <td className="px-2 py-3">
                         <TrendSpark trend={activity.trend || 'steady'} />
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="px-2 py-3">
                         <div className="flex justify-center">
                           {activity.consolidate ? (
                             <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
@@ -419,8 +435,8 @@ export default function Dashboard() {
             {teamUtilization.length === 0 ? (
               <EmptyBlock label="No utilization data available." compact />
             ) : (
-              teamUtilization.slice(0, 5).map((item) => (
-                <UtilizationRow key={item.label} label={item.label} value={safeNumber(item.utilizationPct)} />
+              teamUtilization.slice(0, 5).map((item, idx) => (
+                <UtilizationRow key={item.label || idx} label={item.label} value={safeNumber(item.utilizationPct)} />
               ))
             )}
           </div>
@@ -546,7 +562,7 @@ function KpiCard({
   );
 }
 
-function StatusRow({ label, value, colorClass, count }: { label: string; value: number; colorClass: string; count: number }) {
+function StatusRow({ label, value, colorClass, count }: { label: string; value: number; colorClass: string; count: number; [key: string]: any }) {
   return (
     <div className="space-y-1.5">
       <div className="flex items-center justify-between text-xs font-medium text-[#36506F]">
@@ -578,7 +594,7 @@ function TrendSpark({ trend }: { trend: Trend }) {
   );
 }
 
-function UtilizationRow({ label, value }: { label: string; value: number }) {
+function UtilizationRow({ label, value }: { label: string; value: number; [key: string]: any }) {
   return (
     <div>
       <div className="flex items-center justify-between text-xs font-semibold text-[#2E4766]">

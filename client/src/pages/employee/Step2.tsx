@@ -152,14 +152,24 @@ export function Step2({ employee, payload, onNext, onPrev, onPayloadChange }: St
   const [validationError, setValidationError] = useState("");
 
   const isStepValid = useMemo(() => {
-    return rows.every(row => 
-      row.majorProcess?.trim() && 
-      row.process?.trim() && 
-      row.subProcess?.trim() && 
-      row.frequency?.trim() && 
-      Number(row.volumesMonthly) > 0 &&
-      Number(row.timePerTransactionMinutes) > 0
-    );
+    if (rows.length === 0) return false;
+    return rows.every(row => {
+      const hasTime = Number(row.volumesMonthly) > 0 && Number(row.timePerTransactionMinutes) > 0;
+      const hasDescription = row.subProcess?.trim();
+      
+      if (row.activityCategory === 'support') {
+        return hasTime && hasDescription;
+      }
+      
+      // Core rows need all taxonomy fields
+      return (
+        hasTime && 
+        hasDescription &&
+        row.majorProcess?.trim() && 
+        row.process?.trim() && 
+        row.frequency?.trim()
+      );
+    });
   }, [rows]);
 
   const handleNext = () => {
@@ -181,7 +191,7 @@ export function Step2({ employee, payload, onNext, onPrev, onPayloadChange }: St
         if (field === "volumesMonthly" || field === "timePerTransactionMinutes") {
           const vol = Number(nextRow.volumesMonthly) || 0;
           const min = Number(nextRow.timePerTransactionMinutes) || 0;
-          nextRow.timeTakenHoursPerMonth = (vol * min) / 60;
+          nextRow.timeTakenHoursPerMonth = ((vol * min) / 60) || 0;
         }
         
         return nextRow;
@@ -212,10 +222,10 @@ export function Step2({ employee, payload, onNext, onPrev, onPayloadChange }: St
       ...prev,
       {
         activityCategory: "support",
-        majorProcess: "",
-        process: "",
+        majorProcess: "Miscellaneous",
+        process: "Support Activity",
         subProcess: "",
-        frequency: "",
+        frequency: "Monthly",
         volumesMonthly: 0,
         timePerTransactionMinutes: 0,
         timeTakenHoursPerMonth: 0,
@@ -461,7 +471,7 @@ export function Step2({ employee, payload, onNext, onPrev, onPayloadChange }: St
                     </td>
                     <td className="py-3 px-2 text-center bg-slate-50/30">
                       <div className="text-sm font-bold text-blue-800 tabular-nums">
-                        {((Number(row.volumesMonthly) * Number(row.timePerTransactionMinutes)) / 60).toFixed(1)}h
+                        {(((Number(row.volumesMonthly) || 0) * (Number(row.timePerTransactionMinutes) || 0)) / 60).toFixed(1)}h
                       </div>
                     </td>
                     <td className="py-3 px-2">
@@ -604,7 +614,7 @@ export function Step2({ employee, payload, onNext, onPrev, onPayloadChange }: St
                     </td>
                     <td className="py-3 px-2 text-center bg-slate-50/20">
                       <div className="text-sm font-bold text-slate-700 tabular-nums">
-                        {((Number(row.volumesMonthly) * Number(row.timePerTransactionMinutes)) / 60).toFixed(1)}h
+                        {(((Number(row.volumesMonthly) || 0) * (Number(row.timePerTransactionMinutes) || 0)) / 60).toFixed(1)}h
                       </div>
                     </td>
                     <td className="py-3 px-2">
@@ -660,47 +670,73 @@ export function Step2({ employee, payload, onNext, onPrev, onPayloadChange }: St
           </div>
         )}
 
-        <div className="mt-7 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="mt-7 flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between border-t border-slate-100 pt-8">
           <button
             type="button"
             onClick={onPrev}
-            className="text-sm font-semibold text-slate-500 hover:text-slate-800 transition-colors inline-flex items-center gap-2"
+            className="text-sm font-bold text-slate-500 hover:text-slate-800 transition-colors inline-flex items-center gap-2 group"
           >
-            <ArrowLeft size={16} /> Back
+            <ArrowLeft size={16} className="transition-transform group-hover:-translate-x-1" /> Back
           </button>
+
+          {/* Live Total Summary - Footer Integration */}
+          <div className="flex-1 max-w-lg mx-auto w-full px-4">
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center justify-between px-1">
+                <div className="flex items-baseline gap-2">
+                  <span className={`text-2xl font-bold tabular-nums ${(totalHours || 0) > (employee.maxMonthlyHours || 160) ? 'text-red-600' : 'text-blue-800'}`}>
+                    {(totalHours || 0).toFixed(1)}
+                  </span>
+                  <span className="text-[11px] font-bold text-slate-500 uppercase tracking-widest">Hours / Mo</span>
+                </div>
+                <div className="flex flex-col items-end">
+                   <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Capacity</span>
+                    <span className={`text-xs font-bold ${ ((totalHours || 0) / (employee.maxMonthlyHours || 160)) > 1 ? 'text-red-600' : 'text-slate-700'}`}>
+                      {(((totalHours || 0) / (employee.maxMonthlyHours || 160)) * 100).toFixed(0)}%
+                    </span>
+                   </div>
+                   <span className="text-[9px] font-semibold text-slate-400">Max: {employee.maxMonthlyHours || 160}h</span>
+                </div>
+              </div>
+
+              {/* Progress Bar Strip */}
+              <div className="h-2 w-full rounded-full bg-slate-100 overflow-hidden border border-slate-200/50">
+                <div 
+                  className={`h-full rounded-full transition-all duration-700 ease-out ${
+                    (totalHours / (employee.maxMonthlyHours || 160)) > 1 
+                      ? 'bg-red-500' 
+                      : (totalHours / (employee.maxMonthlyHours || 160)) > 0.8 
+                        ? 'bg-amber-500' 
+                        : 'bg-emerald-500'
+                  }`}
+                  style={{ width: `${Math.min(100, (totalHours / (employee.maxMonthlyHours || 160)) * 100)}%` }}
+                />
+              </div>
+
+              {totalHours > (employee.maxMonthlyHours || 160) && (
+                <p className="text-[10px] font-bold text-red-600 text-center animate-pulse">
+                  ⚠️ Exceeds monthly limit of {employee.maxMonthlyHours || 160}h
+                </p>
+              )}
+            </div>
+          </div>
+
           <button
             type="button"
             onClick={handleNext}
-            className={`font-semibold py-3 px-6 rounded-md shadow-md transition-all inline-flex items-center gap-2 ${
+            className={`font-bold py-3 px-8 rounded-xl shadow-lg transition-all inline-flex items-center gap-2 group ${
               isStepValid 
-                ? "bg-blue-700 hover:bg-blue-800 text-white" 
-                : "bg-slate-200 text-slate-500 cursor-not-allowed"
+                ? "bg-blue-700 hover:bg-blue-800 text-white hover:translate-y-[-1px] active:translate-y-[1px]" 
+                : "bg-slate-200 text-slate-400 cursor-not-allowed"
             }`}
           >
-            Next: Review and Submit <ArrowRight size={18} />
+            Next: Review <ArrowRight size={18} className="transition-transform group-hover:translate-x-1" />
           </button>
         </div>
       </div>
 
-      <div className="fixed bottom-4 right-4 z-30 w-36 overflow-hidden rounded-lg border border-slate-200 bg-white/95 text-slate-900 shadow-[0_10px_24px_-18px_rgba(15,23,42,0.65)] backdrop-blur-sm">
-        <div className="px-2.5 py-2 border-b border-slate-200 bg-blue-50/70">
-          <p className="text-[9px] font-semibold uppercase tracking-[0.16em] text-slate-500">Live Total</p>
-          <p className="text-[11px] font-semibold text-slate-700">Hours / month</p>
-        </div>
-        <div className="px-2.5 py-2.5">
-          <div className="text-2xl font-bold leading-none tabular-nums text-blue-800">{totalHours.toFixed(1)}</div>
-          <div className="mt-2 grid grid-cols-2 gap-1 text-[10px]">
-            <div className="rounded-md bg-slate-100 px-1.5 py-1">
-              <p className="uppercase tracking-widest text-slate-500">Core</p>
-              <p className="mt-0.5 font-semibold tabular-nums text-slate-800">{coreHours.toFixed(1)}h</p>
-            </div>
-            <div className="rounded-md bg-blue-50 px-1.5 py-1">
-              <p className="uppercase tracking-widest text-blue-600">Support</p>
-              <p className="mt-0.5 font-semibold tabular-nums text-slate-800">{supportHours.toFixed(1)}h</p>
-            </div>
-          </div>
-        </div>
-      </div>
+
 
       {editor &&
         typeof document !== "undefined" &&

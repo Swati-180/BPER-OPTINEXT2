@@ -37,7 +37,16 @@ export default function BPERForm() {
 
         const data = await res.json().catch(() => null);
         if (res.ok) {
-          setProfile(data);
+          // Map backend User fields to the EmployeeSnapshot format expected by Step1
+          const mappedProfile = {
+            ...data,
+            title: data.designation || 'N/A',
+            department: data.organization || 'N/A',
+            assignedClient: data.client || 'N/A',
+            primaryTower: data.organization || 'N/A', // Fallback
+            employeeType: 'FTE' // Default
+          };
+          setProfile(mappedProfile);
         }
 
         if (windowRes.ok) {
@@ -105,7 +114,7 @@ export default function BPERForm() {
     if (!payload || !profile) return;
     setIsSubmitting(true);
     try {
-      const submission = buildBperSubmission(payload, profile);
+      const submission = buildBperSubmission(payload, profile, refId);
 
       setSubmittedCount(payload.rows.length);
       await saveBperSubmission(submission);
@@ -113,9 +122,8 @@ export default function BPERForm() {
       setIsSubmitted(true);
       setHasUnsavedDraft(false);
       setShowSuccessOverlay(true);
-    } catch (error) {
-      console.error('Submission failed:', error);
-      alert('Failed to submit form. Please try again.');
+    } catch (err: any) {
+      alert(err.message || "Failed to submit form. Please try again.");
     } finally {
       setIsSubmitting(false);
     }

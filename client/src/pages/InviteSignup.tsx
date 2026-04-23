@@ -246,7 +246,7 @@ export default function InviteSignupPage({ onLogin }: InviteSignupProps) {
           <div className="mt-8 border-t border-slate-100 pt-6 text-center">
             <p className="text-sm text-[#607A9A]">
               Already part of the organization?{' '}
-              <Link to="/auth/login" className="font-bold text-[#165BAA] hover:underline">
+              <Link to="/auth/login/employee" className="font-bold text-[#165BAA] hover:underline">
                 Sign in here
               </Link>
             </p>

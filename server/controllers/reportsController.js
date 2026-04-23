@@ -219,6 +219,18 @@ async function getDashboardReport(req, res) {
       pendingFrom: item.pendingFrom || 'NA',
     }));
 
+    const employeeMap = new Map();
+    rows.forEach((row) => {
+      const current = employeeMap.get(row.employeeName) || { label: row.employeeName, hours: 0 };
+      current.hours += row.monthlyHours;
+      employeeMap.set(row.employeeName, current);
+    });
+
+    const employeeFteData = Array.from(employeeMap.values()).map(emp => ({
+      label: emp.label,
+      fte: emp.hours / STANDARD_MONTHLY_HOURS
+    }));
+
     res.json({
       generatedAt: new Date().toISOString(),
       submissionWindow: getSubmissionWindowStatus(),
@@ -228,6 +240,7 @@ async function getDashboardReport(req, res) {
         topActivities,
         submissionStatusSegments,
         teamUtilization,
+        employeeFteData,
       },
       tables: {
         recentSubmissions,
@@ -646,14 +659,17 @@ async function getFteAnalysisReport(req, res) {
     // All Activities Detail
     const allActivities = rows
       .map((row) => ({
-        name: row.subProcess,
+        name: row.process || row.subProcess, // Fallback if needed, but we'll use process/subProcess directly now
+        subProcess: row.subProcess && row.subProcess !== 'Unspecified Activity' ? row.subProcess : '',
         tower: row.tower,
         department: row.department,
-        process: row.process,
+        process: row.process && row.process !== 'Unspecified Process' ? row.process : '',
         frequency: row.frequency,
         monthlyHours: Number(row.monthlyHours.toFixed(1)),
         fte: Number((row.monthlyHours / STANDARD_MONTHLY_HOURS).toFixed(2)),
         activityCategory: row.activityCategory,
+        employeeName: row.employeeName,
+        employeeId: row.employeeId,
       }))
       .sort((a, b) => b.fte - a.fte);
 

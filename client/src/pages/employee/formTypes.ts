@@ -12,6 +12,7 @@ export interface EmployeeSnapshot {
   employeeType: string;
   supervisorName: string;
   supervisorTitle: string;
+  maxMonthlyHours: number;
 }
 
 export interface WdtActivityRow {

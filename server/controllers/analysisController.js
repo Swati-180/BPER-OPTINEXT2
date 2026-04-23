@@ -1,5 +1,6 @@
 const ProcessAnalysis = require('../models/ProcessAnalysis');
 const WDTSubmission = require('../models/WDTSubmission');
+const Taxonomy = require('../models/Taxonomy');
 
 function computeScore(criteria = []) {
   if (!criteria || criteria.length === 0) return 0;
@@ -46,6 +47,15 @@ const getSixBySixData = async (req, res) => {
              process: '$payload.rows.subProcess',
              department: '$employee.department',
              type: '$payload.rows.activityCategory'
+           },
+           totalHours: { 
+             $sum: { 
+               $cond: [
+                 { $eq: ['$status', 'approved'] }, 
+                 { $convert: { input: '$payload.rows.monthlyHours', to: 'double', onError: 0, onNull: 0 } }, 
+                 0
+               ] 
+             } 
            }
          }
        }
@@ -90,7 +100,35 @@ const getSixBySixData = async (req, res) => {
     }
     
     const data = await ProcessAnalysis.find(query).sort({ department: 1, type: 1 }).lean();
-    res.json(data.map(normalizeAnalysisRecord));
+    const taxonomyData = await Taxonomy.find({}).lean();
+    
+    // Map aggregated processes for FTE lookup
+    const fteLookup = {};
+    aggregatedProcesses.forEach(item => {
+      const key = `${item._id.department || 'General'}::${item._id.process}`;
+      fteLookup[key] = (item.totalHours || 0) / 160;
+    });
+    
+    const enrichedData = data.map(record => {
+      const normalized = normalizeAnalysisRecord(record);
+      // Find tower
+      const tax = taxonomyData.find(t => 
+        (t.subProcesses && t.subProcesses.includes(normalized.process)) || 
+        t.process === normalized.process ||
+        t.majorProcess === normalized.process
+      );
+      
+      const key = `${normalized.department}::${normalized.process}`;
+      const fte = fteLookup[key] || 0;
+
+      return {
+        ...normalized,
+        tower: tax ? tax.majorProcess : 'Unknown',
+        fte: Number(fte.toFixed(2))
+      };
+    });
+
+    res.json(enrichedData);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

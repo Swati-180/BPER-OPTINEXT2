@@ -19,7 +19,8 @@ const userSchema = new mongoose.Schema({
   },
   organization: { type: String, default: '' },
   isActive: { type: Boolean, default: true },
-  lastLoginAt: { type: Date, default: null }
+  lastLoginAt: { type: Date, default: null },
+  maxMonthlyHours: { type: Number, default: 160, min: 1, max: 744 }
 }, { collection: 'users', timestamps: true });
 
 userSchema.pre('save', async function(next) {

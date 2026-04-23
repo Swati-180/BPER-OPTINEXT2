@@ -4,6 +4,8 @@
  */
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+import * as XLSX from 'xlsx';
+
 const BASE_URL = `${API_BASE_URL}/api`;
 
 export async function apiFetch(endpoint: string, options: RequestInit = {}) {
@@ -178,9 +180,14 @@ export async function getActivitiesForProcess(tower: string, process: string): P
 
 export async function searchActivities(searchTerm: string, deptId?: string): Promise<SearchActivity[]> {
   const query = deptId 
-    ? `?q=${encodeURIComponent(searchTerm)}&deptId=${encodeURIComponent(deptId)}`
-    : `?q=${encodeURIComponent(searchTerm)}`;
+    ? `?q=${encodeURIComponent(searchTerm || '')}&deptId=${encodeURIComponent(deptId)}`
+    : `?q=${encodeURIComponent(searchTerm || '')}`;
   return apiGetJson<SearchActivity[]>(`/activities/search${query}`);
+}
+
+export async function getTaxonomyProcesses(deptId?: string): Promise<any[]> {
+  const query = deptId && deptId !== 'All' ? `?department=${encodeURIComponent(deptId)}` : '';
+  return apiGetJson<any[]>(`/taxonomy/processes${query}`);
 }
 
 export async function createCustomActivity(payload: {
@@ -285,4 +292,57 @@ export function exportToCSV(data: any[], filename: string, headers?: string[]) {
   link.click();
   document.body.removeChild(link);
   URL.revokeObjectURL(url);
+}
+
+// Frontend Excel Export Helper using xlsx
+export function exportToExcelClient(data: any[], filename: string, headers?: string[]) {
+  if (!data || data.length === 0) {
+    console.error('No data to export');
+    return;
+  }
+
+  // Filter out any metadata fields starting with underscore (like _id) if we want, or just leave as is
+  const ws = XLSX.utils.json_to_sheet(data);
+  if (headers && headers.length > 0) {
+    XLSX.utils.sheet_add_aoa(ws, [headers], { origin: 'A1' });
+  }
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Sheet1');
+
+  // Generate file and trigger download
+  const dateStr = new Date().toISOString().split('T')[0];
+  XLSX.writeFile(wb, `${filename}-${dateStr}.xlsx`);
+}
+
+/**
+ * Download an Excel file from an API export endpoint.
+ * @param endpoint - API path, e.g. '/export/wdt-submissions'
+ * @param filename - suggested download filename (without extension)
+ * @param queryParams - optional query string parameters
+ */
+export async function downloadExcel(endpoint: string, filename: string, queryParams?: Record<string, string>) {
+  const token = localStorage.getItem('bper.auth.token');
+  const qs = queryParams ? '?' + new URLSearchParams(queryParams).toString() : '';
+  const url = `${API_BASE_URL}/api${endpoint}${qs}`;
+
+  const response = await fetch(url, {
+    headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+  });
+
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    throw new Error(data?.message || `Export failed (${response.status})`);
+  }
+
+  const blob = await response.blob();
+  const objectUrl = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = objectUrl;
+  const dateStr = new Date().toISOString().slice(0, 10);
+  link.download = `${filename}-${dateStr}.xlsx`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(objectUrl);
 }

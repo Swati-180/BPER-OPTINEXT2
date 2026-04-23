@@ -22,7 +22,9 @@ router.get('/towers/:deptId', verifyToken, async (req, res) => {
     let query = {
       $or: [
         { portal: 'all' },
-        { portal: userPortal }
+        { portal: userPortal },
+        { portal: { $exists: false } },
+        { portal: null }
       ]
     };
     
@@ -59,7 +61,9 @@ router.get('/processes/:towerId', verifyToken, async (req, res) => {
       majorProcess: towerId,
       $or: [
         { portal: 'all' },
-        { portal: userPortal }
+        { portal: userPortal },
+        { portal: { $exists: false } },
+        { portal: null }
       ]
     });
     
@@ -122,25 +126,28 @@ router.get('/search', verifyToken, async (req, res) => {
     const { q, deptId } = req.query;
     const userPortal = req.user.role === 'employee' ? 'employee' : 'manager';
     
-    if (!q || q.trim().length === 0) {
-      return res.json([]);
-    }
-
     const query = {
-      $or: [
-        { majorProcess: { $regex: q, $options: 'i' } },
-        { process: { $regex: q, $options: 'i' } },
-        { subProcesses: { $regex: q, $options: 'i' } }
-      ],
       $and: [
         {
           $or: [
             { portal: 'all' },
-            { portal: userPortal }
+            { portal: userPortal },
+            { portal: { $exists: false } },
+            { portal: null }
           ]
         }
       ]
     };
+
+    if (q && q.trim().length > 0) {
+      query.$and.push({
+        $or: [
+          { majorProcess: { $regex: q, $options: 'i' } },
+          { process: { $regex: q, $options: 'i' } },
+          { subProcesses: { $regex: q, $options: 'i' } }
+        ]
+      });
+    }
 
     if (deptId && deptId !== 'All') {
       query.department = deptId;
@@ -152,7 +159,9 @@ router.get('/search', verifyToken, async (req, res) => {
     const activities = [];
     results.forEach(item => {
       (item.subProcesses || []).forEach(subProc => {
-        if (subProc.toLowerCase().includes(q.toLowerCase())) {
+        if (!q || q.trim().length === 0 || subProc.toLowerCase().includes(q.toLowerCase()) || 
+            (item.majorProcess && item.majorProcess.toLowerCase().includes(q.toLowerCase())) || 
+            (item.process && item.process.toLowerCase().includes(q.toLowerCase()))) {
           activities.push({
             _id: `${item._id}-${subProc}`,
             name: subProc,
