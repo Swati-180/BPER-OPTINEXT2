@@ -14,14 +14,27 @@ const userSchema = new mongoose.Schema({
   supervisorTitle: { type: String, default: '' },
   role: {
     type: String,
-    enum: ['admin', 'manager', 'employee'],
-    default: 'employee'
+    enum: ['admin', 'manager', 'employee', 'Admin', 'Manager', 'Employee'],
+    default: 'employee',
+    lowercase: true,
+    trim: true,
+    set: function(v) {
+      if (typeof v !== 'string') return v;
+      return v.toLowerCase().trim();
+    }
   },
   organization: { type: String, default: '' },
   isActive: { type: Boolean, default: true },
   lastLoginAt: { type: Date, default: null },
   maxMonthlyHours: { type: Number, default: 160, min: 1, max: 744 }
 }, { collection: 'users', timestamps: true });
+
+userSchema.pre('validate', function(next) {
+  if (this.role && typeof this.role === 'string') {
+    this.role = this.role.toLowerCase().trim();
+  }
+  next();
+});
 
 userSchema.pre('save', async function(next) {
   if (!this.isModified('password')) return next();
