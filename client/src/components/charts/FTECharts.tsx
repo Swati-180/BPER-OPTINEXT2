@@ -1,8 +1,4 @@
 import { useState } from 'react';
-import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Cell, ResponsiveContainer,
-  ReferenceLine, LabelList
-} from 'recharts';
 
 export type FTEBand = '0–0.25' | '0.25–0.5' | '0.5–0.75' | '0.75–1.0' | '1.0+';
 
@@ -59,53 +55,41 @@ export function FTEBandChart({ data, title, height = 220 }: FTEBandChartProps) {
   return (
     <div>
       {title && <p className="mb-2 text-sm font-semibold text-[#102846]">{title}</p>}
-      <ResponsiveContainer width="100%" height={height}>
-        <BarChart data={bandCounts} margin={{ top: 20, right: 8, left: -20, bottom: 4 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#E5EBF6" vertical={false} />
-          <XAxis
-            dataKey="band"
-            tick={{ fontSize: 11, fill: '#637F9F', fontWeight: 600 }}
-            axisLine={false}
-            tickLine={false}
-          />
-          <YAxis
-            allowDecimals={false}
-            tick={{ fontSize: 11, fill: '#637F9F' }}
-            axisLine={false}
-            tickLine={false}
-          />
-          <Tooltip
-            cursor={{ fill: '#EBF4FF', opacity: 0.5 }}
-            content={({ active, payload }) => {
-              if (!active || !payload?.length) return null;
-              const item = payload[0].payload as typeof bandCounts[0];
-              return (
-                <div className="rounded-xl border border-[#D9E4F2] bg-white px-3 py-2 shadow-lg text-xs">
-                  <p className="font-bold text-[#102846]">FTE Band: {item.band}</p>
-                  <p className="text-[#637F9F]">Employees: <span className="font-semibold text-[#1E5EA9]">{item.count}</span></p>
-                  <p className="mt-1 text-[10px] text-[#8BA0BA] italic">Click bar to view list</p>
+      <div className="rounded-xl border border-[#DCE7F4] bg-[#FAFCFF] px-3 py-3" style={{ minHeight: height }}>
+        <div className="grid grid-cols-[92px_1fr_auto] items-center gap-2 text-[11px] font-semibold text-[#5F7898]">
+          <span>Band</span>
+          <span>Distribution</span>
+          <span>Count</span>
+        </div>
+        <div className="mt-2 space-y-2">
+          {bandCounts.map((entry) => {
+            const widthPct = max > 0 ? Math.max((entry.count / max) * 100, entry.count > 0 ? 8 : 0) : 0;
+            return (
+              <button
+                key={entry.band}
+                type="button"
+                onClick={() => setSelectedBand(entry.band)}
+                title={`${entry.band}: ${entry.count} employees`}
+                className="grid w-full grid-cols-[92px_1fr_auto] items-center gap-2 rounded-lg px-1 py-1.5 text-left transition-colors hover:bg-[#F1F7FF]"
+              >
+                <span className="text-xs font-semibold text-[#4F6D91]">{entry.band}</span>
+                <div className="h-5 rounded-md bg-[#E6EDF7] p-[2px]">
+                  <div
+                    className="h-full rounded-[4px] transition-all duration-300"
+                    style={{
+                      width: `${Math.min(widthPct, 100)}%`,
+                      backgroundColor: entry.color,
+                      opacity: selectedBand && selectedBand !== entry.band ? 0.35 : 1,
+                    }}
+                  />
                 </div>
-              );
-            }}
-          />
-          <Bar dataKey="count" radius={[4, 4, 0, 0]} onClick={(entry) => setSelectedBand(entry.band)}>
-            <LabelList 
-              dataKey="count" 
-              position="top" 
-              formatter={(value: number) => value > 0 ? `${value} employees` : ''} 
-              style={{ fontSize: 10, fill: '#4B6889', fontWeight: 600 }} 
-            />
-            {bandCounts.map(entry => (
-              <Cell 
-                key={entry.band} 
-                fill={entry.color} 
-                className="cursor-pointer transition-opacity hover:opacity-80" 
-                opacity={selectedBand && selectedBand !== entry.band ? 0.3 : 1}
-              />
-            ))}
-          </Bar>
-        </BarChart>
-      </ResponsiveContainer>
+                <span className="text-xs font-bold text-[#173E6B]">{entry.count}</span>
+              </button>
+            );
+          })}
+        </div>
+        <p className="mt-2 text-[10px] text-[#7D93AE]">Click a band to view employee-level entries.</p>
+      </div>
 
       <div className="mt-3 rounded-lg bg-[#F8FBFF] p-3 text-sm text-[#4B6889] border border-[#E3EBF7]">
         <p>

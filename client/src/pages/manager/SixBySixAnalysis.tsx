@@ -96,7 +96,6 @@ export default function SixBySixAnalysisPage() {
 	const [typeFilter, setTypeFilter] = useState<'All' | 'core' | 'support' | 'specialized'>('All');
 	const [scoreRangeFilter, setScoreRangeFilter] = useState<'All' | '0-4' | '5-6' | '7-8' | '9-12'>('All');
 	const [consolidationFilter, setConsolidationFilter] = useState<'All' | 'consolidate' | 'not'>('All');
-	const [showSeparated, setShowSeparated] = useState(false);
 	const [processData, setProcessData] = useState<ProcessRow[]>([]);
 	const [draftRows, setDraftRows] = useState<ProcessRow[]>([]);
 	const [isLoading, setIsLoading] = useState(true);
@@ -399,16 +398,6 @@ export default function SixBySixAnalysisPage() {
 						</select>
 					</div>
 					<div className="flex items-center gap-3">
-						<label className="flex items-center gap-2 rounded-lg border border-[#D1E1F5] bg-[#F7FAFF] px-3 py-1.5 text-xs font-semibold text-[#1B4B8A] cursor-pointer">
-							<input 
-								type="checkbox" 
-								checked={showSeparated} 
-								onChange={(e) => setShowSeparated(e.target.checked)}
-								className="h-4 w-4 rounded border-gray-300 text-[#165BAA] focus:ring-[#165BAA]"
-							/>
-							Separated Lists View
-						</label>
-
 						{activeTab === 'matrix' && draftRows !== processData && (
 							<button
 								type="button"
@@ -426,30 +415,34 @@ export default function SixBySixAnalysisPage() {
 			{activeTab === 'overview' && (
 				<div className="space-y-3">
 					<section className="grid grid-cols-1 gap-3 xl:grid-cols-2">
-						<article className="rounded-2xl border border-[#D9E4F2] bg-white p-3.5 shadow-[0_5px_14px_rgba(16,42,80,0.05)]">
+							<article className="flex min-h-[420px] flex-col rounded-2xl border border-[#D9E4F2] bg-white p-3.5 shadow-[0_5px_14px_rgba(16,42,80,0.05)]">
 							<h3 className="text-lg font-bold text-[#102846]">Consolidation by Department</h3>
-							<div className="mt-3.5 h-56 rounded-xl border border-dashed border-[#E3EBF6] bg-[#FBFDFF] p-3">
+							<div className="mt-3.5 flex-1 rounded-xl border border-dashed border-[#E3EBF6] bg-[#FBFDFF] p-3">
 								{departmentStats.length === 0 ? (
 									<EmptyState />
 								) : (
-									<div className="flex h-full items-end justify-around gap-3">
+									<div className="h-full overflow-x-auto overflow-y-hidden pb-1">
+										<div className="flex h-full min-w-max items-end gap-3 px-1">
 										{departmentStats.map((item) => (
-											<div key={item.department} className="flex w-full max-w-20 flex-col items-center gap-1.5">
-												<div className="flex h-36 w-full items-end justify-center gap-1">
+											<div key={item.department} className="flex w-24 flex-shrink-0 flex-col items-center gap-2">
+												<div className="flex h-[260px] w-full items-end justify-center gap-2 rounded-lg bg-white/40 px-1 py-2">
 													<div
-														className="w-7 rounded-t-md bg-[#2FA497]"
+														className="w-8 rounded-t-md bg-[#2FA497] shadow-[0_1px_0_rgba(0,0,0,0.03)]"
 														style={{ height: `${Math.max(6, (item.consolidated / maxDeptBar) * 100)}%` }}
 														title={`Consolidated: ${item.consolidated}`}
 													/>
 													<div
-														className="w-7 rounded-t-md bg-[#E72A2A]"
+														className="w-8 rounded-t-md bg-[#E72A2A] shadow-[0_1px_0_rgba(0,0,0,0.03)]"
 														style={{ height: `${Math.max(6, (item.notConsolidated / maxDeptBar) * 100)}%` }}
 														title={`Not Consolidated: ${item.notConsolidated}`}
 													/>
 												</div>
-												<p className="text-xs font-semibold text-[#5D7696]">{item.department}</p>
+												<p className="min-h-8 px-1 text-center text-[11px] font-semibold leading-tight text-[#5D7696]">
+													{item.department}
+												</p>
 											</div>
 										))}
+										</div>
 									</div>
 								)}
 							</div>
@@ -463,10 +456,14 @@ export default function SixBySixAnalysisPage() {
 							<h3 className="text-lg font-bold text-[#102846]">Grand Total</h3>
 							<div className="mt-4 flex flex-col items-center gap-2.5">
 								<div
-									className="h-48 w-48 rounded-full"
+									className="relative h-48 w-48 rounded-full"
 									style={{ background: `conic-gradient(#2FA497 ${consolidatedPct}%, #E72A2A ${consolidatedPct}% 100%)` }}
 								>
-									<div className="m-10 h-28 w-28 rounded-full border border-[#E3EBF7] bg-white" />
+									<div className="absolute inset-10 rounded-full border border-[#E3EBF7] bg-white" />
+									<div className="absolute inset-0 flex flex-col items-center justify-center">
+										<p className="text-4xl font-bold leading-none text-[#102846]">{total}</p>
+										<p className="mt-1 text-xs text-[#728BA8]">Total Processes</p>
+									</div>
 								</div>
 
 								<div className="grid w-full grid-cols-2 gap-2.5">
@@ -482,8 +479,6 @@ export default function SixBySixAnalysisPage() {
 									</div>
 								</div>
 
-								<p className="text-2xl font-bold text-[#102846]">{total}</p>
-								<p className="-mt-1 text-xs text-[#728BA8]">Total Processes</p>
 							</div>
 						</article>
 					</section>

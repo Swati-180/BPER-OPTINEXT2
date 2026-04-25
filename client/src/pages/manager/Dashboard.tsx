@@ -336,7 +336,7 @@ export default function Dashboard() {
           <h3 className="text-xl font-bold text-[#102846]">Submission Status</h3>
           <p className="mt-1 text-xs text-[#617C9E]">Current review progress</p>
 
-          <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-[170px_1fr] md:items-center">
+          <div className="mt-4 flex min-h-[300px] flex-col items-center justify-between gap-4">
             <div className="flex justify-center">
               <div
                 className="relative h-40 w-40 rounded-full"
@@ -351,7 +351,7 @@ export default function Dashboard() {
               </div>
             </div>
 
-            <div className="space-y-2.5">
+            <div className="w-full space-y-2.5">
               {statusSegments.rows.map((row, idx) => (
                 <StatusRow key={row.key || idx} label={row.label} value={row.percent} colorClass={row.colorClass} count={row.count} />
               ))}
