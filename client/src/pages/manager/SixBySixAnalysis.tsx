@@ -339,59 +339,60 @@ export default function SixBySixAnalysisPage() {
 							Process consolidation analysis using 6 Performance + 6 Characteristic criteria
 						</p>
 					</div>
-
-					<select
-						value={departmentFilter}
-						onChange={(event) => setDepartmentFilter(event.target.value as 'All Departments' | Department)}
-						className="h-10 w-full rounded-xl border border-[#C8D7EC] bg-white px-3.5 text-sm font-semibold text-[#2B4467] outline-none focus:border-[#6E97CB] focus:ring-2 focus:ring-[#D7E6F7] md:w-60"
-					>
-						{departments.map((department) => (
-							<option key={department} value={department}>
-								{department}
-							</option>
-						))}
-					</select>
 				</div>
 
-				<div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+				<div className="mt-3 flex flex-col gap-3">
 					<div className="flex flex-wrap items-center gap-2">
 						<div className="inline-flex rounded-xl border border-[#DDE7F3] bg-[#F8FBFF] p-1">
 							<TabButton label="Overview" active={activeTab === 'overview'} onClick={() => setActiveTab('overview')} />
 							<TabButton label="6x6 Matrix" active={activeTab === 'matrix'} onClick={() => setActiveTab('matrix')} />
 							<TabButton label="Score Distribution" active={activeTab === 'distribution'} onClick={() => setActiveTab('distribution')} />
 						</div>
+					</div>
 
-						{/* New Tower Filter */}
-						<select value={towerFilter} onChange={e => setTowerFilter(e.target.value)} className="h-9 max-w-40 rounded-xl border border-[#C8D7EC] bg-white px-3 text-xs font-semibold text-[#2B4467] outline-none focus:border-[#6E97CB]">
+					<div className="grid grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-6">
+						<select
+							value={departmentFilter}
+							onChange={(event) => setDepartmentFilter(event.target.value as 'All Departments' | Department)}
+							className="h-9 w-full min-w-0 rounded-xl border border-[#C8D7EC] bg-white px-3 text-xs font-semibold text-[#2B4467] outline-none focus:border-[#6E97CB]"
+						>
+							{departments.map((department) => (
+								<option key={department} value={department}>
+									{department}
+								</option>
+							))}
+						</select>
+
+						<select value={towerFilter} onChange={e => setTowerFilter(e.target.value)} className="h-9 w-full min-w-0 rounded-xl border border-[#C8D7EC] bg-white px-3 text-xs font-semibold text-[#2B4467] outline-none focus:border-[#6E97CB]">
 							<option value="All">All Towers</option>
 							{uniqueTowers.filter(t => t !== 'All').map(t => (
 								<option key={t} value={t}>{t.length > 20 ? t.substring(0,20) + '...' : t}</option>
 							))}
 						</select>
 
-						{/* New Process Filter */}
-						<select value={processFilter} onChange={e => setProcessFilter(e.target.value)} className="h-9 max-w-40 rounded-xl border border-[#C8D7EC] bg-white px-3 text-xs font-semibold text-[#2B4467] outline-none focus:border-[#6E97CB]">
+						<select value={processFilter} onChange={e => setProcessFilter(e.target.value)} className="h-9 w-full min-w-0 rounded-xl border border-[#C8D7EC] bg-white px-3 text-xs font-semibold text-[#2B4467] outline-none focus:border-[#6E97CB]">
 							<option value="All">All Processes</option>
 							{uniqueProcesses.filter(p => p !== 'All').map(p => (
 								<option key={p} value={p}>{p.length > 25 ? p.substring(0,25) + '...' : p}</option>
 							))}
 						</select>
 
-						<select value={typeFilter} onChange={e => setTypeFilter(e.target.value as typeof typeFilter)} className="h-9 rounded-xl border border-[#C8D7EC] bg-white px-3 text-xs font-semibold text-[#2B4467] outline-none focus:border-[#6E97CB]">
+						<select value={typeFilter} onChange={e => setTypeFilter(e.target.value as typeof typeFilter)} className="h-9 w-full min-w-0 rounded-xl border border-[#C8D7EC] bg-white px-3 text-xs font-semibold text-[#2B4467] outline-none focus:border-[#6E97CB]">
 							<option value="All">Activity Type (All)</option>
 							<option value="core">Core</option>
 							<option value="support">Support</option>
 							<option value="specialized">Specialized</option>
 						</select>
-						
-						<select value={scoreRangeFilter} onChange={e => setScoreRangeFilter(e.target.value as typeof scoreRangeFilter)} className="h-9 rounded-xl border border-[#C8D7EC] bg-white px-3 text-xs font-semibold text-[#2B4467] outline-none focus:border-[#6E97CB]">
+
+						<select value={scoreRangeFilter} onChange={e => setScoreRangeFilter(e.target.value as typeof scoreRangeFilter)} className="h-9 w-full min-w-0 rounded-xl border border-[#C8D7EC] bg-white px-3 text-xs font-semibold text-[#2B4467] outline-none focus:border-[#6E97CB]">
 							<option value="All">Score Range (All)</option>
 							<option value="0-4">Low (0-4)</option>
 							<option value="5-6">Medium (5-6)</option>
 							<option value="7-8">High (7-8)</option>
 							<option value="9-12">Optimal (9-12)</option>
 						</select>
-						<select value={consolidationFilter} onChange={e => setConsolidationFilter(e.target.value as typeof consolidationFilter)} className="h-9 rounded-xl border border-[#C8D7EC] bg-white px-3 text-xs font-semibold text-[#2B4467] outline-none focus:border-[#6E97CB]">
+
+						<select value={consolidationFilter} onChange={e => setConsolidationFilter(e.target.value as typeof consolidationFilter)} className="h-9 w-full min-w-0 rounded-xl border border-[#C8D7EC] bg-white px-3 text-xs font-semibold text-[#2B4467] outline-none focus:border-[#6E97CB]">
 							<option value="All">All</option>
 							<option value="consolidate">Consolidatable</option>
 							<option value="not">Not Consolidatable</option>

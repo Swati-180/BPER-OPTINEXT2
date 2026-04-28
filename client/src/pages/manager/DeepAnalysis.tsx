@@ -215,6 +215,7 @@ export default function DeepAnalysis() {
 
   const [mainTab, setMainTab] = useState<TabType>(initialMainTab);
   const [departmentFilter, setDepartmentFilter] = useState('');
+  const [activitySearchQuery, setActivitySearchQuery] = useState('');
   const [isExporting, setIsExporting] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -231,6 +232,22 @@ export default function DeepAnalysis() {
     () => (fteReport?.tabs.byDepartment || []).map((d) => d.department),
     [fteReport]
   );
+
+  const filteredFteActivities = useMemo(() => {
+    const towerFilter = searchParams.get('towerFilter');
+    const query = activitySearchQuery.trim().toLowerCase();
+
+    return (fteReport?.tabs.allActivities || []).filter((row) => {
+      const matchesTower = !towerFilter || row.tower === towerFilter;
+      const matchesSearch =
+        !query ||
+        [row.process, row.subProcess]
+          .filter(Boolean)
+          .some((value) => String(value).toLowerCase().includes(query));
+
+      return matchesTower && matchesSearch;
+    });
+  }, [activitySearchQuery, fteReport, searchParams]);
 
   // Consolidation State
   const [consolidationTab, setConsolidationTab] = useState<ConsolidationTabType>(
@@ -510,23 +527,37 @@ export default function DeepAnalysis() {
 
                 {/* Sub Tabs */}
                 <div className="rounded-2xl border border-[#D9E4F2] bg-white shadow-[0_6px_18px_rgba(16,42,80,0.08)] overflow-hidden">
-                  <div className="border-b border-[#D9E4F2] flex gap-1 p-4 md:p-6 flex-wrap bg-[#F7FAFE]">
-                    {(['overview', 'tower', 'department', 'activities'] as FteTabType[]).map((tab) => (
-                      <button
-                        key={tab}
-                        onClick={() => setFteTab(tab)}
-                        className={`px-4 py-2 text-sm font-semibold rounded-lg transition-all duration-200 ${
-                          fteTab === tab
-                            ? 'bg-[#165BAA] text-white shadow-[0_4px_12px_rgba(22,91,170,0.3)]'
-                            : 'bg-white text-[#637F9F] hover:bg-[#EEF4FC] border border-[#D9E4F2]'
-                        }`}
-                      >
-                        {tab === 'overview' && 'Overview'}
-                        {tab === 'tower' && 'By Tower'}
-                        {tab === 'department' && 'By Department'}
-                        {tab === 'activities' && 'All Activities'}
-                      </button>
-                    ))}
+                  <div className="border-b border-[#D9E4F2] flex flex-col gap-3 p-4 md:p-6 bg-[#F7FAFE]">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div className="flex gap-1 flex-wrap">
+                        {(['overview', 'tower', 'department', 'activities'] as FteTabType[]).map((tab) => (
+                          <button
+                            key={tab}
+                            onClick={() => setFteTab(tab)}
+                            className={`px-4 py-2 text-sm font-semibold rounded-lg transition-all duration-200 ${
+                              fteTab === tab
+                                ? 'bg-[#165BAA] text-white shadow-[0_4px_12px_rgba(22,91,170,0.3)]'
+                                : 'bg-white text-[#637F9F] hover:bg-[#EEF4FC] border border-[#D9E4F2]'
+                            }`}
+                          >
+                            {tab === 'overview' && 'Overview'}
+                            {tab === 'tower' && 'By Tower'}
+                            {tab === 'department' && 'By Department'}
+                            {tab === 'activities' && 'All Activities'}
+                          </button>
+                        ))}
+                      </div>
+
+                      <div className="w-full md:w-[320px] lg:w-[360px]">
+                        <input
+                          type="search"
+                          value={activitySearchQuery}
+                          onChange={(event) => setActivitySearchQuery(event.target.value)}
+                          placeholder="Search by Sub process/Process Name"
+                          className="h-10 w-full rounded-xl border border-[#C8D7EC] bg-white px-4 text-sm font-medium text-[#0F2649] outline-none placeholder:text-[#8AA0BA] focus:border-[#6E97CB] focus:ring-2 focus:ring-[#D7E6F7]"
+                        />
+                      </div>
+                    </div>
                   </div>
                   <div className="p-6">
                     {fteTab === 'overview' && (
@@ -636,9 +667,7 @@ export default function DeepAnalysis() {
                             </tr>
                           </thead>
                           <tbody>
-                            {fteReport.tabs.allActivities
-                              .filter(row => !searchParams.get('towerFilter') || row.tower === searchParams.get('towerFilter'))
-                              .map((row, idx) => (
+                            {filteredFteActivities.map((row, idx) => (
                               <tr 
                                 key={idx} 
                                 className="border-b border-[#E3EAF4] hover:bg-[#F8FBFF] cursor-pointer"
@@ -657,7 +686,7 @@ export default function DeepAnalysis() {
                         <button
                           onClick={() =>
                             handleExport(
-                              fteReport.tabs.allActivities,
+                              filteredFteActivities,
                               `fte-all-activities-${new Date().toISOString().split('T')[0]}`
                             )
                           }

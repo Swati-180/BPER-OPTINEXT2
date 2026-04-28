@@ -9,6 +9,7 @@ import {
   X,
   List,
   FolderTree,
+  Download,
 } from 'lucide-react';
 import {
   getTowersForDepartment,
@@ -19,6 +20,7 @@ import {
   createCustomTower,
   createCustomProcess,
   getTaxonomyProcesses,
+  exportToExcelClient,
   type Tower,
   type Process,
   type Activity,
@@ -52,6 +54,7 @@ export default function ProcessManagementPage() {
   const [searchResults, setSearchResults] = useState<SearchActivity[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [showModal, setShowModal] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
   
   const [viewMode, setViewMode] = useState<'tree' | 'list'>(() => {
     if (typeof window !== 'undefined') {
@@ -299,25 +302,90 @@ export default function ProcessManagementPage() {
   };
 
   const expandAll = () => {
-    const newTowers = new Set<string>();
-    const newProcesses = new Set<string>();
+    const expandTree = async () => {
+      const towerNames = Object.keys(treeData.towers);
+      const processKeys = new Set<string>();
 
-    Object.keys(treeData.towers).forEach((towerName) => {
-      newTowers.add(towerName);
-    });
+      await Promise.all(
+        towerNames.map(async (towerName) => {
+          let processes = treeData.towers[towerName]?.processes;
 
-    setExpanded({ towers: newTowers, processes: newProcesses });
+          if (!processes) {
+            const loadedProcesses = await getProcessesForTower(towerName);
+            processes = loadedProcesses.reduce(
+              (acc, proc) => {
+                acc[proc.name] = { data: proc };
+                return acc;
+              },
+              {} as Record<string, { data: Process; activities?: Activity[] }>
+            );
 
-    // Load all processes and activities
-    Object.keys(treeData.towers).forEach(async (towerName) => {
-      if (!treeData.towers[towerName]?.processes) {
-        await loadProcesses(towerName);
-      }
-    });
+            setTreeData((prev) => ({
+              towers: {
+                ...prev.towers,
+                [towerName]: {
+                  ...prev.towers[towerName],
+                  processes,
+                },
+              },
+            }));
+          }
+
+          if (processes) {
+            await Promise.all(
+              Object.keys(processes).map(async (processName) => {
+                processKeys.add(`${towerName}-${processName}`);
+                if (!processes?.[processName]?.activities) {
+                  const activities = await getActivitiesForProcess(towerName, processName);
+                  setTreeData((prev) => ({
+                    towers: {
+                      ...prev.towers,
+                      [towerName]: {
+                        ...prev.towers[towerName],
+                        processes: {
+                          ...prev.towers[towerName].processes,
+                          [processName]: {
+                            ...prev.towers[towerName].processes![processName],
+                            activities,
+                          },
+                        },
+                      },
+                    },
+                  }));
+                }
+              })
+            );
+          }
+        })
+      );
+
+      setExpanded({ towers: new Set(towerNames), processes: processKeys });
+    };
+
+    void expandTree();
   };
 
   const collapseAll = () => {
     setExpanded({ towers: new Set(), processes: new Set() });
+  };
+
+  const handleExportProcesses = async () => {
+    setIsExporting(true);
+    try {
+      const data = await getTaxonomyProcesses(department);
+      const exportData = data.map((item) => ({
+        'Major Process': item.majorProcess,
+        'Process': item.process,
+        'Sub Processes': (item.subProcesses || []).join('; '),
+        'Department': item.department || 'All',
+      }));
+      const filename = `processes-${department === 'All' ? 'all' : department.toLowerCase().replace(/\s+/g, '-')}-${new Date().toISOString().split('T')[0]}`;
+      exportToExcelClient(exportData, filename);
+    } catch (err: any) {
+      console.error('Failed to export processes:', err);
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   const visibleTowers = useMemo(() => {
@@ -451,6 +519,15 @@ export default function ProcessManagementPage() {
                       </button>
                     </>
                   )}
+                  <button
+                    onClick={handleExportProcesses}
+                    disabled={isExporting}
+                    className="inline-flex items-center gap-2 rounded-lg border border-[#D9E4F2] bg-white px-3 py-2 text-sm font-semibold text-[#5E7594] hover:bg-[#F5F8FD] disabled:opacity-60"
+                    title={`Export ${department === 'All' ? 'all' : department} processes to Excel`}
+                  >
+                    <Download className="h-4 w-4" />
+                    {isExporting ? 'Exporting...' : 'Excel'}
+                  </button>
                 </>
               )}
             </div>
