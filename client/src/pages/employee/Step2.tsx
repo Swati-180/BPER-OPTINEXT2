@@ -437,7 +437,7 @@ export function Step2({ employee, payload, onNext, onPrev, onPayloadChange }: St
                     </td>
                     <td className="py-3 px-2 text-center">
                       <CellPreview
-                        value={String(row.volumesMonthly)}
+                        value={row.volumesMonthly !== undefined && row.volumesMonthly !== null ? String(row.volumesMonthly) : "0"}
                         placeholder="0"
                         mono
                         onClick={() =>
@@ -454,7 +454,7 @@ export function Step2({ employee, payload, onNext, onPrev, onPayloadChange }: St
                     </td>
                     <td className="py-3 px-2 text-center">
                       <CellPreview
-                        value={String(row.timePerTransactionMinutes)}
+                        value={row.timePerTransactionMinutes !== undefined && row.timePerTransactionMinutes !== null ? String(row.timePerTransactionMinutes) : "0"}
                         placeholder="0"
                         mono
                         onClick={() =>
@@ -580,7 +580,7 @@ export function Step2({ employee, payload, onNext, onPrev, onPayloadChange }: St
                     </td>
                     <td className="py-3 px-2 text-center">
                       <CellPreview
-                        value={String(row.volumesMonthly)}
+                        value={row.volumesMonthly !== undefined && row.volumesMonthly !== null ? String(row.volumesMonthly) : "0"}
                         placeholder="0"
                         mono
                         onClick={() =>
@@ -597,7 +597,7 @@ export function Step2({ employee, payload, onNext, onPrev, onPayloadChange }: St
                     </td>
                     <td className="py-3 px-2 text-center">
                       <CellPreview
-                        value={String(row.timePerTransactionMinutes)}
+                        value={row.timePerTransactionMinutes !== undefined && row.timePerTransactionMinutes !== null ? String(row.timePerTransactionMinutes) : "0"}
                         placeholder="0"
                         mono
                         onClick={() =>
