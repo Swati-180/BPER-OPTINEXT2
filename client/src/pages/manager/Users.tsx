@@ -34,6 +34,8 @@ type CreateUserFormState = {
 	supervisorName: string;
 	supervisorTitle: string;
 	maxMonthlyHours: string;
+	password?: string;
+	confirmPassword?: string;
 };
 
 const initialCreateUserForm: CreateUserFormState = {
@@ -49,6 +51,8 @@ const initialCreateUserForm: CreateUserFormState = {
 	supervisorName: '',
 	supervisorTitle: '',
 	maxMonthlyHours: '160',
+	password: '',
+	confirmPassword: '',
 };
 
 export default function UsersPage() {
@@ -200,9 +204,21 @@ export default function UsersPage() {
 		const employeeId = createUserForm.employeeId.trim();
 		const fullName = createUserForm.fullName.trim();
 		const email = createUserForm.email.trim().toLowerCase();
+		const password = createUserForm.password?.trim() || '';
+		const confirmPassword = createUserForm.confirmPassword?.trim() || '';
 
-		if (!employeeId || !fullName || !email) {
-			setCreateUserError('Employee ID, Full Name, and Email Address are required.');
+		if (!employeeId || !fullName || !email || !password) {
+			setCreateUserError('Employee ID, Full Name, Email Address, and Password are required.');
+			return;
+		}
+
+		if (password !== confirmPassword) {
+			setCreateUserError('Passwords do not match.');
+			return;
+		}
+
+		if (password.length < 6) {
+			setCreateUserError('Password must be at least 6 characters.');
 			return;
 		}
 
@@ -213,7 +229,7 @@ export default function UsersPage() {
 				body: JSON.stringify({
 					name: fullName,
 					email,
-					password: 'DefaultPassword123!',
+					password,
 					employeeId,
 					designation: createUserForm.jobTitle.trim(),
 					band: createUserForm.jobBand,
@@ -462,6 +478,28 @@ export default function UsersPage() {
 											<option value="manager">Manager</option>
 											<option value="admin">Admin</option>
 										</select>
+									</label>
+
+									<label className="md:col-span-3 space-y-1.5">
+										<span className="text-[11px] font-bold uppercase tracking-[0.14em] text-[#6A809E]">Password</span>
+										<input
+											type="password"
+											value={createUserForm.password}
+											onChange={(event) => setCreateUserForm((prev) => ({ ...prev, password: event.target.value }))}
+											placeholder="Enter password"
+											className="h-11 w-full rounded-xl border border-[#D8E2F0] bg-white px-4 text-sm text-[#243A59] outline-none placeholder:text-[#95A7BF] focus:border-[#7BA0CF] focus:ring-2 focus:ring-[#D7E6F7]"
+										/>
+									</label>
+
+									<label className="md:col-span-3 space-y-1.5">
+										<span className="text-[11px] font-bold uppercase tracking-[0.14em] text-[#6A809E]">Confirm Password</span>
+										<input
+											type="password"
+											value={createUserForm.confirmPassword}
+											onChange={(event) => setCreateUserForm((prev) => ({ ...prev, confirmPassword: event.target.value }))}
+											placeholder="Re-type password"
+											className="h-11 w-full rounded-xl border border-[#D8E2F0] bg-white px-4 text-sm text-[#243A59] outline-none placeholder:text-[#95A7BF] focus:border-[#7BA0CF] focus:ring-2 focus:ring-[#D7E6F7]"
+										/>
 									</label>
 
 									<label className="md:col-span-4 space-y-1.5">
