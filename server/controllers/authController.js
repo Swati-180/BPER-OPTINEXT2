@@ -379,6 +379,11 @@ const bulkUpdateUsers = async (req, res) => {
       await User.updateMany(query, { $set: { isActive: true, status: 'active' } });
     } else if (action === 'change_role') {
       await User.updateMany(query, { $set: { role } });
+    } else if (action === 'grantFormAccess') {
+      // Grant form submission access — bypasses submission window for new users
+      await User.updateMany(query, { $set: { formAccessGranted: true } });
+    } else if (action === 'revokeFormAccess') {
+      await User.updateMany(query, { $set: { formAccessGranted: false } });
     }
 
     // AUDIT LOG

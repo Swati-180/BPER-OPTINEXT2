@@ -304,11 +304,11 @@ export default function Dashboard() {
       </section>
 
       <section className="grid grid-cols-1 gap-3.5 xl:grid-cols-[2fr_1fr]">
-        <article className="rounded-2xl border border-[#D9E4F2] bg-white p-3.5 shadow-[0_5px_14px_rgba(16,42,80,0.06)]">
+        <article className="rounded-2xl border border-[#D9E4F2] bg-white p-3.5 shadow-[0_5px_14px_rgba(16,42,80,0.06)] xl:h-[415px] flex flex-col">
           <h3 className="text-xl font-bold text-[#102846]">FTE Distribution by Tower</h3>
           <p className="mt-1 text-xs text-[#617C9E]">Live FTE split from monthly activity effort</p>
 
-          <div className="mt-4 space-y-2.5">
+          <div className="mt-4 space-y-2.5 overflow-y-auto flex-1 pr-1.5 custom-scrollbar">
             {towerDistribution.length === 0 ? (
               <EmptyBlock label="No tower-level FTE data available." />
             ) : (
@@ -332,11 +332,11 @@ export default function Dashboard() {
           </div>
         </article>
 
-        <article className="rounded-2xl border border-[#D9E4F2] bg-white p-3.5 shadow-[0_5px_14px_rgba(16,42,80,0.06)]">
+        <article className="rounded-2xl border border-[#D9E4F2] bg-white p-3.5 shadow-[0_5px_14px_rgba(16,42,80,0.06)] xl:h-[415px] flex flex-col">
           <h3 className="text-xl font-bold text-[#102846]">Submission Status</h3>
           <p className="mt-1 text-xs text-[#617C9E]">Current review progress</p>
 
-          <div className="mt-4 flex min-h-[300px] flex-col items-center justify-between gap-4">
+          <div className="mt-4 flex flex-1 flex-col items-center justify-between gap-4">
             <div className="flex justify-center">
               <div
                 className="relative h-40 w-40 rounded-full"

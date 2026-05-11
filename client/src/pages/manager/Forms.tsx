@@ -14,6 +14,7 @@ type PendingUserApproval = {
 	id: string;
 	name: string;
 	email: string;
+	role: string;
 	requestedRole: 'Employee';
 };
 
@@ -68,12 +69,16 @@ export default function FormsPage() {
 						const usersRes = await apiFetch('/auth/users');
 						if (usersRes.ok) {
 							const users = await usersRes.json();
-							const pending = users.filter((u: any) => u.status === 'pending' || !u.isActive);
+							// Show employees who have NOT yet been granted form access by admin
+							const pending = users.filter((u: any) =>
+								u.role === 'employee' && u.formAccessGranted === false
+							);
 							setPendingUserApprovals(pending.map((u: any) => ({
 								id: u._id,
 								name: u.name,
 								email: u.email,
-								requestedRole: u.requestedRole || 'Employee'
+								role: u.role,
+								requestedRole: 'Employee'
 							})));
 						}
 					}
@@ -89,15 +94,35 @@ export default function FormsPage() {
 		init();
 	}, [refreshTick]);
 
-	const pendingQueue = useMemo(
-		() => allSubmissions.filter((record) => record.status === 'Under Review'),
-		[allSubmissions]
-	);
+	const pendingQueue = useMemo(() => {
+		const list = allSubmissions.filter((record) => record.status === 'Under Review');
+		return [...list].sort((a, b) => {
+			const aTime = Math.max(
+				new Date(a.submittedAt).getTime(),
+				...(a.reviewHistory || []).map((r) => (r.reviewedAt ? new Date(r.reviewedAt).getTime() : 0))
+			);
+			const bTime = Math.max(
+				new Date(b.submittedAt).getTime(),
+				...(b.reviewHistory || []).map((r) => (r.reviewedAt ? new Date(r.reviewedAt).getTime() : 0))
+			);
+			return bTime - aTime;
+		});
+	}, [allSubmissions]);
 
-	const historyQueue = useMemo(
-		() => allSubmissions.filter((record) => record.status !== 'Under Review'),
-		[allSubmissions]
-	);
+	const historyQueue = useMemo(() => {
+		const list = allSubmissions.filter((record) => record.status !== 'Under Review');
+		return [...list].sort((a, b) => {
+			const aTime = Math.max(
+				new Date(a.submittedAt).getTime(),
+				...(a.reviewHistory || []).map((r) => (r.reviewedAt ? new Date(r.reviewedAt).getTime() : 0))
+			);
+			const bTime = Math.max(
+				new Date(b.submittedAt).getTime(),
+				...(b.reviewHistory || []).map((r) => (r.reviewedAt ? new Date(r.reviewedAt).getTime() : 0))
+			);
+			return bTime - aTime;
+		});
+	}, [allSubmissions]);
 
 	const activeQueue = activeTab === 'pending' ? pendingQueue : historyQueue;
 
@@ -217,24 +242,31 @@ export default function FormsPage() {
 		setFlagRowIndex(null);
 	}
 
-	async function resolvePendingUserApproval(id: string, activate: boolean) {
+	async function resolvePendingUserApproval(id: string, grant: boolean) {
 		try {
 			setIsMutating(true);
-			await apiFetch('/auth/users/bulk-update', {
-				method: 'POST',
-				body: JSON.stringify({
-					userIds: [id],
-					action: activate ? 'activate' : 'deactivate',
-					role: activate ? 'employee' : undefined
-				})
-			});
-			if (activate) {
-				// We also need to set their status to active! We can do it broadly or let backend handle it, 
-				// The authController sets isActive: true on activate
+			if (grant) {
+				// Grant form access — user can now submit even if window is closed
+				await apiFetch('/auth/users/bulk-update', {
+					method: 'POST',
+					body: JSON.stringify({
+						userIds: [id],
+						action: 'grantFormAccess'
+					})
+				});
+			} else {
+				// Deactivate (reject) the user
+				await apiFetch('/auth/users/bulk-update', {
+					method: 'POST',
+					body: JSON.stringify({
+						userIds: [id],
+						action: 'deactivate'
+					})
+				});
 			}
 			setPendingUserApprovals((prev) => prev.filter((item) => item.id !== id));
 		} catch (error) {
-			console.error("Failed to approve user", error);
+			console.error('Failed to update user form access', error);
 		} finally {
 			setIsMutating(false);
 		}
@@ -246,14 +278,14 @@ export default function FormsPage() {
 				<TablePageSkeleton rows={7} />
 			) : (
 			<section className="rounded-2xl border border-[#D9E4F2] bg-white shadow-[0_6px_18px_rgba(16,42,80,0.08)] overflow-hidden">
-				<div className="grid grid-cols-1 lg:grid-cols-[280px_1fr]">
-					<aside className="border-r border-[#DDE7F3] bg-[#F8FBFF]">
-						<div className="px-4 py-3 border-b border-[#E1EAF6]">
+				<div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] lg:h-[650px]">
+					<aside className="border-r border-[#DDE7F3] bg-[#F8FBFF] flex flex-col h-full overflow-hidden flex-shrink-0">
+						<div className="px-4 py-3 border-b border-[#E1EAF6] flex-shrink-0">
 							<h1 className="text-2xl font-bold text-[#0F2649]">Review Queue</h1>
 							<p className="mt-0.5 text-xs font-semibold text-[#8CA0BA]">Team Submissions</p>
 						</div>
 
-						<div className="flex border-b border-[#E1EAF6]">
+						<div className="flex border-b border-[#E1EAF6] flex-shrink-0">
 							<button
 								type="button"
 								onClick={() => setActiveTab('pending')}
@@ -278,7 +310,7 @@ export default function FormsPage() {
 							</button>
 						</div>
 
-						<div className="space-y-2.5 p-2.5">
+						<div className="space-y-2.5 p-2.5 overflow-y-auto flex-1 custom-scrollbar">
 							{activeQueue.length === 0 ? (
 								<div className="rounded-xl border border-[#DCE6F3] bg-white px-3 py-4 text-xs text-[#7086A1]">
 									No submissions in this queue.
@@ -320,10 +352,10 @@ export default function FormsPage() {
 						</div>
 					</aside>
 
-					<div className="bg-[#F4F8FD]">
+					<div className="bg-[#F4F8FD] flex flex-col h-full overflow-hidden">
 						{selectedRecord ? (
 							<>
-								<div className="flex items-start justify-between gap-4 px-5 py-4 border-b border-[#E1EAF6]">
+								<div className="flex items-start justify-between gap-4 px-5 py-4 border-b border-[#E1EAF6] flex-shrink-0">
 									<div>
 										<h2 className="text-2xl font-bold text-[#1C5FA8]">WDT Detailed Analysis</h2>
 										<p className="mt-1 text-sm text-[#5D789A]">Employee: {selectedRecord.employee.name}</p>
@@ -346,7 +378,7 @@ export default function FormsPage() {
 									</div>
 								</div>
 
-								<div className="space-y-2.5 px-5 py-4">
+								<div className="space-y-2.5 px-5 py-4 overflow-y-auto flex-1 custom-scrollbar">
 									{selectedRows.map((row, index) => {
 										const isFlagOpen = canReviewSelected && flagRowIndex === index;
 										const savedRowFlag = selectedFlags.find((item) => item.rowIndex === index);
@@ -425,63 +457,69 @@ export default function FormsPage() {
 									</div>
 								</div>
 
-								<div className="border-t border-[#DFE8F4] bg-white px-5 py-3.5">
-									<div className="grid grid-cols-1 gap-3 xl:grid-cols-[1fr_auto] xl:items-center">
-										<div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-y-4 gap-x-3 items-center">
-											<Metric label="Total Hours" value={totalHours.toFixed(1)} accent="text-[#0F2444]" />
-											<Metric label="Flags Raised" value={String(flaggedCount).padStart(2, '0')} accent="text-[#D92D2D]" />
-											<Metric label="Avg Turnaround" value={`${selectedRows.length ? (totalHours / selectedRows.length).toFixed(1) : '0.0'}h`} accent="text-[#0F2444]" />
-											<Metric label="Submission Rate" value="100%" accent="text-[#0F2444]" />
-											<Metric label="Team Compliance" value="50%" accent="text-[#169F54]" />
-										</div>
-
-										{canReviewSelected ? (
-											<div className="flex flex-wrap items-center justify-end gap-2.5">
-												<button
-													type="button"
-													onClick={() => openReviewModal('Grant Edit')}
-													className="rounded-xl border border-[#CFDBEB] bg-white px-4 py-2.5 text-sm font-semibold text-[#374F70] hover:bg-[#F7FAFF]"
-												>
-													Grant Edit
-												</button>
-												<button
-													type="button"
-													onClick={() => openReviewModal('Changes Requested')}
-													className="rounded-xl border border-[#CFDBEB] bg-white px-4 py-2.5 text-sm font-semibold text-[#374F70] hover:bg-[#F7FAFF]"
-												>
-													Return for Revision
-												</button>
-												<button
-													type="button"
-													onClick={() => openReviewModal('Approved')}
-													className="inline-flex items-center gap-2 rounded-xl bg-[#031F45] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[#062B5F]"
-												>
-													<Check className="h-4 w-4" />
-													Complete Review
-												</button>
-											</div>
-										) : canUnlockSelected ? (
-											<div className="flex flex-wrap items-center justify-end gap-2.5">
-												<div className="flex-1 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700">
-													<span className="font-semibold">Review Completed:</span>{' '}
-													Approved
-													{latestReviewComment ? ` · ${latestReviewComment}` : ''}
-												</div>
-												<button
-													type="button"
-													onClick={() => openReviewModal('Grant Edit')}
-													className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-sm font-semibold text-amber-700 hover:bg-amber-100"
-												>
-													Unlock / Grant Edit
-												</button>
-											</div>
-										) : (
-											<div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700">
-												<span className="font-semibold">Review Completed:</span>{' '}
-												{selectedRecord.status === 'Approved' ? 'Approved' : 'Returned for Revision'}
-												{latestReviewComment ? ` · ${latestReviewComment}` : ''}
+								<div className="border-t border-[#DFE8F4] bg-white px-5 py-3.5 flex-shrink-0">
+									<div className="flex flex-col gap-3">
+										{!canReviewSelected && (
+											<div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-xs text-slate-700 leading-relaxed">
+												<span className="font-semibold text-slate-900">Review Completed:</span>{' '}
+												<span className="font-medium text-slate-800">
+													{selectedRecord.status === 'Approved' ? 'Approved' : 'Returned for Revision'}
+												</span>
+												{latestReviewComment ? (
+													<>
+														<span className="mx-1.5 text-slate-400">·</span>
+														<span className="text-slate-600">{latestReviewComment}</span>
+													</>
+												) : ''}
 											</div>
 										)}
+
+										<div className="grid grid-cols-1 gap-3 xl:grid-cols-[1fr_auto] xl:items-center">
+											<div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-y-4 gap-x-3 items-center">
+												<Metric label="Total Hours" value={totalHours.toFixed(1)} accent="text-[#0F2444]" />
+												<Metric label="Flags Raised" value={String(flaggedCount).padStart(2, '0')} accent="text-[#D92D2D]" />
+												<Metric label="Avg Turnaround" value={`${selectedRows.length ? (totalHours / selectedRows.length).toFixed(1) : '0.0'}h`} accent="text-[#0F2444]" />
+												<Metric label="Submission Rate" value="100%" accent="text-[#0F2444]" />
+												<Metric label="Team Compliance" value="50%" accent="text-[#169F54]" />
+											</div>
+
+											{canReviewSelected ? (
+												<div className="flex flex-wrap items-center justify-end gap-2.5">
+													<button
+														type="button"
+														onClick={() => openReviewModal('Grant Edit')}
+														className="rounded-xl border border-[#CFDBEB] bg-white px-4 py-2.5 text-sm font-semibold text-[#374F70] hover:bg-[#F7FAFF]"
+													>
+														Grant Edit
+													</button>
+													<button
+														type="button"
+														onClick={() => openReviewModal('Changes Requested')}
+														className="rounded-xl border border-[#CFDBEB] bg-white px-4 py-2.5 text-sm font-semibold text-[#374F70] hover:bg-[#F7FAFF]"
+													>
+														Return for Revision
+													</button>
+													<button
+														type="button"
+														onClick={() => openReviewModal('Approved')}
+														className="inline-flex items-center gap-2 rounded-xl bg-[#031F45] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[#062B5F]"
+													>
+														<Check className="h-4 w-4" />
+														Complete Review
+													</button>
+												</div>
+											) : canUnlockSelected ? (
+												<div className="flex flex-wrap items-center justify-end gap-2.5">
+													<button
+														type="button"
+														onClick={() => openReviewModal('Grant Edit')}
+														className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-sm font-semibold text-amber-700 hover:bg-amber-100"
+													>
+														Unlock / Grant Edit
+													</button>
+												</div>
+											) : null}
+										</div>
 									</div>
 								</div>
 							</>
@@ -551,14 +589,15 @@ export default function FormsPage() {
 							<tr className="bg-[#F5F8FD] text-[11px] font-bold uppercase tracking-[0.12em] text-[#617D9D] border-b border-[#E3EAF4]">
 								<th className="px-5 py-3">Name</th>
 								<th className="px-5 py-3">Email</th>
-								<th className="px-5 py-3">Requested Role</th>
+								<th className="px-5 py-3">Role</th>
+								<th className="px-5 py-3">Form Access</th>
 								<th className="px-5 py-3 text-right">Actions</th>
 							</tr>
 						</thead>
 						<tbody>
 							{pendingUserApprovals.length === 0 ? (
 								<tr>
-									<td colSpan={4} className="px-5 py-8 text-center text-xs text-[#6D839F]">
+									<td colSpan={5} className="px-5 py-8 text-center text-xs text-[#6D839F]">
 										No pending user approvals.
 									</td>
 								</tr>
@@ -569,7 +608,12 @@ export default function FormsPage() {
 										<td className="px-5 py-4 text-sm text-[#3A587D]">{item.email}</td>
 										<td className="px-5 py-4">
 											<span className="inline-flex rounded-full border border-[#C8D8EF] bg-[#EAF2FF] px-3 py-1 text-xs font-semibold uppercase text-[#1E5CCA]">
-												{item.requestedRole}
+												{item.role || 'Employee'}
+											</span>
+										</td>
+										<td className="px-5 py-4">
+											<span className="inline-flex rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700">
+												Pending Approval
 											</span>
 										</td>
 										<td className="px-5 py-4">
@@ -579,9 +623,10 @@ export default function FormsPage() {
 													disabled={isMutating}
 													onClick={() => resolvePendingUserApproval(item.id, true)}
 													className="inline-flex items-center gap-1 rounded-lg bg-[#0D9E67] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#0B8758] disabled:opacity-50"
+													title="Grant access to submit forms even when the submission window is closed"
 												>
 													<Check className="h-3.5 w-3.5" />
-													Approve
+													Grant Access
 												</button>
 												<button
 													type="button"
@@ -590,7 +635,7 @@ export default function FormsPage() {
 													className="inline-flex items-center gap-1 rounded-lg bg-[#EB2020] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#CF1C1C] disabled:opacity-50"
 												>
 													<X className="h-3.5 w-3.5" />
-													Reject
+													Deactivate
 												</button>
 											</div>
 										</td>

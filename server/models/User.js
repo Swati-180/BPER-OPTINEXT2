@@ -26,12 +26,18 @@ const userSchema = new mongoose.Schema({
   organization: { type: String, default: '' },
   isActive: { type: Boolean, default: true },
   lastLoginAt: { type: Date, default: null },
-  maxMonthlyHours: { type: Number, default: 160, min: 1, max: 744 }
+  maxMonthlyHours: { type: Number, default: 160, min: 1, max: 744 },
+  // When false, employee is visible in 'Pending User Approvals' and cannot submit forms
+  formAccessGranted: { type: Boolean, default: false }
 }, { collection: 'users', timestamps: true });
 
 userSchema.pre('validate', function(next) {
   if (this.role && typeof this.role === 'string') {
     this.role = this.role.toLowerCase().trim();
+  }
+  // Admins and managers always have form access granted automatically
+  if (this.isNew && (this.role === 'admin' || this.role === 'manager')) {
+    this.formAccessGranted = true;
   }
   next();
 });

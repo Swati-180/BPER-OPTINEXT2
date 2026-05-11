@@ -9,9 +9,6 @@ const submitWDT = async (req, res) => {
     // 1. Check Submission Window (20th to 31st)
     const today = new Date().getDate();
     const isOverride = process.env.FORCE_WINDOW_OPEN === 'true';
-    if (today < 20 && !isOverride) {
-      return res.status(403).json({ message: 'Submission window is not yet open for this period.' });
-    }
 
     // 2. Validate hours against user's configured maximum
     const submittingUser = await User.findOne({
@@ -19,9 +16,16 @@ const submitWDT = async (req, res) => {
         { employeeId: employee?.employeeId },
         { email: employee?.email?.toLowerCase() }
       ]
-    }).select('maxMonthlyHours role');
+    }).select('maxMonthlyHours role formAccessGranted');
 
     const isAdmin = submittingUser?.role === 'admin';
+    // formAccessGranted=true means admin explicitly allowed this user to submit (even outside window)
+    const hasFormAccess = submittingUser?.formAccessGranted === true;
+
+    if (today < 20 && !isOverride && !isAdmin && !hasFormAccess) {
+      return res.status(403).json({ message: 'Submission window is not yet open for this period.' });
+    }
+
     const maxHours = submittingUser?.maxMonthlyHours || 160;
 
     const rows = Array.isArray(payload?.rows) ? payload.rows : [];
