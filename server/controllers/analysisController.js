@@ -51,8 +51,8 @@ const getSixBySixData = async (req, res) => {
            totalHours: { 
              $sum: { 
                $cond: [
-                 { $eq: ['$status', 'approved'] }, 
-                 { $convert: { input: '$payload.rows.monthlyHours', to: 'double', onError: 0, onNull: 0 } }, 
+                 { $eq: ['$status', 'Approved'] }, 
+                 { $convert: { input: '$payload.rows.timeTakenHoursPerMonth', to: 'double', onError: 0, onNull: 0 } }, 
                  0
                ] 
              } 

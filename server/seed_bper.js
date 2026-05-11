@@ -204,9 +204,88 @@ async function seed() {
     }
     console.log('Inserted Seed Users');
 
+    // Load 6x6 data to extract real processes for seeding submissions
+    const fs = require('fs');
+    const path = require('path');
+    let realProcessesByDept = { 'F&A': [], 'HR': [], 'Logistics': [], 'SCM': [] };
+
+    function isNumericLabel(value) {
+      if (typeof value !== 'string') return false;
+      return /^\d+(\.\d+)*$/.test(value.trim());
+    }
+
+    function resolveProcessLabel(activity) {
+      const name = (activity?.name || '').trim();
+      const id = (activity?.id || '').trim();
+
+      if (name && !isNumericLabel(name)) return name;
+      if (id && !isNumericLabel(id)) return id;
+      if (name) return name;
+      if (id) return id;
+      return 'Unknown';
+    }
+
+    function resolveParentLabel(proc) {
+      const name = (proc?.name || '').trim();
+      const id = (proc?.id || '').trim();
+
+      if (name && !isNumericLabel(name)) return name;
+      if (id && !isNumericLabel(id)) return id;
+      if (name) return name;
+      if (id) return id;
+      return 'Unknown';
+    }
+
+    try {
+      const dataPath = path.join(__dirname, '..', '6x6_data (1).json');
+      if (fs.existsSync(dataPath)) {
+        const fileContent = JSON.parse(fs.readFileSync(dataPath, 'utf-8'));
+        if (fileContent && fileContent.departments) {
+          fileContent.departments.forEach(dept => {
+            let deptKey = dept.id || dept.name;
+            if (deptKey === 'Finance & Accounting' || deptKey === 'Finance') {
+              deptKey = 'F&A';
+            }
+            if (realProcessesByDept[deptKey] && dept.processes) {
+              dept.processes.forEach(p => {
+                const parentLabel = resolveParentLabel(p);
+                if (p.activities) {
+                  p.activities.forEach(act => {
+                    const activityLabel = resolveProcessLabel(act);
+                    if (activityLabel && !isNumericLabel(activityLabel)) {
+                      realProcessesByDept[deptKey].push({
+                        majorProcess: parentLabel,
+                        process: activityLabel,
+                        subProcess: activityLabel,
+                        activityCategory: act.type?.toLowerCase() || 'core'
+                      });
+                    }
+                  });
+                }
+              });
+            }
+          });
+        }
+      }
+    } catch (err) {
+      console.warn('Could not parse 6x6_data (1).json for matching seeds:', err.message);
+    }
+
     // Generate random submissions for each employee
     const employees = users.filter(u => u.role === 'employee');
     for (const emp of employees) {
+      // Map employee to one of the 6x6 departments
+      let deptName = 'F&A';
+      if (emp.designation.toLowerCase().includes('hr') || emp.name.toLowerCase().includes('sarah')) {
+        deptName = 'HR';
+      } else if (emp.designation.toLowerCase().includes('it') || emp.name.toLowerCase().includes('david')) {
+        deptName = 'Logistics';
+      } else if (emp.designation.toLowerCase().includes('lead') || emp.name.toLowerCase().includes('emily')) {
+        deptName = 'SCM';
+      }
+      
+      const deptProcesses = realProcessesByDept[deptName] || [];
+
       // Create 2 submissions per employee
       for (let i = 0; i < 2; i++) {
         const rows = [];
@@ -216,7 +295,8 @@ async function seed() {
         for (let j = 0; j < rowCount; j++) {
             const h = 10 + Math.floor(Math.random() * 40);
             totalH += h;
-            rows.push({
+            
+            let actRow = {
                 activityCategory: Math.random() > 0.3 ? 'core' : 'support',
                 majorProcess: processes[Math.floor(Math.random() * processes.length)],
                 process: subProcesses[Math.floor(Math.random() * subProcesses.length)],
@@ -226,7 +306,24 @@ async function seed() {
                 timeTakenHoursPerMonth: h,
                 applicationsUsed: "ERP, Excel, SAP",
                 comments: "Regular quarterly activity review."
-            });
+            };
+
+            if (deptProcesses.length > 0) {
+              const selectedAct = deptProcesses[Math.floor(Math.random() * deptProcesses.length)];
+              actRow = {
+                activityCategory: selectedAct.activityCategory === 'support' ? 'support' : 'core',
+                majorProcess: selectedAct.majorProcess,
+                process: selectedAct.process,
+                subProcess: selectedAct.subProcess,
+                frequency: "Monthly",
+                volumesMonthly: 100 + Math.floor(Math.random() * 500),
+                timeTakenHoursPerMonth: h,
+                applicationsUsed: "ERP, Excel, SAP",
+                comments: "Regular quarterly activity review."
+              };
+            }
+            
+            rows.push(actRow);
         }
 
         await WDTSubmission.create({
@@ -239,7 +336,7 @@ async function seed() {
                 employeeId: emp.employeeId,
                 name: emp.name,
                 email: emp.email,
-                department: emp.designation.split(' ')[0], // close enough for demo
+                department: deptName,
                 designation: emp.designation,
                 location: emp.location,
                 organization: 'BPER'
@@ -252,7 +349,7 @@ async function seed() {
         });
       }
     }
-    console.log('Generated Random WDT Submissions');
+    console.log('Generated Random WDT Submissions aligned with 6x6 process names');
 
     // Insert ProcessAnalysis for 6x6
     const analysisRecords = [
