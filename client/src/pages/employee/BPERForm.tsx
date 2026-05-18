@@ -143,8 +143,6 @@ export default function BPERForm() {
         (row, index) => `
           <tr>
             <td>${index + 1}</td>
-            <td>${escapeHtml(row.majorProcess || "-")}</td>
-            <td>${escapeHtml(row.process || "-")}</td>
             <td>${escapeHtml(row.subProcess || "-")}</td>
             <td>${escapeHtml(row.frequency || "-")}</td>
             <td>${Number(row.timeTakenHoursPerMonth || 0).toFixed(1)}</td>
@@ -181,7 +179,7 @@ export default function BPERForm() {
           <table>
             <thead>
               <tr>
-                <th>#</th><th>Major Process</th><th>Process</th><th>Sub Process</th><th>Frequency</th><th>Hours</th>
+                <th>#</th><th>Subprocess/Activity</th><th>Frequency</th><th>Hours</th>
               </tr>
             </thead>
             <tbody>

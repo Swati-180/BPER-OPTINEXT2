@@ -11,6 +11,7 @@ const {
 	updateUser,
 	resetUserPassword,
 	bulkUpdateUsers,
+	uploadUsers,
 } = require('../controllers/authController');
 const verifyToken = require('../middleware/verifyToken');
 
@@ -25,5 +26,6 @@ router.get('/users', verifyToken, getAllUsers);
 router.patch('/users/:id', verifyToken, updateUser);
 router.post('/users/:id/reset-password', verifyToken, resetUserPassword);
 router.patch('/users/bulk', verifyToken, bulkUpdateUsers);
+router.post('/users/upload', verifyToken, uploadUsers);
 
 module.exports = router;

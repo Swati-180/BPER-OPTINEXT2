@@ -1,6 +1,7 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Check, Copy, Link2, MailPlus, Search, Users, X, Pencil, Trash2 } from 'lucide-react';
+import { Check, Copy, Link2, MailPlus, Search, Users, X, Pencil, Trash2, FileUp, Loader2 } from 'lucide-react';
+import * as XLSX from 'xlsx';
 import { apiFetch } from '../../lib/api';
 import { getInviteSignupLink, loadAuthUser } from '../../lib/authStorage';
 import { TableLoadingRow } from '../../components/PortalSkeletons';
@@ -71,6 +72,9 @@ export default function UsersPage() {
 	const [inviteError, setInviteError] = useState('');
 	const [inviteCopied, setInviteCopied] = useState(false);
 	const [generatedInviteUrl, setGeneratedInviteUrl] = useState('');
+	const fileInputRef = React.useRef<HTMLInputElement>(null);
+	const [isUploading, setIsUploading] = useState(false);
+	const [uploadResult, setUploadResult] = useState<{ added: number, updated: number, errors: string[] } | null>(null);
 	const modalRoot = typeof document !== 'undefined' ? document.body : null;
 
 	const fetchUsers = async () => {
@@ -252,6 +256,54 @@ export default function UsersPage() {
 		}
 	}
 
+	async function handleFileUpload(event: React.ChangeEvent<HTMLInputElement>) {
+		const file = event.target.files?.[0];
+		if (!file) return;
+
+		setIsUploading(true);
+		try {
+			const data = await file.arrayBuffer();
+			const workbook = XLSX.read(data);
+			const firstSheetName = workbook.SheetNames[0];
+			const worksheet = workbook.Sheets[firstSheetName];
+			const json = XLSX.utils.sheet_to_json(worksheet) as any[];
+
+			const usersPayload = json.map(row => ({
+				name: row['Employee Name'] || row['Name'],
+				email: row['Email ID'] || row['Email'] || row['Email Address'],
+				employeeId: row['Employee ID'],
+				organization: row['Department'] || row['Organization'],
+				designation: row['Designation'] || row['Job Title'],
+				location: row['Location / Unit'] || row['Location'] || row['Unit'],
+				supervisorName: row['Manager'] || row['Supervisor'] || row['Supervisor Name']
+			}));
+
+			const response = await apiFetch('/auth/users/upload', {
+				method: 'POST',
+				body: JSON.stringify({ users: usersPayload })
+			});
+
+			const result = await response.json().catch(() => null);
+			if (!response.ok) throw new Error(result?.message || 'Upload failed');
+			
+			setUploadResult({
+				added: result.added || 0,
+				updated: result.updated || 0,
+				errors: result.errors || []
+			});
+			fetchUsers();
+		} catch (error: any) {
+			setUploadResult({
+				added: 0,
+				updated: 0,
+				errors: [error.message]
+			});
+		} finally {
+			setIsUploading(false);
+			if (fileInputRef.current) fileInputRef.current.value = '';
+		}
+	}
+
 	return (
 		<main className="space-y-4 animate-in fade-in duration-500">
 			<section className="rounded-2xl border border-[#D9E4F2] bg-white p-4 md:p-5 shadow-[0_3px_12px_rgba(10,42,80,0.06)]">
@@ -262,6 +314,22 @@ export default function UsersPage() {
 					</div>
 
 					<div className="flex flex-wrap items-center gap-2">
+						<input 
+							type="file" 
+							ref={fileInputRef} 
+							accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel" 
+							className="hidden" 
+							onChange={handleFileUpload}
+						/>
+						<button
+							type="button"
+							onClick={() => fileInputRef.current?.click()}
+							disabled={isUploading}
+							className="inline-flex items-center gap-2 rounded-lg border border-[#BFD3EA] bg-white px-3.5 py-2 text-xs font-semibold text-[#1E5EAB] transition-all hover:bg-[#F4F8FF] disabled:opacity-50"
+						>
+							{isUploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileUp className="h-3.5 w-3.5" />}
+							Upload CSV/Excel
+						</button>
 						<button
 							type="button"
 							onClick={openInviteModal}
@@ -709,6 +777,51 @@ export default function UsersPage() {
 									</div>
 								</form>
 							</div>
+						</div>
+					</div>
+				</div>,
+				modalRoot
+			)}
+
+			{uploadResult && modalRoot && createPortal(
+				<div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0F203B]/45 p-4" onClick={() => setUploadResult(null)}>
+					<div className="w-full max-w-lg overflow-hidden rounded-2xl border border-[#D7E2F0] bg-white shadow-[0_24px_64px_rgba(15,32,59,0.28)]" onClick={(event) => event.stopPropagation()}>
+						<div className="flex items-start justify-between border-b border-[#E3EBF7] px-6 py-5">
+							<div>
+								<h2 className="text-xl font-bold tracking-tight text-[#152542]">Upload Complete</h2>
+								<p className="mt-1 text-sm text-[#667C99]">Summary of the employee database import.</p>
+							</div>
+							<button type="button" onClick={() => setUploadResult(null)} className="rounded-md p-2 text-[#8FA2BC] transition-colors hover:bg-[#F1F5FB] hover:text-[#607A9E]">
+								<X className="h-5 w-5" />
+							</button>
+						</div>
+
+						<div className="px-6 py-6 space-y-5">
+							<div className="flex gap-4">
+								<div className="flex-1 rounded-xl bg-[#F0FDF4] border border-[#DCFCE7] p-4 text-center">
+									<p className="text-[11px] font-bold uppercase tracking-widest text-[#166534]">Added</p>
+									<p className="mt-1 text-3xl font-black text-[#15803D]">{uploadResult.added}</p>
+								</div>
+								<div className="flex-1 rounded-xl bg-[#EFF6FF] border border-[#DBEAFE] p-4 text-center">
+									<p className="text-[11px] font-bold uppercase tracking-widest text-[#1E40AF]">Updated</p>
+									<p className="mt-1 text-3xl font-black text-[#1D4ED8]">{uploadResult.updated}</p>
+								</div>
+							</div>
+
+							{uploadResult.errors.length > 0 && (
+								<div className="rounded-xl border border-[#FEE2E2] bg-[#FEF2F2] p-4">
+									<p className="text-xs font-bold text-[#991B1B] mb-2 uppercase tracking-wide">Errors encountered ({uploadResult.errors.length}):</p>
+									<ul className="list-disc pl-4 text-xs text-[#7F1D1D] space-y-1 max-h-32 overflow-y-auto">
+										{uploadResult.errors.map((err, i) => <li key={i}>{err}</li>)}
+									</ul>
+								</div>
+							)}
+						</div>
+						
+						<div className="border-t border-[#E3EBF7] bg-[#F8FAFC] px-6 py-4 flex justify-end">
+							<button type="button" onClick={() => setUploadResult(null)} className="rounded-xl bg-[#165BAA] px-6 py-2 text-sm font-semibold text-white shadow-md transition-colors hover:bg-[#124B8D]">
+								Close
+							</button>
 						</div>
 					</div>
 				</div>,

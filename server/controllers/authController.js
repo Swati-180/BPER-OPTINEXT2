@@ -402,6 +402,87 @@ const bulkUpdateUsers = async (req, res) => {
   }
 };
 
+const uploadUsers = async (req, res) => {
+  try {
+    const { users } = req.body;
+    if (!Array.isArray(users)) {
+      return res.status(400).json({ message: 'Users array is required.' });
+    }
+    console.log("Incoming bulk upload users payload:", JSON.stringify(users, null, 2));
+    
+    let added = 0;
+    let updated = 0;
+    const errors = [];
+    
+    for (const [index, userData] of users.entries()) {
+      try {
+        if (!userData.email) {
+          errors.push(`Row ${index + 1}: Email is required.`);
+          continue;
+        }
+        
+        const emailToSearch = userData.email.toLowerCase().trim();
+        let user = await User.findOne({ email: emailToSearch });
+        
+        if (user) {
+          // Update
+          user.name = userData.name || user.name;
+          user.organization = userData.organization || user.organization;
+          user.designation = userData.designation || user.designation;
+          user.location = userData.location || user.location;
+          user.supervisorName = userData.supervisorName || user.supervisorName;
+          await user.save();
+          updated++;
+        } else {
+          // Create
+          let newEmployeeId = userData.employeeId ? userData.employeeId.toString().trim() : null;
+          if (!newEmployeeId) {
+            newEmployeeId = await getNextBperEmployeeId();
+          }
+          
+          let emailPrefix = userData.email.split('@')[0];
+          let defaultPassword = userData.employeeId || (emailPrefix + "123");
+          
+          await User.create({
+            name: userData.name || 'Unknown',
+            email: userData.email.toLowerCase().trim(),
+            employeeId: newEmployeeId,
+            password: defaultPassword,
+            role: 'employee',
+            organization: userData.organization || '',
+            designation: userData.designation || '',
+            location: userData.location || '',
+            supervisorName: userData.supervisorName || '',
+            isActive: true
+          });
+          added++;
+        }
+      } catch (err) {
+        console.error(`Error on row ${index + 1}:`, err);
+        errors.push(`Row ${index + 1}: ${err.message}`);
+      }
+    }
+    
+    await logAction({
+        req,
+        action: 'USERS_BULK_UPLOADED',
+        targetType: 'User',
+        targetId: 'bulk',
+        description: `Bulk uploaded users. Added: ${added}, Updated: ${updated}`,
+        next: { added, updated, errorCount: errors.length }
+    });
+    
+    return res.json({ 
+      message: `Upload complete. Added: ${added}, Updated: ${updated}.`,
+      added,
+      updated,
+      errors: errors.length > 0 ? errors : undefined
+    });
+  } catch (err) {
+    return res.status(500).json({ message: err.message });
+  }
+};
+
 module.exports = {
   register,
   requestAccess,
@@ -413,4 +494,5 @@ module.exports = {
   updateUser,
   resetUserPassword,
   bulkUpdateUsers,
+  uploadUsers,
 };

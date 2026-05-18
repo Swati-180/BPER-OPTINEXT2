@@ -19,7 +19,6 @@ import ManagerLayout from './layouts/ManagerLayout';
 import ProtectedRoute from './components/ProtectedRoute';
 import PortalSelectionPage from './pages/PortalSelection';
 import InviteSignupPage from './pages/InviteSignup';
-import EmployeeLoginPage from './pages/EmployeeLogin';
 
 // Pages
 import EmployeeDashboard from './pages/employee/Dashboard';
@@ -124,13 +123,12 @@ function LoginPage({ onLogin }: { onLogin: (user: AppAuthUser) => void }) {
       
       saveAuthUser(nextUser);
       
-      if (nextUser.role === 'employee') {
-        clearAuthUser();
-        throw new Error('Access denied. Employees must use the dedicated employee portal.');
-      }
-      
       onLogin(nextUser);
-      navigate('/choose-portal', { replace: true });
+      if (nextUser.role === 'employee') {
+        navigate('/employee-portal', { replace: true });
+      } else {
+        navigate('/choose-portal', { replace: true });
+      }
     } catch (err: any) {
       setGeneralError(err.message || 'Invalid credentials. Please check your email and password.');
     } finally {
@@ -294,17 +292,13 @@ export default function App() {
           path="/auth/login" 
           element={<LoginPage onLogin={handleLogin} />} 
         />
-        <Route 
-          path="/auth/login/employee" 
-          element={<EmployeeLoginPage onLogin={handleLogin} />} 
-        />
         <Route path="/auth/signup" element={<InviteSignupPage onLogin={handleLogin} />} />
         <Route path="/choose-portal" element={<ManagerChoosePortalRoute user={user} />} />
         <Route
           path="/employee-portal"
           element={
             user ? (
-              user.role === 'employee' || user.role === 'manager'
+              user.role === 'employee' || user.role === 'manager' || user.role === 'admin'
                 ? <Navigate to="/employee/dashboard" replace />
                 : <Navigate to="/auth/login" replace />
             ) : (

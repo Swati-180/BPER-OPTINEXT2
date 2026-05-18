@@ -32,18 +32,35 @@ const mapActivity = async (req, res) => {
       item.subProcesses.forEach(sub => {
         const subWords = sub.toLowerCase().split(/\W+/).filter(w => w.length > 2 && !stopwords.has(w));
         
-        // Baseline: String Similarity
+        // Baseline: String Similarity (Dice's Coefficient)
         const baseline = stringSimilarity.compareTwoStrings(text.toLowerCase(), sub.toLowerCase());
         
-        // Boost 1: Word Overlap (Intersection)
-        const overlap = inputWords.filter(w => subWords.includes(w)).length;
-        const overlapBonus = overlap > 0 ? (overlap / Math.max(inputWords.length, 1)) * 0.4 : 0;
+        let finalConfidence = 0;
         
-        // Boost 2: Tag Matching
-        const tagMatch = inputWords.some(w => itemTags.includes(w));
-        const tagBonus = tagMatch ? 0.2 : 0;
+        if (baseline > 0.8) {
+           // Almost exact match (handles minor typos like "vender" vs "vendor" perfectly)
+           finalConfidence = baseline * 100;
+        } else {
+           // Semantic/Complex match: calculate word overlap
+           const overlap = inputWords.filter(w => subWords.includes(w)).length;
+           
+           // Calculate coverage (how much of input is matched, and how much of target is matched)
+           const inputCoverage = inputWords.length > 0 ? overlap / inputWords.length : 0;
+           const subCoverage = subWords.length > 0 ? overlap / subWords.length : 0;
+           
+           // Average coverage gives a balanced overlap score
+           const overlapScore = (inputCoverage + subCoverage) / 2;
+           
+           // Tag matching bonus
+           const tagMatch = inputWords.some(w => itemTags.includes(w));
+           const tagBonus = tagMatch ? 0.15 : 0;
+           
+           // Combine string similarity with overlap and tags
+           const combinedScore = (baseline * 0.3) + (overlapScore * 0.7) + tagBonus;
+           finalConfidence = combinedScore * 100;
+        }
         
-        const finalConfidence = Math.min(99, Math.round((baseline * 0.4 + overlapBonus + tagBonus) * 100));
+        finalConfidence = Math.min(99, Math.max(0, Math.round(finalConfidence)));
         
         scoredCandidates.push({
           majorProcess: item.majorProcess,
@@ -59,7 +76,7 @@ const mapActivity = async (req, res) => {
     const best = scoredCandidates[0];
     const alternatives = scoredCandidates
       .slice(1, 4)
-      .filter(c => c.confidence > 25 && c.subProcess !== best.subProcess);
+      .filter(c => c.confidence > 5 && c.subProcess !== best.subProcess);
 
     // 4. Audit Log
     if (best.confidence > 50) {
@@ -72,9 +89,7 @@ const mapActivity = async (req, res) => {
       });
     }
 
-    if (best.confidence < 25) {
-      return res.json({ mapped: false, confidence: best.confidence });
-    }
+    // Always return the best match regardless of how low the score is.
 
     res.json({
       mapped: true,

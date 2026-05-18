@@ -116,7 +116,7 @@ export function ProcessListToggle({
           <table className="w-full text-left">
             <thead>
               <tr className="text-[10px] font-semibold text-slate-500 uppercase tracking-[0.18em] border-b border-slate-100 bg-slate-50">
-                <th className="px-3 py-2">Sub-Process / Activity</th>
+                <th className="px-3 py-2">Subprocess/Activity</th>
                 <th className="px-3 py-2 text-right">Hours/Month</th>
                 {showFTE && <th className="px-3 py-2 text-right">FTE</th>}
                 <th className="px-3 py-2 text-center hidden sm:table-cell">Frequency</th>

@@ -73,6 +73,8 @@ export function Step2({ employee, payload, onNext, onPrev, onPayloadChange }: St
   const [rows, setRows] = useState<WdtActivityRow[]>(payload?.rows?.length ? payload.rows : initialRows);
   const [editor, setEditor] = useState<EditorState | null>(null);
   const [editorDraft, setEditorDraft] = useState("");
+  const [activeTab, setActiveTab] = useState<'existing' | 'custom'>('existing');
+  const [searchQuery, setSearchQuery] = useState('');
   const [taxonomy, setTaxonomy] = useState<TaxonomyItem[]>([]);
   const [mapSuggestion, setMapSuggestion] = useState<any>(null);
   const [isMapping, setIsMapping] = useState(false);
@@ -86,7 +88,7 @@ export function Step2({ employee, payload, onNext, onPrev, onPayloadChange }: St
   useEffect(() => {
     async function fetchTaxonomy() {
       try {
-        const deptParam = employee.department ? `?department=${encodeURIComponent(employee.department)}` : '';
+        const deptParam = employee?.department ? `?department=${encodeURIComponent(employee.department)}` : '';
         const res = await apiFetch(`/taxonomy/processes${deptParam}`);
         if (res.ok) {
           setTaxonomy(await res.json().catch(() => null));
@@ -96,7 +98,31 @@ export function Step2({ employee, payload, onNext, onPrev, onPayloadChange }: St
       }
     }
     fetchTaxonomy();
-  }, []);
+  }, [employee?.department]);
+
+  const allSubProcesses = useMemo(() => {
+    return taxonomy.flatMap(t => 
+      t.subProcesses.map(sp => ({
+        subProcess: sp,
+        process: t.process,
+        majorProcess: t.majorProcess
+      }))
+    ).sort((a, b) => {
+      if (a.majorProcess !== b.majorProcess) return a.majorProcess.localeCompare(b.majorProcess);
+      if (a.process !== b.process) return a.process.localeCompare(b.process);
+      return a.subProcess.localeCompare(b.subProcess);
+    });
+  }, [taxonomy]);
+
+  const filteredSubProcesses = useMemo(() => {
+    if (!searchQuery) return allSubProcesses;
+    const lowerQuery = searchQuery.toLowerCase();
+    return allSubProcesses.filter(item => 
+      item.subProcess.toLowerCase().includes(lowerQuery) ||
+      item.process.toLowerCase().includes(lowerQuery) ||
+      item.majorProcess.toLowerCase().includes(lowerQuery)
+    );
+  }, [allSubProcesses, searchQuery]);
 
   const majorProcessSuggestions = useMemo(() => Array.from(new Set(taxonomy.map(t => t.majorProcess))), [taxonomy]);
   
@@ -161,12 +187,10 @@ export function Step2({ employee, payload, onNext, onPrev, onPayloadChange }: St
         return hasTime && hasDescription;
       }
       
-      // Core rows need all taxonomy fields
+      // Core rows need all taxonomy fields (major and process are now hidden, so we just check what's visible)
       return (
         hasTime && 
         hasDescription &&
-        row.majorProcess?.trim() && 
-        row.process?.trim() && 
         row.frequency?.trim()
       );
     });
@@ -174,7 +198,7 @@ export function Step2({ employee, payload, onNext, onPrev, onPayloadChange }: St
 
   const handleNext = () => {
     if (!isStepValid) {
-      setValidationError("Please ensure all rows have Major Process, Process, Sub-Process, Frequency, and Time Taken > 0.");
+      setValidationError("Please ensure all rows have Subprocess/Activity, Frequency, and Time Taken > 0.");
       return;
     }
     setValidationError("");
@@ -243,6 +267,10 @@ export function Step2({ employee, payload, onNext, onPrev, onPayloadChange }: St
     const currentValue = rows[config.rowIndex]?.[config.field];
     setEditor(config);
     setEditorDraft(currentValue == null ? "" : String(currentValue));
+    if (config.field === 'subProcess') {
+      setActiveTab('existing');
+      setSearchQuery('');
+    }
   };
 
   const saveEditor = () => {
@@ -267,7 +295,7 @@ export function Step2({ employee, payload, onNext, onPrev, onPayloadChange }: St
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ text, context: "subProcess" })
+        body: JSON.stringify({ text })
       });
       if (res.ok) {
         const data = await res.json().catch(() => null);
@@ -280,25 +308,29 @@ export function Step2({ employee, payload, onNext, onPrev, onPayloadChange }: St
     }
   };
 
-  const applyMapping = () => {
+  const applyMapping = (specificSuggestion: any = null, specificConfidence: number | null = null) => {
     if (!editor || !mapSuggestion) return;
     
+    // Handle React event if called directly via onClick={applyMapping}
+    const target = (specificSuggestion && !specificSuggestion.nativeEvent) ? specificSuggestion : mapSuggestion.suggestion;
+    const targetConfidence = (specificConfidence !== null && typeof specificConfidence === 'number') ? specificConfidence : mapSuggestion.confidence;
+
     // Auto-fill related fields in the same row
-    if (mapSuggestion.suggestion.majorProcess) {
-       updateRow(editor.rowIndex, "majorProcess", mapSuggestion.suggestion.majorProcess);
+    if (target.majorProcess) {
+       updateRow(editor.rowIndex, "majorProcess", target.majorProcess);
     }
-    if (mapSuggestion.suggestion.process) {
-       updateRow(editor.rowIndex, "process", mapSuggestion.suggestion.process);
+    if (target.process) {
+       updateRow(editor.rowIndex, "process", target.process);
     }
     
     // Update the custom text to the mapped suggestion to keep it standardized
-    setEditorDraft(mapSuggestion.suggestion.subProcess);
+    setEditorDraft(target.subProcess);
     
     // Set AI Mapping Flags (must update them sequentially via setRows manually to ensure we catch all at once)
     setRows(prev => prev.map((r, idx) => idx === editor.rowIndex ? {
         ...r,
         isAiMapped: true,
-        aiConfidence: mapSuggestion.confidence,
+        aiConfidence: targetConfidence,
         originalCustomInput: editorDraft // save what they typed initially
     } : r));
 
@@ -317,9 +349,7 @@ export function Step2({ employee, payload, onNext, onPrev, onPayloadChange }: St
             <table className="w-full text-left border-collapse min-w-7xl">
               <thead>
                 <tr className="bg-slate-50/80 text-[11px] font-semibold text-slate-500 tracking-[0.18em] uppercase border-y border-slate-200">
-                  <th className="py-3 px-3 w-[14%]">Major Process*</th>
-                  <th className="py-3 px-3 w-[13%]">Process*</th>
-                  <th className="py-3 px-3 w-[18%]">Sub Process*</th>
+                  <th className="py-3 px-3 w-[25%]">Subprocess/Activity*</th>
                   <th className="py-3 px-3 w-32">
                     <HeaderWithTooltip
                       title="Frequency"
@@ -370,47 +400,13 @@ export function Step2({ employee, payload, onNext, onPrev, onPayloadChange }: St
                   <tr key={`core-${rowIndex}-${row.majorProcess}-${row.subProcess}`} className="border-b border-slate-100 last:border-0 align-top">
                     <td className="py-3 px-2">
                       <CellPreview
-                        value={row.majorProcess}
-                        placeholder="Click to enter"
-                        onClick={() =>
-                          openEditor({
-                            rowIndex,
-                            field: "majorProcess",
-                            label: "Major Process",
-                            description: "Select from predefined process families fetched from the Central Process Database.",
-                            kind: "single",
-                            placeholder: "e.g. Accounts Payable",
-                            suggestions: majorProcessSuggestions,
-                          })
-                        }
-                      />
-                    </td>
-                    <td className="py-3 px-2">
-                      <CellPreview
-                        value={row.process}
-                        placeholder="Click to enter"
-                        onClick={() =>
-                          openEditor({
-                            rowIndex,
-                            field: "process",
-                            label: "Process",
-                            description: "Pick a standard process or type a custom process description in natural language.",
-                            kind: "single",
-                            placeholder: "e.g. Invoice Processing",
-                            suggestions: getProcessSuggestions(rowIndex),
-                          })
-                        }
-                      />
-                    </td>
-                    <td className="py-3 px-2">
-                      <CellPreview
                         value={row.subProcess}
                         placeholder="Click to add sub process details"
                         onClick={() =>
                           openEditor({
                             rowIndex,
                             field: "subProcess",
-                            label: "Sub Process",
+                            label: "Subprocess/Activity",
                             description: "Use natural language for complete activity detail.",
                             kind: "multi",
                             placeholder: "Describe sub process in detail",
@@ -752,61 +748,147 @@ export function Step2({ employee, payload, onNext, onPrev, onPayloadChange }: St
               <div className="px-6 py-6 space-y-4">
                 {editor.kind === "multi" ? (
                   <div className="space-y-4">
-                    <textarea
-                      value={editorDraft}
-                      onChange={(event) => setEditorDraft(event.target.value)}
-                      placeholder={editor.placeholder}
-                      className="w-full min-h-44 rounded-xl border border-slate-300 bg-white px-4 py-3 text-base text-slate-800 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-                    />
                     {editor.field === "subProcess" && (
-                      <div className="rounded-xl border border-blue-100 bg-blue-50/40 p-4">
-                        <div className="flex items-center justify-between mb-3">
-                           <div>
-                             <h4 className="text-sm font-semibold text-blue-900 flex items-center gap-1.5"><Sparkles size={16} className="text-blue-600" /> AI Auto-Mapping</h4>
-                             <p className="text-xs text-blue-700/80 mt-0.5">Find standardized process matches for your custom input.</p>
-                           </div>
-                           <button
-                             type="button"
-                             disabled={isMapping || !editorDraft.trim()}
-                             onClick={() => triggerMapping(editorDraft)}
-                             className="rounded-lg bg-white border border-blue-200 px-3 py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-50 hover:border-blue-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                           >
-                             {isMapping ? "Analyzing..." : "Map Custom Input"}
-                           </button>
+                      <div className="flex border-b border-slate-200 mb-2">
+                        <button
+                          type="button"
+                          onClick={() => setActiveTab('existing')}
+                          className={`px-4 py-2 text-sm font-semibold border-b-2 transition-colors ${activeTab === 'existing' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
+                        >
+                          Select Existing
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setActiveTab('custom')}
+                          className={`px-4 py-2 text-sm font-semibold border-b-2 transition-colors ${activeTab === 'custom' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
+                        >
+                          Custom Entry
+                        </button>
+                      </div>
+                    )}
+
+                    {editor.field === "subProcess" && activeTab === 'existing' ? (
+                      <div className="space-y-4">
+                        <input
+                          type="text"
+                          placeholder="Search activities..."
+                          value={searchQuery}
+                          onChange={(e) => setSearchQuery(e.target.value)}
+                          className="w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                        />
+                        <div className="max-h-60 overflow-y-auto border border-slate-200 rounded-xl divide-y divide-slate-100">
+                          {filteredSubProcesses.length === 0 ? (
+                            <div className="p-4 text-center text-slate-500 text-sm">No activities found. Try Custom Entry.</div>
+                          ) : (
+                            filteredSubProcesses.map((item, idx) => (
+                              <button
+                                key={idx}
+                                type="button"
+                                onClick={() => {
+                                  updateRow(editor.rowIndex, "majorProcess", item.majorProcess);
+                                  updateRow(editor.rowIndex, "process", item.process);
+                                  updateRow(editor.rowIndex, "subProcess", item.subProcess);
+                                  setEditor(null);
+                                  setMapSuggestion(null);
+                                }}
+                                className="w-full text-left px-4 py-3 hover:bg-blue-50 transition-colors"
+                              >
+                                <div className="text-sm font-semibold text-slate-900">{item.subProcess}</div>
+                                <div className="text-xs text-slate-500 mt-0.5">{item.majorProcess} / {item.process}</div>
+                              </button>
+                            ))
+                          )}
                         </div>
-                        {mapSuggestion && (
-                          <div className="mt-3 rounded-lg bg-white border border-blue-100 p-3 shadow-sm animate-in fade-in zoom-in-95 duration-200">
-                             <div className="flex justify-between items-start mb-2">
-                               <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Suggested Match</span>
-                               <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${mapSuggestion.confidence > 70 ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
-                                 {mapSuggestion.confidence}% Confidence
-                               </span>
-                             </div>
-                             <div className="text-sm font-medium text-slate-800">
-                               {mapSuggestion.suggestion.majorProcess} <span className="text-slate-400 mx-1">/</span> {mapSuggestion.suggestion.process}
-                             </div>
-                             <div className="text-xs text-slate-500 mt-1">
-                               Matches: "{mapSuggestion.suggestion.subProcess}"
-                             </div>
-                             <div className="mt-3 pt-3 border-t border-slate-100 flex gap-2">
+                      </div>
+                    ) : (
+                      <>
+                        <textarea
+                          value={editorDraft}
+                          onChange={(event) => setEditorDraft(event.target.value)}
+                          placeholder={editor.placeholder}
+                          className="w-full min-h-44 rounded-xl border border-slate-300 bg-white px-4 py-3 text-base text-slate-800 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                        />
+                        {editor.field === "subProcess" && (
+                          <div className="rounded-xl border border-blue-100 bg-blue-50/40 p-4 mt-4">
+                            <div className="flex items-center justify-between mb-3">
+                               <div>
+                                 <h4 className="text-sm font-semibold text-blue-900 flex items-center gap-1.5"><Sparkles size={16} className="text-blue-600" /> AI Auto-Mapping</h4>
+                                 <p className="text-xs text-blue-700/80 mt-0.5">Find standardized process matches for your custom input.</p>
+                               </div>
                                <button
                                  type="button"
-                                 onClick={applyMapping}
-                                 className="flex-1 rounded border border-blue-200 bg-blue-50 py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-100 transition-colors"
+                                 disabled={isMapping || !editorDraft.trim()}
+                                 onClick={() => triggerMapping(editorDraft)}
+                                 className="rounded-lg bg-white border border-blue-200 px-3 py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-50 hover:border-blue-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                >
-                                 Accept Suggestion
+                                 {isMapping ? "Analyzing..." : "Map Custom Input"}
                                </button>
-                               <button
-                                 type="button"
-                                 onClick={() => setMapSuggestion(null)}
-                                 className="flex-1 rounded border border-slate-200 bg-white py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition-colors"
-                               >
-                                 Keep Custom Flow
-                               </button>
-                             </div>
+                            </div>
+                            {mapSuggestion && (
+                              <div className="mt-3 rounded-lg bg-white border border-blue-100 shadow-sm animate-in fade-in zoom-in-95 duration-200 overflow-hidden">
+                                 <div className="p-3 bg-blue-50/30">
+                                   <div className="flex justify-between items-start mb-2">
+                                     <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Top Suggested Match</span>
+                                     <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${mapSuggestion.confidence > 70 ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                                       {mapSuggestion.confidence}% Confidence
+                                     </span>
+                                   </div>
+                                   <div className="text-sm font-medium text-slate-800">
+                                     {mapSuggestion.suggestion.majorProcess} <span className="text-slate-400 mx-1">/</span> {mapSuggestion.suggestion.process}
+                                   </div>
+                                   <div className="text-xs text-slate-500 mt-1">
+                                     Matches: "{mapSuggestion.suggestion.subProcess}"
+                                   </div>
+                                   <div className="mt-3 pt-3 border-t border-slate-100 flex gap-2">
+                                     <button
+                                       type="button"
+                                       onClick={() => applyMapping()}
+                                       className="flex-1 rounded border border-blue-200 bg-blue-50 py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-100 transition-colors"
+                                     >
+                                       Accept Top Match
+                                     </button>
+                                     <button
+                                       type="button"
+                                       onClick={() => setMapSuggestion(null)}
+                                       className="flex-1 rounded border border-slate-200 bg-white py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition-colors"
+                                     >
+                                       Keep Custom Flow
+                                     </button>
+                                   </div>
+                                 </div>
+                                 
+                                 {mapSuggestion.alternatives && mapSuggestion.alternatives.length > 0 && (
+                                   <div className="border-t border-blue-100 p-3 bg-slate-50/50">
+                                     <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-2 block">Other Possible Matches</span>
+                                     <div className="space-y-2">
+                                       {mapSuggestion.alternatives.map((alt: any, idx: number) => (
+                                         <div key={idx} className="flex items-center justify-between gap-3 text-xs p-2 rounded-md hover:bg-white border border-transparent hover:border-slate-200 transition-colors">
+                                           <div>
+                                             <div className="font-semibold text-slate-700">{alt.subProcess}</div>
+                                             <div className="text-slate-400 mt-0.5">{alt.majorProcess} / {alt.process}</div>
+                                           </div>
+                                           <div className="flex items-center gap-2">
+                                             <span className={`text-[9px] font-bold uppercase px-1.5 py-0.5 rounded-sm ${alt.confidence > 70 ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'}`}>
+                                               {alt.confidence}%
+                                             </span>
+                                             <button
+                                               type="button"
+                                               onClick={() => applyMapping(alt, alt.confidence)}
+                                               className="text-[10px] font-semibold text-blue-600 hover:text-blue-800 border border-blue-200 rounded px-2 py-1 bg-white"
+                                             >
+                                               Accept
+                                             </button>
+                                           </div>
+                                         </div>
+                                       ))}
+                                     </div>
+                                   </div>
+                                 )}
+                              </div>
+                            )}
                           </div>
                         )}
-                      </div>
+                      </>
                     )}
                   </div>
                 ) : editor.kind === "number" ? (
