@@ -28,6 +28,7 @@ type ProfileRecord = {
   supervisorName?: string;
   supervisorTitle?: string;
   organization?: string;
+  department?: string;
   isActive?: boolean;
   createdAt?: string;
 };
@@ -41,6 +42,7 @@ const EMPTY_EDIT = {
   supervisorTitle: '',
   client: '',
   band: '',
+  department: '',
 };
 
 const EMPTY_PASSWORD = {
@@ -96,6 +98,7 @@ export default function Profile() {
       supervisorTitle: profile.supervisorTitle || '',
       client: profile.client || '',
       band: profile.band || '',
+      department: profile.department || '',
     });
     setActivePanel('edit');
   }
@@ -198,6 +201,7 @@ export default function Profile() {
     { label: 'Location', value: profile?.location || '-', icon: MapPin },
     { label: 'Band', value: profile?.band || '-', icon: BriefcaseBusiness },
     { label: 'Organization', value: profile?.organization || '-', icon: Building2 },
+    { label: 'Department', value: profile?.department || '-', icon: Building2 },
     { label: 'Name of Supervisor', value: profile?.supervisorName || '-', icon: Users },
     { label: 'Title of Supervisor', value: profile?.supervisorTitle || '-', icon: BriefcaseBusiness },
   ];
@@ -327,6 +331,18 @@ export default function Profile() {
                 <InputField label="Supervisor Title" value={editDraft.supervisorTitle} onChange={(value) => setEditDraft((prev) => ({ ...prev, supervisorTitle: value }))} />
                 <InputField label="Client" value={editDraft.client} onChange={(value) => setEditDraft((prev) => ({ ...prev, client: value }))} />
                 <InputField label="Band" value={editDraft.band} onChange={(value) => setEditDraft((prev) => ({ ...prev, band: value }))} />
+                <label className="flex flex-col gap-1.5">
+                  <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-[#7E97B4]">Department</span>
+                  <select
+                    value={editDraft.department}
+                    onChange={(event) => setEditDraft((prev) => ({ ...prev, department: event.target.value }))}
+                    className="h-10 w-full"
+                  >
+                    <option value="" disabled>Select Department</option>
+                    <option value="F&A">F&A</option>
+                    <option value="HR">HR</option>
+                  </select>
+                </label>
               </div>
               <div className="mt-4 flex items-center gap-2">
                 <button type="button" onClick={saveProfile} disabled={isSavingProfile} className="inline-flex items-center gap-2 rounded-lg bg-[#165BAA] px-4 py-2 text-xs font-bold text-white hover:bg-[#124B8E] disabled:opacity-70">
@@ -396,6 +412,7 @@ export default function Profile() {
                   <div className="grid gap-3 p-5">
                     <MetricCard label="Designation" value={profile?.designation || '-'} />
                     <MetricCard label="Client Unit" value={profile?.client || '-'} />
+                    <MetricCard label="Department" value={profile?.department || '-'} />
                     <MetricCard label="Supervisor" value={profile?.supervisorName || '-'} />
                     <MetricCard label="Supervisor Title" value={profile?.supervisorTitle || '-'} />
                   </div>

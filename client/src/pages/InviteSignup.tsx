@@ -23,7 +23,8 @@ export default function InviteSignupPage({ onLogin }: InviteSignupProps) {
 
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
-  const [organization, setOrganization] = useState(isEmployeeInvite ? orgParam : '');
+  const [organization, setOrganization] = useState('QGGlobal');
+  const [department, setDepartment] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
@@ -45,6 +46,11 @@ export default function InviteSignupPage({ onLogin }: InviteSignupProps) {
 
     if (!organization.trim()) {
       setError('Organization is required.');
+      return;
+    }
+
+    if (!department.trim()) {
+      setError('Department is required.');
       return;
     }
 
@@ -70,6 +76,7 @@ export default function InviteSignupPage({ onLogin }: InviteSignupProps) {
           password,
           role: isEmployeeInvite ? 'employee' : 'manager',
           organization: organization.trim(),
+          department: department.trim(),
         })
       });
 
@@ -190,17 +197,19 @@ export default function InviteSignupPage({ onLogin }: InviteSignupProps) {
             </div>
 
             <div className="md:col-span-2 space-y-1.5">
-              <Label htmlFor="organization" className="text-[11px] font-bold uppercase tracking-wider text-[#667C99]">
-                Organization
+              <Label htmlFor="department" className="text-[11px] font-bold uppercase tracking-wider text-[#667C99]">
+                Department
               </Label>
-              <Input
-                id="organization"
-                value={organization}
-                onChange={(event) => setOrganization(event.target.value)}
-                disabled={isEmployeeInvite}
-                placeholder="Enter organization name"
-                className="h-11 bg-[#F8FAFC] border-[#E2E8F0] disabled:opacity-100 disabled:text-[#243A59]"
-              />
+              <select
+                id="department"
+                value={department}
+                onChange={(event) => setDepartment(event.target.value)}
+                className="h-11 w-full rounded-md border border-[#E2E8F0] bg-[#F8FAFC] px-3 py-2 text-sm outline-none transition-colors disabled:opacity-100 disabled:text-[#243A59] focus:border-[#165BAA] focus:ring-2 focus:ring-[#165BAA]/20"
+              >
+                <option value="" disabled>Select Department</option>
+                <option value="F&A">F&A</option>
+                <option value="HR">HR</option>
+              </select>
             </div>
 
             <div className="space-y-1.5">

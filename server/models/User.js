@@ -12,6 +12,7 @@ const userSchema = new mongoose.Schema({
   location: { type: String, default: '' },
   supervisorName: { type: String, default: '' },
   supervisorTitle: { type: String, default: '' },
+  department: { type: String, default: '' },
   role: {
     type: String,
     enum: ['admin', 'manager', 'employee', 'Admin', 'Manager', 'Employee'],
@@ -35,13 +36,13 @@ userSchema.pre('validate', function(next) {
   if (this.designation) {
     const d = this.designation.toLowerCase();
     if (d.includes('finance') || d.includes('f&a') || d.includes('account')) {
-      this.organization = 'F&A';
+      this.department = 'F&A';
     } else if (d.includes('hr') || d.includes('human resource')) {
-      this.organization = 'HR';
+      this.department = 'HR';
     } else if (d.includes('scm') || d.includes('supply chain')) {
-      this.organization = 'SCM';
+      this.department = 'SCM';
     } else if (d.includes('logistic')) {
-      this.organization = 'Logistics';
+      this.department = 'Logistics';
     }
   }
 
@@ -73,9 +74,9 @@ userSchema.pre('findOneAndUpdate', function(next) {
     if (newOrg) {
       // Use $set to ensure it overwrites correctly
       if (update.$set) {
-        update.$set.organization = newOrg;
+        update.$set.department = newOrg;
       } else {
-        update.organization = newOrg;
+        update.department = newOrg;
       }
     }
   }

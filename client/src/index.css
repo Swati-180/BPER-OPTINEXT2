@@ -127,6 +127,13 @@
   html {
     @apply font-sans;
     }
+  select {
+    @apply appearance-none bg-white border border-[#DCE6F3] text-sm text-[#2B4467] rounded-xl px-4 py-2.5 shadow-[0_2px_8px_rgba(16,42,80,0.04)] outline-none focus:border-[#6E97CB] focus:ring-4 focus:ring-[#D7E6F7]/50 transition-all cursor-pointer font-medium hover:border-[#BFD3EA];
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236A809E' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 1rem center;
+    padding-right: 2.5rem;
+  }
 }
 
 @layer utilities {

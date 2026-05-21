@@ -87,7 +87,7 @@ export default function UsersPage() {
 					employeeId: u.employeeId || '-',
 					name: u.name || 'Unknown User',
 					email: u.email,
-					department: u.organization || u.client || 'Unassigned',
+					department: u.department || 'Unassigned',
 					band: u.band || 'B1',
 					designation: u.designation || 'Employee',
 					role: (u.role.charAt(0).toUpperCase() + u.role.slice(1)) as UserRole,
@@ -180,7 +180,7 @@ export default function UsersPage() {
 	}
 
 	function generateInviteUrl() {
-		const inviteOrg = loadAuthUser()?.organization?.trim() || 'QGGlobal';
+		const inviteOrg = 'QGGlobal';
 		const url = getInviteSignupLink(inviteOrg);
 		setGeneratedInviteUrl(url);
 		setInviteError('');
@@ -644,13 +644,15 @@ export default function UsersPage() {
 
 									<label className="md:col-span-2 space-y-1.5">
 										<span className="text-[11px] font-bold uppercase tracking-[0.14em] text-[#6A809E]">Department</span>
-										<input
-											type="text"
+										<select
 											value={createUserForm.department}
 											onChange={(event) => setCreateUserForm((prev) => ({ ...prev, department: event.target.value }))}
-											placeholder="e.g. Finance"
-											className="h-11 w-full rounded-xl border border-[#D8E2F0] bg-white px-4 text-sm text-[#243A59] outline-none placeholder:text-[#95A7BF] focus:border-[#7BA0CF] focus:ring-2 focus:ring-[#D7E6F7]"
-										/>
+											className="h-11 w-full rounded-xl border border-[#D8E2F0] bg-white px-4 text-sm text-[#243A59] outline-none focus:border-[#7BA0CF] focus:ring-2 focus:ring-[#D7E6F7]"
+										>
+											<option value="" disabled>Select Department</option>
+											<option value="F&A">F&A</option>
+											<option value="HR">HR</option>
+										</select>
 									</label>
 
 									<label className="md:col-span-2 space-y-1.5">
@@ -799,7 +801,11 @@ export default function UsersPage() {
 
 									<label className="md:col-span-2 space-y-1.5">
 										<span className="text-[11px] font-bold uppercase tracking-[0.14em] text-[#6A809E]">Department</span>
-										<input type="text" value={editingUser.department} onChange={(e) => setEditingUser(prev => prev ? {...prev, department: e.target.value} : null)} className="h-11 w-full rounded-xl border border-[#D8E2F0] bg-white px-4 text-sm text-[#243A59] outline-none focus:border-[#7BA0CF] focus:ring-2 focus:ring-[#D7E6F7]" />
+										<select value={editingUser.department} onChange={(e) => setEditingUser(prev => prev ? {...prev, department: e.target.value} : null)} className="h-11 w-full rounded-xl border border-[#D8E2F0] bg-white px-4 text-sm text-[#243A59] outline-none focus:border-[#7BA0CF] focus:ring-2 focus:ring-[#D7E6F7]">
+											<option value="" disabled>Select Department</option>
+											<option value="F&A">F&A</option>
+											<option value="HR">HR</option>
+										</select>
 									</label>
 
 									<label className="md:col-span-2 space-y-1.5">

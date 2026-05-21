@@ -31,7 +31,7 @@ import { SkeletonBlock, TablePageSkeleton } from '../../components/PortalSkeleto
 const DEPARTMENTS = [
   { id: 'All', label: 'All' },
   { id: 'HR', label: 'HR' },
-  { id: 'Finance & Accounting', label: 'Finance & Accounts' },
+  { id: 'F&A', label: 'Finance & Accounts' },
 ];
 
 type ExpandedState = {
@@ -925,7 +925,7 @@ function AddCustomProcessModal({ onClose, onSuccess }: { onClose: () => void; on
                   className="mt-2 w-full rounded-lg border border-[#D9E4F2] bg-white px-3 py-2 text-sm text-[#1C334E] focus:border-[#2367AE] focus:outline-none"
                 >
                   <option value="HR">HR</option>
-                  <option value="Finance & Accounting">Finance & Accounting</option>
+                  <option value="F&A">Finance & Accounts</option>
                 </select>
               </div>
 

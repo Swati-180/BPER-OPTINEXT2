@@ -65,6 +65,7 @@ const register = async (req, res) => {
       location,
       supervisorName,
       supervisorTitle,
+      department,
     } = req.body;
     
     if (!name || !email || !password) {
@@ -113,10 +114,11 @@ const register = async (req, res) => {
       employeeId: resolvedEmployeeId,
       designation: !isMissingValue(designation) ? String(designation).trim() : inferDesignation(role),
       band: !isMissingValue(band) ? String(band).trim().toUpperCase() : inferBand(role),
-      client: !isMissingValue(client) ? String(client).trim() : 'BU011',
+      client: !isMissingValue(client) ? String(client).trim() : 'US-Client',
       location: !isMissingValue(location) ? String(location).trim() : '',
       supervisorName: !isMissingValue(supervisorName) ? String(supervisorName).trim() : '',
       supervisorTitle: !isMissingValue(supervisorTitle) ? String(supervisorTitle).trim() : '',
+      department: !isMissingValue(department) ? String(department).trim() : '',
       isActive: true
     });
     
@@ -212,6 +214,7 @@ const updateMe = async (req, res) => {
       'client',
       'band',
       'maxMonthlyHours',
+      'department',
     ];
 
     const previous = {};
