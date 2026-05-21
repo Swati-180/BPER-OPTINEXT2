@@ -32,12 +32,52 @@ const userSchema = new mongoose.Schema({
 }, { collection: 'users', timestamps: true });
 
 userSchema.pre('validate', function(next) {
+  if (this.designation) {
+    const d = this.designation.toLowerCase();
+    if (d.includes('finance') || d.includes('f&a') || d.includes('account')) {
+      this.organization = 'F&A';
+    } else if (d.includes('hr') || d.includes('human resource')) {
+      this.organization = 'HR';
+    } else if (d.includes('scm') || d.includes('supply chain')) {
+      this.organization = 'SCM';
+    } else if (d.includes('logistic')) {
+      this.organization = 'Logistics';
+    }
+  }
+
   if (this.role && typeof this.role === 'string') {
     this.role = this.role.toLowerCase().trim();
   }
   // Admins and managers always have form access granted automatically
   if (this.isNew && (this.role === 'admin' || this.role === 'manager')) {
     this.formAccessGranted = true;
+  }
+  next();
+});
+
+userSchema.pre('findOneAndUpdate', function(next) {
+  const update = this.getUpdate();
+  if (update && update.designation) {
+    const d = update.designation.toLowerCase();
+    let newOrg;
+    if (d.includes('finance') || d.includes('f&a') || d.includes('account')) {
+      newOrg = 'F&A';
+    } else if (d.includes('hr') || d.includes('human resource')) {
+      newOrg = 'HR';
+    } else if (d.includes('scm') || d.includes('supply chain')) {
+      newOrg = 'SCM';
+    } else if (d.includes('logistic')) {
+      newOrg = 'Logistics';
+    }
+
+    if (newOrg) {
+      // Use $set to ensure it overwrites correctly
+      if (update.$set) {
+        update.$set.organization = newOrg;
+      } else {
+        update.organization = newOrg;
+      }
+    }
   }
   next();
 });

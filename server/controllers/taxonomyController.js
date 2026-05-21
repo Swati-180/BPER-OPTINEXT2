@@ -1,6 +1,22 @@
 const Taxonomy = require('../models/Taxonomy');
-const stringSimilarity = require('string-similarity');
 const { logAction } = require('../utils/auditLogger');
+
+let extractor = null;
+async function getExtractor() {
+  if (!extractor) {
+    const { pipeline } = await import('@xenova/transformers');
+    extractor = await pipeline('feature-extraction', 'Xenova/all-MiniLM-L6-v2');
+  }
+  return extractor;
+}
+
+function cos_sim(a, b) {
+    let dotProduct = 0, normA = 0, normB = 0;
+    for (let i = 0; i < a.length; i++) {
+        dotProduct += a[i] * b[i]; normA += a[i] * a[i]; normB += b[i] * b[i];
+    }
+    return dotProduct / (Math.sqrt(normA) * Math.sqrt(normB));
+}
 
 const mapActivity = async (req, res) => {
   try {
@@ -21,62 +37,49 @@ const mapActivity = async (req, res) => {
       return res.json({ mapped: false, confidence: 0 });
     }
 
-    // 2. Build candidates and calculate scores
-    const stopwords = new Set(['the', 'and', 'a', 'of', 'for', 'with', 'to', 'in', 'on', 'at', 'by', 'an', 'is']);
-    const inputWords = text.toLowerCase().split(/\W+/).filter(w => w.length > 2 && !stopwords.has(w));
-    
-    const scoredCandidates = [];
+    // 2. Prepare candidates
+    const candidates = [];
     allTaxonomy.forEach(item => {
-      const itemTags = (item.tags || []).map(t => t.toLowerCase());
-      
       item.subProcesses.forEach(sub => {
-        const subWords = sub.toLowerCase().split(/\W+/).filter(w => w.length > 2 && !stopwords.has(w));
-        
-        // Baseline: String Similarity (Dice's Coefficient)
-        const baseline = stringSimilarity.compareTwoStrings(text.toLowerCase(), sub.toLowerCase());
-        
-        let finalConfidence = 0;
-        
-        if (baseline > 0.8) {
-           // Almost exact match (handles minor typos like "vender" vs "vendor" perfectly)
-           finalConfidence = baseline * 100;
-        } else {
-           // Semantic/Complex match: calculate word overlap
-           const overlap = inputWords.filter(w => subWords.includes(w)).length;
-           
-           // Calculate coverage (how much of input is matched, and how much of target is matched)
-           const inputCoverage = inputWords.length > 0 ? overlap / inputWords.length : 0;
-           const subCoverage = subWords.length > 0 ? overlap / subWords.length : 0;
-           
-           // Average coverage gives a balanced overlap score
-           const overlapScore = (inputCoverage + subCoverage) / 2;
-           
-           // Tag matching bonus
-           const tagMatch = inputWords.some(w => itemTags.includes(w));
-           const tagBonus = tagMatch ? 0.15 : 0;
-           
-           // Combine string similarity with overlap and tags
-           const combinedScore = (baseline * 0.3) + (overlapScore * 0.7) + tagBonus;
-           finalConfidence = combinedScore * 100;
-        }
-        
-        finalConfidence = Math.min(99, Math.max(0, Math.round(finalConfidence)));
-        
-        scoredCandidates.push({
-          majorProcess: item.majorProcess,
-          process: item.process,
-          subProcess: sub,
-          confidence: finalConfidence
-        });
+        candidates.push({ majorProcess: item.majorProcess, process: item.process, subProcess: sub });
       });
     });
 
-    // 3. Sort and filter
-    scoredCandidates.sort((a, b) => b.confidence - a.confidence);
-    const best = scoredCandidates[0];
-    const alternatives = scoredCandidates
-      .slice(1, 4)
-      .filter(c => c.confidence > 5 && c.subProcess !== best.subProcess);
+    if (!candidates.length) {
+      return res.json({ mapped: false, confidence: 0 });
+    }
+
+    // 3. Semantic Similarity Match
+    const extract = await getExtractor();
+    const textOutput = await extract(text, { pooling: 'mean', normalize: true });
+    const textEmbedding = Array.from(textOutput.data);
+
+    const candidateTexts = candidates.map(c => c.subProcess);
+    const candidateOutputs = await extract(candidateTexts, { pooling: 'mean', normalize: true });
+    
+    candidates.forEach((cand, i) => {
+        const startIdx = i * candidateOutputs.dims[1];
+        const endIdx = startIdx + candidateOutputs.dims[1];
+        const candEmbedding = candidateOutputs.data.slice(startIdx, endIdx);
+        
+        // Compute cosine similarity and map to 0-100 confidence
+        cand.confidence = Math.max(0, Math.round(cos_sim(textEmbedding, candEmbedding) * 100));
+    });
+
+    // Sort and filter
+    candidates.sort((a, b) => b.confidence - a.confidence);
+    const best = candidates[0];
+    
+    // We want unique alternative subProcesses
+    const seenSubs = new Set([best.subProcess]);
+    const alternatives = [];
+    for (let i = 1; i < candidates.length; i++) {
+        if (alternatives.length >= 3) break;
+        if (!seenSubs.has(candidates[i].subProcess) && candidates[i].confidence > 25) {
+            seenSubs.add(candidates[i].subProcess);
+            alternatives.push(candidates[i]);
+        }
+    }
 
     // 4. Audit Log
     if (best.confidence > 50) {
@@ -89,7 +92,13 @@ const mapActivity = async (req, res) => {
       });
     }
 
-    // Always return the best match regardless of how low the score is.
+    if (best.confidence < 35) {
+      return res.json({
+        mapped: false,
+        message: 'No clear match found. Please use a more descriptive activity name.',
+        confidence: best.confidence
+      });
+    }
 
     res.json({
       mapped: true,
@@ -104,7 +113,8 @@ const mapActivity = async (req, res) => {
         subProcess: a.subProcess,
         confidence: a.confidence
       })),
-      confidence: best.confidence
+      confidence: best.confidence,
+      reason: `High semantic overlap with ${best.subProcess}`
     });
 
   } catch (err) {

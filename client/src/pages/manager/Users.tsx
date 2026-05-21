@@ -13,7 +13,7 @@ type UserRow = {
 	employeeId: string;
 	name: string;
 	email: string;
-	client: string;
+	department: string;
 	band: string;
 	designation: string;
 	role: UserRole;
@@ -29,7 +29,7 @@ type CreateUserFormState = {
 	role: UserRole;
 	jobTitle: string;
 	jobBand: string;
-	client: string;
+	department: string;
 	location: string;
 	employeeType: string;
 	supervisorName: string;
@@ -46,7 +46,7 @@ const initialCreateUserForm: CreateUserFormState = {
 	role: 'employee',
 	jobTitle: '',
 	jobBand: 'L1',
-	client: 'QG Global',
+	department: '',
 	location: '',
 	employeeType: 'Full-time',
 	supervisorName: '',
@@ -61,7 +61,7 @@ export default function UsersPage() {
 	const [isLoading, setIsLoading] = useState(true);
 	const [query, setQuery] = useState('');
 	const [roleFilter, setRoleFilter] = useState<'All' | UserRole>('All');
-	const [clientFilter, setClientFilter] = useState<'All' | string>('All');
+	const [departmentFilter, setDepartmentFilter] = useState<'All' | string>('All');
 	const [statusFilter, setStatusFilter] = useState<'All' | UserStatus>('All');
 	const [isCreateUserOpen, setIsCreateUserOpen] = useState(false);
 	const [isEditUserOpen, setIsEditUserOpen] = useState(false);
@@ -87,7 +87,7 @@ export default function UsersPage() {
 					employeeId: u.employeeId || '-',
 					name: u.name || 'Unknown User',
 					email: u.email,
-					client: u.client || 'BU011',
+					department: u.organization || u.client || 'Unassigned',
 					band: u.band || 'B1',
 					designation: u.designation || 'Employee',
 					role: (u.role.charAt(0).toUpperCase() + u.role.slice(1)) as UserRole,
@@ -118,12 +118,12 @@ export default function UsersPage() {
 				user.email.toLowerCase().includes(normalized);
 
 			const matchesRole = roleFilter === 'All' || user.role === roleFilter;
-			const matchesClient = clientFilter === 'All' || user.client === clientFilter;
+			const matchesDepartment = departmentFilter === 'All' || user.department === departmentFilter;
 			const matchesStatus = statusFilter === 'All' || user.status === statusFilter;
 
-			return matchesQuery && matchesRole && matchesClient && matchesStatus;
+			return matchesQuery && matchesRole && matchesDepartment && matchesStatus;
 		});
-	}, [query, roleFilter, clientFilter, statusFilter, userRows]);
+	}, [query, roleFilter, departmentFilter, statusFilter, userRows]);
 
 	async function handleUpdateUser(event: React.FormEvent) {
 		event.preventDefault();
@@ -131,9 +131,10 @@ export default function UsersPage() {
 		
 		setIsLoading(true);
 		try {
+			const payload = { ...editingUser, organization: editingUser.department };
 			const response = await apiFetch(`/auth/users/${editingUser._id}`, {
 				method: 'PATCH',
-				body: JSON.stringify(editingUser),
+				body: JSON.stringify(payload),
 			});
 			if (response.ok) {
 				setIsEditUserOpen(false);
@@ -237,9 +238,8 @@ export default function UsersPage() {
 					employeeId,
 					designation: createUserForm.jobTitle.trim(),
 					band: createUserForm.jobBand,
-					client: createUserForm.client,
+					organization: createUserForm.department,
 					role: createUserForm.role,
-					organization: createUserForm.client,
 					maxMonthlyHours: Number(createUserForm.maxMonthlyHours) || 160
 				})
 			});
@@ -321,15 +321,61 @@ export default function UsersPage() {
 							className="hidden" 
 							onChange={handleFileUpload}
 						/>
-						<button
-							type="button"
-							onClick={() => fileInputRef.current?.click()}
-							disabled={isUploading}
-							className="inline-flex items-center gap-2 rounded-lg border border-[#BFD3EA] bg-white px-3.5 py-2 text-xs font-semibold text-[#1E5EAB] transition-all hover:bg-[#F4F8FF] disabled:opacity-50"
-						>
-							{isUploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileUp className="h-3.5 w-3.5" />}
-							Upload CSV/Excel
-						</button>
+						<div className="relative group">
+							<button
+								type="button"
+								onClick={() => fileInputRef.current?.click()}
+								disabled={isUploading}
+								className="inline-flex items-center gap-2 rounded-lg border border-[#BFD3EA] bg-white px-3.5 py-2 text-xs font-semibold text-[#1E5EAB] transition-all hover:bg-[#F4F8FF] disabled:opacity-50"
+							>
+								{isUploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileUp className="h-3.5 w-3.5" />}
+								Upload CSV/Excel
+							</button>
+
+							{/* Tooltip */}
+							<div className="absolute right-[-260px] top-full mt-2.5 z-50 w-max max-w-[800px] rounded-xl border border-[#DCE6F3] bg-white p-3 shadow-[0_12px_32px_rgba(10,42,80,0.15)] opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 pointer-events-none origin-[calc(100%-308px)_top] transform group-hover:scale-100 scale-95">
+								<div className="absolute -top-2 right-[308px] border-8 border-transparent border-b-[#DCE6F3]"></div>
+								<div className="absolute -top-[7px] right-[308px] border-8 border-transparent border-b-white"></div>
+								
+								<div className="mb-3 flex items-center gap-2 border-b border-[#F0F4FA] pb-2.5">
+									<div className="flex h-6 w-6 items-center justify-center rounded-md bg-[#EEF5FF] border border-[#C4D9F5]">
+										<FileUp className="h-3.5 w-3.5 text-[#1E5EAB]" />
+									</div>
+									<div>
+										<h3 className="text-[11px] font-bold uppercase tracking-wider text-[#102B52]">File Format Guide</h3>
+										<p className="text-[9px] text-[#6A82A0] leading-tight mt-0.5">Required data fields for bulk import</p>
+									</div>
+								</div>
+
+								<div className="overflow-x-auto rounded-lg border border-[#E4EBF6] bg-[#F7FAFF]">
+									<table className="w-full text-left text-[10px] whitespace-nowrap">
+										<thead className="bg-[#EEF3FA] text-[#4E6787]">
+											<tr>
+												<th className="px-3 py-2 font-bold border-b border-r border-[#E4EBF6]">Employee Name*</th>
+												<th className="px-3 py-2 font-bold border-b border-r border-[#E4EBF6]">Email ID*</th>
+												<th className="px-3 py-2 font-bold border-b border-r border-[#E4EBF6]">Employee ID*</th>
+												<th className="px-3 py-2 font-bold border-b border-r border-[#E4EBF6]">Department</th>
+												<th className="px-3 py-2 font-bold border-b border-r border-[#E4EBF6]">Designation</th>
+												<th className="px-3 py-2 font-bold border-b border-r border-[#E4EBF6]">Location / Unit</th>
+												<th className="px-3 py-2 font-bold border-b border-[#E4EBF6]">Manager</th>
+											</tr>
+										</thead>
+										<tbody className="text-[#243A59]">
+											<tr className="bg-white hover:bg-[#F9FBFF] transition-colors">
+												<td className="px-3 py-2 border-r border-[#E4EBF6]">Display name</td>
+												<td className="px-3 py-2 border-r border-[#E4EBF6]">Login/user identification</td>
+												<td className="px-3 py-2 border-r border-[#E4EBF6]">Used in password logic</td>
+												<td className="px-3 py-2 border-r border-[#E4EBF6] text-[#8AA0BC] italic">Optional</td>
+												<td className="px-3 py-2 border-r border-[#E4EBF6] text-[#8AA0BC] italic">Optional</td>
+												<td className="px-3 py-2 border-r border-[#E4EBF6] text-[#8AA0BC] italic">Optional</td>
+												<td className="px-3 py-2 text-[#8AA0BC] italic">Optional</td>
+											</tr>
+										</tbody>
+									</table>
+								</div>
+								<p className="mt-2.5 text-[9px] text-[#8AA0BC] italic font-medium">* Asterisk denotes mandatory data fields.</p>
+							</div>
+						</div>
 						<button
 							type="button"
 							onClick={openInviteModal}
@@ -377,14 +423,16 @@ export default function UsersPage() {
 					</label>
 
 					<label className="md:col-span-2 space-y-1.5">
-						<span className="text-[11px] font-bold uppercase tracking-[0.12em] text-[#637F9F]">Client</span>
+						<span className="text-[11px] font-bold uppercase tracking-[0.12em] text-[#637F9F]">Department</span>
 						<select
-							value={clientFilter}
-							onChange={(event) => setClientFilter(event.target.value)}
+							value={departmentFilter}
+							onChange={(event) => setDepartmentFilter(event.target.value)}
 							className="h-9 w-full rounded-lg border border-[#D6E0EE] bg-white px-3 text-xs font-medium text-[#243A59] outline-none transition-all focus:border-[#6E97CB] focus:ring-2 focus:ring-[#D7E6F7]"
 						>
-							<option value="All">All Clients</option>
-							<option value="BU011">BU011</option>
+							<option value="All">All Departments</option>
+							{Array.from(new Set(userRows.map(u => u.department))).filter(d => d && d !== 'Unassigned').map(dept => (
+								<option key={dept} value={dept}>{dept}</option>
+							))}
 						</select>
 					</label>
 
@@ -410,7 +458,7 @@ export default function UsersPage() {
 									<th className="px-4 py-3">Employee ID</th>
 									<th className="px-4 py-3">Name</th>
 									<th className="px-4 py-3">Email</th>
-									<th className="px-4 py-3">Client</th>
+									<th className="px-4 py-3">Department</th>
 									<th className="px-4 py-3">Band</th>
 									<th className="px-4 py-3">Max Hrs</th>
 									<th className="px-4 py-3">Role</th>
@@ -448,7 +496,7 @@ export default function UsersPage() {
 												</div>
 											</td>
 											<td className="px-4 py-3 text-sm text-[#586F8D]">{user.email}</td>
-											<td className="px-4 py-3 text-lg font-semibold text-[#4E6687]">{user.client}</td>
+											<td className="px-4 py-3 text-sm font-semibold text-[#4E6687]">{user.department}</td>
 											<td className="px-4 py-3">
 												<span className="inline-flex min-w-10 items-center justify-center rounded-md bg-[#F0F4FA] px-2 py-0.5 text-xs font-bold text-[#6A7F9C] border border-[#E1E9F4]">
 													{user.band}
@@ -595,15 +643,14 @@ export default function UsersPage() {
 									</label>
 
 									<label className="md:col-span-2 space-y-1.5">
-										<span className="text-[11px] font-bold uppercase tracking-[0.14em] text-[#6A809E]">Client/Business Unit</span>
-										<select
-											value={createUserForm.client}
-											onChange={(event) => setCreateUserForm((prev) => ({ ...prev, client: event.target.value }))}
-											className="h-11 w-full rounded-xl border border-[#D8E2F0] bg-white px-4 text-sm font-medium text-[#243A59] outline-none focus:border-[#7BA0CF] focus:ring-2 focus:ring-[#D7E6F7]"
-										>
-											<option>QG Global</option>
-											<option>BU011</option>
-										</select>
+										<span className="text-[11px] font-bold uppercase tracking-[0.14em] text-[#6A809E]">Department</span>
+										<input
+											type="text"
+											value={createUserForm.department}
+											onChange={(event) => setCreateUserForm((prev) => ({ ...prev, department: event.target.value }))}
+											placeholder="e.g. Finance"
+											className="h-11 w-full rounded-xl border border-[#D8E2F0] bg-white px-4 text-sm text-[#243A59] outline-none placeholder:text-[#95A7BF] focus:border-[#7BA0CF] focus:ring-2 focus:ring-[#D7E6F7]"
+										/>
 									</label>
 
 									<label className="md:col-span-2 space-y-1.5">
@@ -748,6 +795,11 @@ export default function UsersPage() {
 									<label className="md:col-span-3 space-y-1.5">
 										<span className="text-[11px] font-bold uppercase tracking-[0.14em] text-[#6A809E]">Designation</span>
 										<input type="text" value={editingUser.designation} onChange={(e) => setEditingUser(prev => prev ? {...prev, designation: e.target.value} : null)} className="h-11 w-full rounded-xl border border-[#D8E2F0] bg-white px-4 text-sm text-[#243A59] outline-none focus:border-[#7BA0CF] focus:ring-2 focus:ring-[#D7E6F7]" />
+									</label>
+
+									<label className="md:col-span-2 space-y-1.5">
+										<span className="text-[11px] font-bold uppercase tracking-[0.14em] text-[#6A809E]">Department</span>
+										<input type="text" value={editingUser.department} onChange={(e) => setEditingUser(prev => prev ? {...prev, department: e.target.value} : null)} className="h-11 w-full rounded-xl border border-[#D8E2F0] bg-white px-4 text-sm text-[#243A59] outline-none focus:border-[#7BA0CF] focus:ring-2 focus:ring-[#D7E6F7]" />
 									</label>
 
 									<label className="md:col-span-2 space-y-1.5">
