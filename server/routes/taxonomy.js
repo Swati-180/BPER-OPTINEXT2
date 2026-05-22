@@ -7,7 +7,7 @@ const { mapActivity, createTaxonomy, updateTaxonomy, deleteTaxonomy } = require(
 router.get('/processes', verifyToken, async (req, res) => {
   try {
     const { department } = req.query;
-    const query = { isActive: true };
+    let query = { isActive: true };
     
     if (department && department !== 'All Departments') {
       query.$or = [
@@ -17,7 +17,16 @@ router.get('/processes', verifyToken, async (req, res) => {
       ];
     }
 
-    const data = await Taxonomy.find(query);
+    let data = await Taxonomy.find(query);
+
+    // Fallback: If no processes found for this specific department, return all active processes
+    if (department && department !== 'All Departments') {
+      const specificCount = await Taxonomy.countDocuments({ department, isActive: true });
+      if (specificCount === 0) {
+        data = await Taxonomy.find({ isActive: true });
+      }
+    }
+
     res.json(data);
   } catch (err) {
     res.status(500).json({ message: err.message });

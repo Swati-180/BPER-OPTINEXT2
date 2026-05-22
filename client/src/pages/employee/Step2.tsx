@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
-import { ArrowLeft, ArrowRight, CircleHelp, Plus, Trash2, Sparkles } from "lucide-react";
+import { ArrowLeft, ArrowRight, CircleHelp, Plus, Trash2, Sparkles, AlertCircle } from "lucide-react";
 import type { WdtActivityRow, WdtPayload, EmployeeSnapshot } from "./formTypes";
 import { apiFetch } from "../../lib/api";
 
@@ -23,6 +23,7 @@ interface TaxonomyItem {
   majorProcess: string;
   process: string;
   subProcesses: string[];
+  department?: string;
 }
 
 interface StepProps {
@@ -88,10 +89,14 @@ export function Step2({ employee, payload, onNext, onPrev, onPayloadChange }: St
   useEffect(() => {
     async function fetchTaxonomy() {
       try {
-        const deptParam = employee?.department ? `?department=${encodeURIComponent(employee.department)}` : '';
-        const res = await apiFetch(`/taxonomy/processes${deptParam}`);
+        console.log('[Step2] Fetching all taxonomy processes');
+        const res = await apiFetch('/taxonomy/processes');
         if (res.ok) {
-          setTaxonomy(await res.json().catch(() => null));
+          const data = await res.json().catch(() => null);
+          console.log('[Step2] Fetched taxonomy data successfully. Count:', data?.length);
+          setTaxonomy(data || []);
+        } else {
+          console.error('[Step2] Fetch taxonomy failed with status:', res.status);
         }
       } catch (err) {
         console.error('Failed to fetch taxonomy:', err);
@@ -101,18 +106,34 @@ export function Step2({ employee, payload, onNext, onPrev, onPayloadChange }: St
   }, [employee?.department]);
 
   const allSubProcesses = useMemo(() => {
-    return taxonomy.flatMap(t => 
-      t.subProcesses.map(sp => ({
+    console.log('[Step2] Recalculating allSubProcesses. taxonomy count:', taxonomy?.length);
+    if (!taxonomy || !Array.isArray(taxonomy)) return [];
+    const result = taxonomy.flatMap(t => 
+      (t.subProcesses || []).map(sp => ({
         subProcess: sp,
         process: t.process,
-        majorProcess: t.majorProcess
+        majorProcess: t.majorProcess,
+        department: t.department
       }))
     ).sort((a, b) => {
+      const deptA = a.department || '';
+      const deptB = b.department || '';
+      const empDept = employee?.department || '';
+      
+      const isAMatch = empDept && deptA.toLowerCase() === empDept.toLowerCase();
+      const isBMatch = empDept && deptB.toLowerCase() === empDept.toLowerCase();
+      
+      if (isAMatch && !isBMatch) return -1;
+      if (!isAMatch && isBMatch) return 1;
+      
+      if (deptA !== deptB) return deptA.localeCompare(deptB);
       if (a.majorProcess !== b.majorProcess) return a.majorProcess.localeCompare(b.majorProcess);
       if (a.process !== b.process) return a.process.localeCompare(b.process);
       return a.subProcess.localeCompare(b.subProcess);
     });
-  }, [taxonomy]);
+    console.log('[Step2] Recalculated allSubProcesses. Result count:', result.length);
+    return result;
+  }, [taxonomy, employee?.department]);
 
   const filteredSubProcesses = useMemo(() => {
     if (!searchQuery) return allSubProcesses;
@@ -134,9 +155,23 @@ export function Step2({ employee, payload, onNext, onPrev, onPayloadChange }: St
 
   const getSubProcessSuggestions = (rowIndex: number) => {
     const row = rows[rowIndex];
-    if (!row?.process) return [];
-    const match = taxonomy.find(t => t.process === row.process && (!row.majorProcess || t.majorProcess === row.majorProcess));
-    return match ? match.subProcesses : [];
+    if (row?.process) {
+      const match = taxonomy.find(t => t.process === row.process && (!row.majorProcess || t.majorProcess === row.majorProcess));
+      return match ? [...match.subProcesses].sort((a, b) => a.localeCompare(b)) : [];
+    }
+
+    // Default suggestions: Use the sorted sub-processes from allSubProcesses (bubbles employee's department to the top)
+    const uniqueSubs: string[] = [];
+    const seen = new Set<string>();
+    
+    for (const item of allSubProcesses) {
+      if (!seen.has(item.subProcess)) {
+        seen.add(item.subProcess);
+        uniqueSubs.push(item.subProcess);
+      }
+    }
+    
+    return uniqueSubs.slice(0, 8);
   };
 
   const applicationSuggestions = ["SAP", "ServiceNow", "Excel", "Power BI", "Concur"];
@@ -283,6 +318,24 @@ export function Step2({ employee, payload, onNext, onPrev, onPayloadChange }: St
     }
     setEditor(null);
     setMapSuggestion(null);
+  };
+
+  const handleQuickPickClick = (item: string) => {
+    if (!editor) return;
+    if (activeTab === 'existing') {
+      const match = allSubProcesses.find(sp => sp.subProcess === item);
+      if (match) {
+        updateRow(editor.rowIndex, "majorProcess", match.majorProcess);
+        updateRow(editor.rowIndex, "process", match.process);
+        updateRow(editor.rowIndex, "subProcess", match.subProcess);
+        setEditor(null);
+        setMapSuggestion(null);
+      } else {
+        setEditorDraft(item);
+      }
+    } else {
+      setEditorDraft(item);
+    }
   };
 
   const triggerMapping = async (text: string) => {
@@ -825,67 +878,132 @@ export function Step2({ employee, payload, onNext, onPrev, onPayloadChange }: St
                                </button>
                             </div>
                             {mapSuggestion && (
-                              <div className="mt-3 rounded-lg bg-white border border-blue-100 shadow-sm animate-in fade-in zoom-in-95 duration-200 overflow-hidden">
-                                 <div className="p-3 bg-blue-50/30">
-                                   <div className="flex justify-between items-start mb-2">
-                                     <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Top Suggested Match</span>
-                                     <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${mapSuggestion.confidence > 70 ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
-                                       {mapSuggestion.confidence}% Confidence
-                                     </span>
-                                   </div>
-                                   <div className="text-sm font-medium text-slate-800">
-                                     {mapSuggestion.suggestion.majorProcess} <span className="text-slate-400 mx-1">/</span> {mapSuggestion.suggestion.process}
-                                   </div>
-                                   <div className="text-xs text-slate-500 mt-1">
-                                     Matches: "{mapSuggestion.suggestion.subProcess}"
-                                   </div>
-                                   <div className="mt-3 pt-3 border-t border-slate-100 flex gap-2">
-                                     <button
-                                       type="button"
-                                       onClick={() => applyMapping()}
-                                       className="flex-1 rounded border border-blue-200 bg-blue-50 py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-100 transition-colors"
-                                     >
-                                       Accept Top Match
-                                     </button>
-                                     <button
-                                       type="button"
-                                       onClick={() => setMapSuggestion(null)}
-                                       className="flex-1 rounded border border-slate-200 bg-white py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition-colors"
-                                     >
-                                       Keep Custom Flow
-                                     </button>
-                                   </div>
-                                 </div>
-                                 
-                                 {mapSuggestion.alternatives && mapSuggestion.alternatives.length > 0 && (
-                                   <div className="border-t border-blue-100 p-3 bg-slate-50/50">
-                                     <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-2 block">Other Possible Matches</span>
-                                     <div className="space-y-2">
-                                       {mapSuggestion.alternatives.map((alt: any, idx: number) => (
-                                         <div key={idx} className="flex items-center justify-between gap-3 text-xs p-2 rounded-md hover:bg-white border border-transparent hover:border-slate-200 transition-colors">
-                                           <div>
-                                             <div className="font-semibold text-slate-700">{alt.subProcess}</div>
-                                             <div className="text-slate-400 mt-0.5">{alt.majorProcess} / {alt.process}</div>
-                                           </div>
-                                           <div className="flex items-center gap-2">
-                                             <span className={`text-[9px] font-bold uppercase px-1.5 py-0.5 rounded-sm ${alt.confidence > 70 ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'}`}>
-                                               {alt.confidence}%
-                                             </span>
-                                             <button
-                                               type="button"
-                                               onClick={() => applyMapping(alt, alt.confidence)}
-                                               className="text-[10px] font-semibold text-blue-600 hover:text-blue-800 border border-blue-200 rounded px-2 py-1 bg-white"
-                                             >
-                                               Accept
-                                             </button>
+                               mapSuggestion.noMatch ? (
+                                 <div className="mt-3 rounded-lg bg-amber-50 border border-amber-200/70 p-3 shadow-sm animate-in fade-in zoom-in-95 duration-200">
+                                   <div className="flex gap-2.5">
+                                     <AlertCircle className="text-amber-600 shrink-0 mt-0.5" size={16} />
+                                     <div className="flex-1">
+                                       <div className="flex justify-between items-start">
+                                         <h5 className="text-xs font-semibold text-amber-900">No exact matches found (HR & Finance only)</h5>
+                                         <button
+                                           type="button"
+                                           onClick={() => setMapSuggestion(null)}
+                                           className="text-[10px] font-semibold text-amber-600 hover:text-amber-800 transition-colors"
+                                         >
+                                           Dismiss
+                                         </button>
+                                       </div>
+                                       
+                                       {mapSuggestion.suggestion && (
+                                         <div className="mt-2.5 pt-2.5 border-t border-amber-200/40">
+                                           <span className="text-[9px] font-bold uppercase tracking-wider text-amber-800/80 block mb-1">Closest Suggestion:</span>
+                                           <div className="rounded border border-amber-200/60 bg-white/80 p-2">
+                                             <div className="text-xs font-semibold text-slate-800">
+                                               {mapSuggestion.suggestion.majorProcess} <span className="text-slate-400 mx-0.5">/</span> {mapSuggestion.suggestion.process}
+                                             </div>
+                                             <div className="text-xs text-slate-600 mt-0.5 font-medium">
+                                               {mapSuggestion.suggestion.subProcess}
+                                             </div>
+                                             <div className="mt-2 flex gap-1.5 justify-end">
+                                               <button
+                                                 type="button"
+                                                 onClick={() => applyMapping()}
+                                                 className="rounded bg-amber-600 hover:bg-amber-700 px-2.5 py-1 text-[10px] font-semibold text-white transition-colors"
+                                               >
+                                                 Accept Suggestion
+                                               </button>
+                                               <button
+                                                 type="button"
+                                                 onClick={() => setMapSuggestion(null)}
+                                                 className="rounded bg-white border border-slate-200 hover:bg-slate-50 px-2.5 py-1 text-[10px] font-semibold text-slate-600 transition-colors"
+                                               >
+                                                 Keep Custom
+                                               </button>
+                                             </div>
                                            </div>
                                          </div>
-                                       ))}
+                                       )}
                                      </div>
                                    </div>
-                                 )}
-                              </div>
-                            )}
+                                 </div>
+                               ) : (
+                                 <div className="mt-3 rounded-lg bg-white border border-blue-100 shadow-sm animate-in fade-in zoom-in-95 duration-200 overflow-hidden">
+                                     <div className="p-3 bg-blue-50/30">
+                                       <div className="flex justify-between items-start mb-2">
+                                         <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Top Suggested Match</span>
+                                         <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${
+                                           mapSuggestion.confidence >= 70 
+                                             ? 'bg-emerald-100 text-emerald-700' 
+                                             : mapSuggestion.confidence >= 35 
+                                               ? 'bg-amber-100 text-amber-700' 
+                                               : 'bg-slate-100 text-slate-600'
+                                         }`}>
+                                           {mapSuggestion.confidence >= 35 
+                                             ? `${mapSuggestion.confidence}% Confidence` 
+                                             : `Closest Match (${mapSuggestion.confidence}%)`
+                                           }
+                                         </span>
+                                       </div>
+                                       <div className="text-sm font-medium text-slate-800">
+                                         {mapSuggestion.suggestion.majorProcess} <span className="text-slate-400 mx-1">/</span> {mapSuggestion.suggestion.process}
+                                       </div>
+                                       <div className="text-xs text-slate-500 mt-1">
+                                         Matches: "{mapSuggestion.suggestion.subProcess}"
+                                       </div>
+                                       <div className="mt-3 pt-3 border-t border-slate-100 flex gap-2">
+                                         <button
+                                           type="button"
+                                           onClick={() => applyMapping()}
+                                           className="flex-1 rounded border border-blue-200 bg-blue-50 py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-100 transition-colors"
+                                         >
+                                           Accept Top Match
+                                         </button>
+                                         <button
+                                           type="button"
+                                           onClick={() => setMapSuggestion(null)}
+                                           className="flex-1 rounded border border-slate-200 bg-white py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition-colors"
+                                         >
+                                           Keep Custom Flow
+                                         </button>
+                                       </div>
+                                     </div>
+                                     
+                                     {mapSuggestion.alternatives && mapSuggestion.alternatives.length > 0 && (
+                                       <div className="border-t border-blue-100 p-3 bg-slate-50/50">
+                                         <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-2 block">Other Possible Matches</span>
+                                         <div className="space-y-2">
+                                           {mapSuggestion.alternatives.map((alt: any, idx: number) => (
+                                             <div key={idx} className="flex items-center justify-between gap-3 text-xs p-2 rounded-md hover:bg-white border border-transparent hover:border-slate-200 transition-colors">
+                                               <div>
+                                                 <div className="font-semibold text-slate-700">{alt.subProcess}</div>
+                                                 <div className="text-slate-400 mt-0.5">{alt.majorProcess} / {alt.process}</div>
+                                               </div>
+                                               <div className="flex items-center gap-2">
+                                                 <span className={`text-[9px] font-bold uppercase px-1.5 py-0.5 rounded-sm ${
+                                                   alt.confidence >= 70 
+                                                     ? 'bg-emerald-50 text-emerald-600' 
+                                                     : alt.confidence >= 35 
+                                                       ? 'bg-amber-50 text-amber-600' 
+                                                       : 'bg-slate-100 text-slate-500'
+                                                 }`}>
+                                                   {alt.confidence}%
+                                                 </span>
+                                                 <button
+                                                   type="button"
+                                                   onClick={() => applyMapping(alt, alt.confidence)}
+                                                   className="text-[10px] font-semibold text-blue-600 hover:text-blue-800 border border-blue-200 rounded px-2 py-1 bg-white"
+                                                 >
+                                                   Accept
+                                                 </button>
+                                               </div>
+                                             </div>
+                                           ))}
+                                         </div>
+                                       </div>
+                                     )}
+                                 </div>
+                               )
+                             )}
                           </div>
                         )}
                       </>
@@ -930,7 +1048,7 @@ export function Step2({ employee, payload, onNext, onPrev, onPayloadChange }: St
                         <button
                           key={item}
                           type="button"
-                          onClick={() => setEditorDraft(item)}
+                          onClick={() => handleQuickPickClick(item)}
                           className="rounded-full border border-slate-300 bg-slate-50 px-3 py-1.5 text-sm text-slate-700 hover:border-blue-400 hover:text-blue-700"
                         >
                           {item}

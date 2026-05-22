@@ -41,9 +41,9 @@ export default function BPERForm() {
           const mappedProfile = {
             ...data,
             title: data.designation || 'N/A',
-            department: data.organization || 'N/A',
+            department: data.department || data.organization || 'N/A',
             assignedClient: data.client || 'N/A',
-            primaryTower: data.organization || 'N/A', // Fallback
+            primaryTower: data.department || data.organization || 'N/A', // Fallback
             employeeType: 'FTE' // Default
           };
           setProfile(mappedProfile);

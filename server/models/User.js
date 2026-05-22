@@ -46,6 +46,10 @@ userSchema.pre('validate', function(next) {
     }
   }
 
+  if (this.organization && !this.department) {
+    this.department = this.organization;
+  }
+
   if (this.role && typeof this.role === 'string') {
     this.role = this.role.toLowerCase().trim();
   }
