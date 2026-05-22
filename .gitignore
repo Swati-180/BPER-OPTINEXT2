@@ -6,3 +6,9 @@ coverage/
 *.log
 .env*
 !.env.example
+
+# Local scratch and test scripts
+server/scratch/
+server/check_*.js
+server/test_*.js
+
