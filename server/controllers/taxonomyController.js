@@ -3,28 +3,60 @@ const { logAction } = require('../utils/auditLogger');
 const stringSimilarity = require('string-similarity');
 
 
-let extractor = null;
-async function getExtractor() {
-  if (!extractor) {
-    const { pipeline } = await import('@xenova/transformers');
-    extractor = await pipeline('feature-extraction', 'Xenova/all-MiniLM-L6-v2');
-  }
-  return extractor;
-}
+const https = require('https');
 
-function cos_sim(a, b) {
-    let dotProduct = 0, normA = 0, normB = 0;
-    for (let i = 0; i < a.length; i++) {
-        dotProduct += a[i] * b[i]; normA += a[i] * a[i]; normB += b[i] * b[i];
+// Helper to make https request with timeouts
+function makeRequest(url, options) {
+  return new Promise((resolve, reject) => {
+    const u = new URL(url);
+    const reqOptions = {
+      hostname: u.hostname,
+      path: u.pathname + u.search,
+      method: options.method || 'GET',
+      headers: options.headers || {},
+      timeout: 10000 // 10 seconds timeout
+    };
+    
+    const req = https.request(reqOptions, (res) => {
+      let data = '';
+      res.on('data', (chunk) => { data += chunk; });
+      res.on('end', () => {
+        resolve({
+          ok: res.statusCode >= 200 && res.statusCode < 300,
+          status: res.statusCode,
+          json: () => {
+            try {
+              return Promise.resolve(JSON.parse(data));
+            } catch (e) {
+              return Promise.reject(new Error(`Failed to parse JSON: ${data}`));
+            }
+          },
+          text: () => Promise.resolve(data)
+        });
+      });
+    });
+    
+    req.on('timeout', () => {
+      req.destroy();
+      reject(new Error('Request timed out'));
+    });
+    
+    req.on('error', (err) => {
+      reject(err);
+    });
+    
+    if (options.body) {
+      req.write(typeof options.body === 'string' ? options.body : JSON.stringify(options.body));
     }
-    return dotProduct / (Math.sqrt(normA) * Math.sqrt(normB));
+    req.end();
+  });
 }
 
 let globalCandidateCache = null;
 
 async function getGlobalCandidateCache() {
   if (!globalCandidateCache) {
-    console.log('Building AI Taxonomy candidate embeddings cache...');
+    console.log('Building AI Taxonomy candidate cache...');
     const allActive = await Taxonomy.find({ isActive: true }).lean();
     const candidates = [];
     allActive.forEach(item => {
@@ -38,38 +70,8 @@ async function getGlobalCandidateCache() {
         });
       });
     });
-
-    if (candidates.length > 0) {
-      const extract = await getExtractor();
-      const candidateTexts = candidates.map(c => {
-        const tagsStr = c.tags && c.tags.length > 0 ? ` (tags: ${c.tags.join(', ')})` : '';
-        return `${c.majorProcess} - ${c.process} - ${c.subProcess}${tagsStr}`;
-      });
-
-      const batchSize = 64;
-      const allDataArrays = [];
-      let embeddingDim = null;
-
-      for (let i = 0; i < candidateTexts.length; i += batchSize) {
-        const batchTexts = candidateTexts.slice(i, i + batchSize);
-        const batchOutputs = await extract(batchTexts, { pooling: 'mean', normalize: true });
-        embeddingDim = batchOutputs.dims[1];
-        allDataArrays.push(Array.from(batchOutputs.data));
-      }
-      
-      candidates.forEach((cand, i) => {
-        const batchIdx = Math.floor(i / batchSize);
-        const itemIdxInBatch = i % batchSize;
-        const startIdx = itemIdxInBatch * embeddingDim;
-        const endIdx = startIdx + embeddingDim;
-        cand.embedding = allDataArrays[batchIdx].slice(startIdx, endIdx);
-      });
-      
-      globalCandidateCache = candidates;
-      console.log(`AI Taxonomy candidate embeddings cache built successfully with ${candidates.length} items (batched).`);
-    } else {
-      globalCandidateCache = [];
-    }
+    globalCandidateCache = candidates;
+    console.log(`AI Taxonomy candidate cache built successfully with ${candidates.length} items.`);
   }
   return globalCandidateCache;
 }
@@ -82,14 +84,14 @@ const mapActivity = async (req, res) => {
       return res.status(400).json({ message: 'Input text too short for analysis.' });
     }
 
-    // 1. Fetch or build the global cache
+    // 1. Fetch the global candidate cache (fast local db fetch, no Xenova embeddings)
     const cachedCandidates = await getGlobalCandidateCache();
 
     if (!cachedCandidates.length) {
       return res.json({ mapped: false, confidence: 0 });
     }
 
-    // 2. Clone and filter candidates by department in memory (thread-safe clones)
+    // 2. Clone and filter candidates by department in memory
     let candidates = cachedCandidates.map(c => ({ ...c }));
     if (department && department !== 'All Departments') {
       candidates = candidates.filter(c => 
@@ -101,62 +103,269 @@ const mapActivity = async (req, res) => {
       return res.json({ mapped: false, confidence: 0 });
     }
 
-    // 3. Semantic Similarity Match
-    const extract = await getExtractor();
-    const textOutput = await extract(text, { pooling: 'mean', normalize: true });
-    const textEmbedding = Array.from(textOutput.data);
-    
+    // 3. Compute fast lexical similarity scores locally for all candidates
     candidates.forEach((cand) => {
-        // Semantic similarity component (0.0 to 1.0)
-        const cosSimScore = Math.max(0, cos_sim(textEmbedding, cand.embedding));
-        
-        // Lexical similarity component (0.0 to 1.0) - comparing user input with subProcess name
+        // Compare query with subProcess name
         const stringSimScore = stringSimilarity.compareTwoStrings(text.toLowerCase(), cand.subProcess.toLowerCase());
         
-        // Lexical similarity component (0.0 to 1.0) - comparing user input with full hierarchy
+        // Compare query with full hierarchy string
         const fullStringSimScore = stringSimilarity.compareTwoStrings(text.toLowerCase(), `${cand.majorProcess} - ${cand.process} - ${cand.subProcess}`.toLowerCase());
         
-        // Best string match
         let bestStringSim = Math.max(stringSimScore, fullStringSimScore);
+        let matchedTag = null;
         
-        // Lexical similarity component (0.0 to 1.0) - comparing user input with individual tags
+        // Compare query with individual tags (synonyms)
         if (cand.tags && cand.tags.length > 0) {
             cand.tags.forEach(tag => {
                 const tagSim = stringSimilarity.compareTwoStrings(text.toLowerCase(), tag.toLowerCase());
                 if (tagSim > bestStringSim) {
                     bestStringSim = tagSim;
+                    matchedTag = tag;
                 }
             });
         }
         
-        // Hybrid confidence computation: 70% semantic, 30% lexical
-        const combinedScore = (cosSimScore * 0.70) + (bestStringSim * 0.30);
-        
-        cand.confidence = Math.max(0, Math.round(combinedScore * 100));
+        cand.confidence = Math.max(0, Math.round(bestStringSim * 100));
+        cand.matchedTag = matchedTag;
     });
 
-    // Sort and filter
+    // Sort by lexical match
     candidates.sort((a, b) => b.confidence - a.confidence);
-    const best = candidates[0];
-    
-    if (best.confidence < 35) {
-      const seenSubs = new Set([best.subProcess]);
-      const alternatives = [];
-      for (let i = 1; i < candidates.length; i++) {
-          if (alternatives.length >= 3) break;
-          if (!seenSubs.has(candidates[i].subProcess)) {
-              seenSubs.add(candidates[i].subProcess);
-              alternatives.push(candidates[i]);
-          }
+
+    // Take the top 15 candidates to send to Groq for deep semantic matching, ensuring process diversity
+    const topCandidates = [];
+    const processCounts = {};
+
+    for (const cand of candidates) {
+      if (topCandidates.length >= 15) break;
+      const key = `${cand.majorProcess}::${cand.process}`;
+      processCounts[key] = processCounts[key] || 0;
+      if (processCounts[key] < 3) {
+        topCandidates.push(cand);
+        processCounts[key]++;
       }
+    }
+
+    // 4. Call Groq API for Semantic Match
+    const groqApiKey = process.env.GROQ_API_KEY;
+    let bestResult = null;
+    let alternatives = [];
+    let isGroqSuccessful = false;
+
+    try {
+      const groqPayload = {
+        model: 'llama-3.1-8b-instant',
+        messages: [
+          {
+            role: 'system',
+            content: 'You are an accurate corporate process mapping assistant. Your job is to map custom user inputs to standard corporate activities. If the input is unrelated to corporate tasks (like shipping containers, personal items, random characters), you must report no match by setting bestMatchIndex to -1 and confidence to 0.'
+          },
+          // Few-shot Example 1: Out of Domain
+          {
+            role: 'user',
+            content: `User custom input: "pizza delivery for office lunch"
+User department: "All Departments"
+
+Candidate list (0-indexed):
+0: [Accounts Payable / Vendor Management] -> Vendor Onboarding
+1: [Employee Life Cycle Management / Joining/onboarding] -> Employee Code Creation
+
+Select the best matching candidate from the list.
+Rules:
+1. Provide a confidence score (0 to 100) based on how well the input semantically maps to the candidate. Be highly critical.
+2. If the user's input is completely out of domain, unrelated to corporate finance/HR activities, or does not clearly map to any of the specific candidates in the list, you MUST set "bestMatchIndex": -1 and "confidence": 0. Do not hallucinate a connection or map a general/unrelated term.
+3. Select up to 3 alternative suggestion indices from the candidate list that are also highly relevant.
+4. Your response must be a single JSON object with this exact schema:
+{
+  "bestMatchIndex": number,
+  "confidence": number,
+  "alternativeIndices": [number, number, number]
+}
+Do not include any markdown format blocks or introductory text, only raw JSON.`
+          },
+          {
+            role: 'assistant',
+            content: JSON.stringify({
+              bestMatchIndex: -1,
+              confidence: 0,
+              alternativeIndices: [-1, -1, -1]
+            })
+          },
+          // Few-shot Example 2: In Domain
+          {
+            role: 'user',
+            content: `User custom input: "setup credentials for new developer"
+User department: "All Departments"
+
+Candidate list (0-indexed):
+0: [Accounts Payable / Vendor Management] -> Vendor Onboarding
+1: [Employee Life Cycle Management / Joining/onboarding] -> ADID and Email ID Creation request
+
+Select the best matching candidate from the list.
+Rules:
+1. Provide a confidence score (0 to 100) based on how well the input semantically maps to the candidate. Be highly critical.
+2. If the user's input is completely out of domain, unrelated to corporate finance/HR activities, or does not clearly map to any of the specific candidates in the list, you MUST set "bestMatchIndex": -1 and "confidence": 0. Do not hallucinate a connection or map a general/unrelated term.
+3. Select up to 3 alternative suggestion indices from the candidate list that are also highly relevant.
+4. Your response must be a single JSON object with this exact schema:
+{
+  "bestMatchIndex": number,
+  "confidence": number,
+  "alternativeIndices": [number, number, number]
+}
+Do not include any markdown format blocks or introductory text, only raw JSON.`
+          },
+          {
+            role: 'assistant',
+            content: JSON.stringify({
+              bestMatchIndex: 1,
+              confidence: 90,
+              alternativeIndices: [-1, -1, -1]
+            })
+          },
+          // Actual query
+          {
+            role: 'user',
+            content: `User custom input: "${text}"
+User department: "${department || 'N/A'}"
+
+Candidate list (0-indexed):
+${topCandidates.map((c, i) => `${i}: [${c.majorProcess} / ${c.process}] -> ${c.subProcess}${c.matchedTag ? ` (Tags: ${c.matchedTag})` : ''}`).join('\n')}
+
+Select the best matching candidate from the list.
+Rules:
+1. Provide a confidence score (0 to 100) based on how well the input semantically maps to the candidate. Be highly critical.
+2. If the user's input is completely out of domain, unrelated to corporate finance/HR activities, or does not clearly map to any of the specific candidates in the list, you MUST set "bestMatchIndex": -1 and "confidence": 0. Do not hallucinate a connection or map a general/unrelated term.
+3. Select up to 3 alternative suggestion indices from the candidate list that are also highly relevant.
+4. Your response must be a single JSON object with this exact schema:
+{
+  "bestMatchIndex": number,
+  "confidence": number,
+  "alternativeIndices": [number, number, number]
+}
+Do not include any markdown format blocks or introductory text, only raw JSON.`
+          }
+        ],
+        temperature: 0.0,
+        response_format: { type: "json_object" }
+      };
+
+      const apiRes = await makeRequest('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${groqApiKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: groqPayload
+      });
+
+      if (apiRes.ok) {
+        const json = await apiRes.json();
+        const contentStr = json.choices?.[0]?.message?.content;
+        const result = JSON.parse(contentStr);
+
+        if (result && typeof result.bestMatchIndex === 'number') {
+          if (result.bestMatchIndex >= 0 && result.bestMatchIndex < topCandidates.length) {
+            bestResult = { ...topCandidates[result.bestMatchIndex] };
+            bestResult.confidence = typeof result.confidence === 'number' ? result.confidence : 50;
+
+            // Parse alternatives
+            if (Array.isArray(result.alternativeIndices)) {
+              const seen = new Set([bestResult.subProcess]);
+              result.alternativeIndices.forEach(idx => {
+                if (idx >= 0 && idx < topCandidates.length) {
+                  const alt = topCandidates[idx];
+                  if (!seen.has(alt.subProcess)) {
+                    seen.add(alt.subProcess);
+                    // Estimate confidence for alternative
+                    const altConfidence = Math.max(10, bestResult.confidence - 5);
+                    alternatives.push({ ...alt, confidence: altConfidence });
+                  }
+                }
+              });
+            }
+          } else {
+            // Explicitly no match from Groq LLM.
+            // Check if we have an exact tag or subProcess match in topCandidates (confidence = 100 or exact text match)
+            const exactMatch = topCandidates.find(c => 
+              c.confidence === 100 || 
+              (c.matchedTag && c.matchedTag.toLowerCase() === text.toLowerCase()) ||
+              (c.subProcess && c.subProcess.toLowerCase() === text.toLowerCase())
+            );
+
+            if (exactMatch) {
+              bestResult = { ...exactMatch };
+              bestResult.confidence = Math.max(exactMatch.confidence || 0, 100);
+              
+              // Build default alternatives using top candidates
+              const seen = new Set([bestResult.subProcess]);
+              for (let i = 0; i < Math.min(topCandidates.length, 4); i++) {
+                const alt = topCandidates[i];
+                if (!seen.has(alt.subProcess)) {
+                  seen.add(alt.subProcess);
+                  alternatives.push({ ...alt, confidence: 95 });
+                }
+              }
+            } else {
+              bestResult = { ...topCandidates[0] };
+              bestResult.confidence = typeof result.confidence === 'number' ? result.confidence : 0;
+              
+              // Build default alternatives using top 3 candidates
+              const seen = new Set([bestResult.subProcess]);
+              for (let i = 1; i < Math.min(topCandidates.length, 4); i++) {
+                const alt = topCandidates[i];
+                if (!seen.has(alt.subProcess)) {
+                  seen.add(alt.subProcess);
+                  alternatives.push({ ...alt, confidence: 10 });
+                }
+              }
+            }
+          }
+          isGroqSuccessful = true;
+        }
+      } else {
+        const errText = await apiRes.text();
+        console.error(`Groq API Error: Status ${apiRes.status}, Body: ${errText}`);
+      }
+    } catch (groqErr) {
+      console.error('Groq Mapping Failed, falling back to lexical matcher:', groqErr);
+    }
+
+    // 5. Safe Fallback to local string similarity if Groq fails
+    if (!isGroqSuccessful) {
+      bestResult = { ...candidates[0] };
+      const seen = new Set([bestResult.subProcess]);
+      for (let i = 1; i < candidates.length; i++) {
+        if (alternatives.length >= 3) break;
+        if (!seen.has(candidates[i].subProcess)) {
+          seen.add(candidates[i].subProcess);
+          alternatives.push({ ...candidates[i] });
+        }
+      }
+    }
+
+    const confidence = bestResult.confidence;
+    const hasLowConfidence = confidence < 35;
+
+    // 6. Audit Log
+    if (confidence > 50) {
+      await logAction({
+        req,
+        action: 'NLP_MAPPING_MATCH',
+        targetType: 'Taxonomy',
+        targetId: 'NLP_ENGINE',
+        description: `Mapped "${text.substring(0, 50)}..." to ${bestResult.subProcess} (${confidence}%)`
+      });
+    }
+
+    if (hasLowConfidence) {
       return res.json({
         mapped: true,
         noMatch: true,
         message: "No exact matches found (HR & Finance only).",
         suggestion: {
-          majorProcess: best.majorProcess,
-          process: best.process,
-          subProcess: best.subProcess
+          majorProcess: bestResult.majorProcess,
+          process: bestResult.process,
+          subProcess: bestResult.subProcess
         },
         alternatives: alternatives.map(a => ({
           majorProcess: a.majorProcess,
@@ -164,40 +373,17 @@ const mapActivity = async (req, res) => {
           subProcess: a.subProcess,
           confidence: a.confidence
         })),
-        confidence: best.confidence,
+        confidence: confidence,
         reason: "Closest suggestion"
       });
     }
-    
-    // We want unique alternative subProcesses
-    const seenSubs = new Set([best.subProcess]);
-    const alternatives = [];
-    for (let i = 1; i < candidates.length; i++) {
-        if (alternatives.length >= 3) break;
-        if (!seenSubs.has(candidates[i].subProcess)) {
-            seenSubs.add(candidates[i].subProcess);
-            alternatives.push(candidates[i]);
-        }
-    }
 
-    // 4. Audit Log
-    if (best.confidence > 50) {
-      await logAction({
-        req,
-        action: 'NLP_MAPPING_MATCH',
-        targetType: 'Taxonomy',
-        targetId: 'NLP_ENGINE',
-        description: `Mapped "${text.substring(0, 50)}..." to ${best.subProcess} (${best.confidence}%)`
-      });
-    }
-
-    // Always return the closest match regardless of confidence score
     res.json({
       mapped: true,
       suggestion: {
-        majorProcess: best.majorProcess,
-        process: best.process,
-        subProcess: best.subProcess
+        majorProcess: bestResult.majorProcess,
+        process: bestResult.process,
+        subProcess: bestResult.subProcess
       },
       alternatives: alternatives.map(a => ({
         majorProcess: a.majorProcess,
@@ -205,8 +391,8 @@ const mapActivity = async (req, res) => {
         subProcess: a.subProcess,
         confidence: a.confidence
       })),
-      confidence: best.confidence,
-      reason: `High semantic overlap with ${best.subProcess}`
+      confidence: confidence,
+      reason: isGroqSuccessful ? "Groq LLM semantic match" : "Lexical match"
     });
 
   } catch (err) {
