@@ -97,7 +97,9 @@ export default function Dashboard() {
 
         if (profileRes.ok) {
           setProfile(profileData);
-          setSubmissions(subsData.filter((item) => item.employee.employeeId === profileData.employeeId));
+          // Backend already scopes results to the logged-in employee's own submissions,
+          // so no client-side filter needed (avoids subtle ID mismatch bugs).
+          setSubmissions(Array.isArray(subsData) ? subsData : []);
         }
 
         if (windowRes.ok) {

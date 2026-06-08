@@ -2,7 +2,12 @@ const express = require('express');
 const router = express.Router();
 const Taxonomy = require('../models/Taxonomy');
 const verifyToken = require('../middleware/verifyToken');
-const { mapActivity, createTaxonomy, updateTaxonomy, deleteTaxonomy } = require('../controllers/taxonomyController');
+const { mapActivity, createTaxonomy, updateTaxonomy, deleteTaxonomy, getMajorProcesses, getProcessesByMajor, getSubProcessesByProcess } = require('../controllers/taxonomyController');
+
+// Hierarchical query routes (for Process Selection step)
+router.get('/major-processes', verifyToken, getMajorProcesses);
+router.get('/processes-by-major', verifyToken, getProcessesByMajor);
+router.get('/subprocesses-by-process', verifyToken, getSubProcessesByProcess);
 
 router.get('/processes', verifyToken, async (req, res) => {
   try {

@@ -7,6 +7,7 @@
 export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 export const API_ENDPOINTS = {
+  BASE: `${API_BASE_URL}/api`,
   AUTH: `${API_BASE_URL}/api/auth`,
   ANALYSIS: `${API_BASE_URL}/api/analysis`,
   WDT: `${API_BASE_URL}/api/wdt`,
@@ -14,4 +15,5 @@ export const API_ENDPOINTS = {
   TAXONOMY: `${API_BASE_URL}/api/taxonomy`,
   REPORTS: `${API_BASE_URL}/api/reports`,
   ACTIVITIES: `${API_BASE_URL}/api/activities`,
+  INVITE: `${API_BASE_URL}/api/invite`,
 };

@@ -425,6 +425,7 @@ function BarRow({
   widthPercent: number;
   colorClass: string;
   icon?: React.ComponentType<{ className?: string }>;
+  key?: React.Key;
 }) {
   const fte = value / 160;
   return (

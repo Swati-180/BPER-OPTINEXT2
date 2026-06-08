@@ -4,7 +4,8 @@ import { useNavigate, useParams } from "react-router-dom";
 import { Step1 } from "./Step1";
 import { Step2 } from "./Step2";
 import { Step3 } from "./Step3";
-import type { WdtPayload } from "./formTypes";
+import type { WdtPayload, WdtActivityRow, ProcessSelection } from "./formTypes";
+import { ProcessSelectionPanel } from "./ProcessSelectionPanel";
 import { demoEmployeeProfile } from "./demoEmployeeData";
 import { buildBperSubmission, saveBperSubmission, loadBperDraft, saveBperDraft } from "./bperSubmissionStorage";
 import { useEmployeeDraftGuard } from "../../layouts/EmployeeLayout";
@@ -70,7 +71,7 @@ export default function BPERForm() {
           if (res.ok) {
             const data = await res.json().catch(() => null);
             setPayload(data.payload);
-            setCurrentStep(2); // Jump to details for revision
+            setCurrentStep(3); // Jump to input table for revision
           }
         } catch (err) {
           console.error('Failed to load refId submission:', err);
@@ -214,13 +215,14 @@ export default function BPERForm() {
 
   const closeSuccessOverlay = () => {
     setShowSuccessOverlay(false);
-    setCurrentStep(3);
+    setCurrentStep(4);
   };
 
   const stepItems = [
-    { id: 1, label: "Employee Details" },
-    { id: 2, label: "Process Details" },
-    { id: 3, label: "Review" },
+    { id: 1, label: "Profile Data" },
+    { id: 2, label: "Process Selection" },
+    { id: 3, label: "Input Details" },
+    { id: 4, label: "Review" },
   ];
   const progressPercent = Math.round((currentStep / stepItems.length) * 100);
 
@@ -294,25 +296,81 @@ export default function BPERForm() {
         </div>
 
         <div className="relative -mt-px w-full z-0">
-          {currentStep === 1 && <Step1 employee={profile} windowStatus={windowStatus} onNext={() => setCurrentStep(2)} onPrev={() => navigate("/employee/dashboard")} />}
+          {currentStep === 1 && (
+            <Step1 
+              employee={profile} 
+              windowStatus={windowStatus} 
+              onNext={() => setCurrentStep(2)} 
+              onPrev={() => navigate("/employee/dashboard")} 
+            />
+          )}
           {currentStep === 2 && (
+            <div className="bg-white rounded-b-md border-x border-b border-slate-200 shadow-sm">
+              <div className="bg-gradient-to-r from-blue-50 to-slate-50 px-5 py-4 border-b border-blue-100">
+                <h2 className="text-[17px] font-bold text-slate-900">Select Your Process</h2>
+                <p className="text-sm text-slate-500 mt-0.5">Choose a process combination to add to your input table.</p>
+              </div>
+              <div className="p-5 sm:p-6">
+                <ProcessSelectionPanel
+                  onSelectionComplete={(selection) => {
+                    const newRow: WdtActivityRow = {
+                      activityCategory: selection.isMiscellaneous ? 'support' : 'core',
+                      majorProcess: selection.majorProcess || '',
+                      process: selection.process || '',
+                      subProcess: selection.subProcess || '',
+                      frequency: '',
+                      volumesMonthly: 0,
+                      timePerTransactionMinutes: 0,
+                      timeTakenHoursPerMonth: 0,
+                      applicationsUsed: '',
+                      comments: ''
+                    };
+                    if (payload) {
+                      setPayload({ ...payload, rows: [...payload.rows, newRow] });
+                    } else {
+                      setPayload({ employee: profile, rows: [newRow] });
+                    }
+                    setCurrentStep(3);
+                  }}
+                />
+                <div className="mt-8 pt-6 border-t border-slate-100 flex items-center justify-between">
+                  <button
+                    type="button"
+                    onClick={() => setCurrentStep(1)}
+                    className="text-sm font-bold text-slate-500 hover:text-slate-800 transition-colors"
+                  >
+                    Back to Profile
+                  </button>
+                  {payload && payload.rows.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setCurrentStep(3)}
+                      className="text-sm font-bold text-blue-600 hover:text-blue-800 transition-colors"
+                    >
+                      Cancel & Return to Table
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+          {currentStep === 3 && (
             <Step2
               employee={profile}
               payload={payload}
-              onNext={() => setCurrentStep(3)}
-              onPrev={() => setCurrentStep(1)}
+              onNext={() => setCurrentStep(4)}
+              onPrev={() => setCurrentStep(1)} // Back from table goes to Profile
               onPayloadChange={setPayload}
+              onAddRowRequest={() => setCurrentStep(2)}
             />
           )}
-          {currentStep === 3 && (
+          {currentStep === 4 && (
             <Step3
               payload={payload}
-              onPrev={() => setCurrentStep(2)}
+              onPrev={() => setCurrentStep(3)}
               onSubmit={handleSubmit}
               onSaveDraft={handleSaveDraft}
-              onEditSection={() => {
-                setCurrentStep(2);
-              }}
+              onEditSection={() => setCurrentStep(3)}
               submitDisabled={isSubmitted}
             />
           )}

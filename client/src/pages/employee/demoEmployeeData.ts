@@ -14,4 +14,5 @@ export const demoEmployeeProfile: EmployeeSnapshot = {
   employeeType: "Permanent",
   supervisorName: "QG User2",
   supervisorTitle: "Manager",
+  maxMonthlyHours: 168,
 };

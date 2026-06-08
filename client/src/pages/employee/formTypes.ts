@@ -15,6 +15,13 @@ export interface EmployeeSnapshot {
   maxMonthlyHours: number;
 }
 
+export interface ProcessSelection {
+  majorProcess: string;
+  process: string;
+  subProcess: string;
+  isMiscellaneous: boolean;
+}
+
 export interface WdtActivityRow {
   activityCategory?: "core" | "support";
   majorProcess: string;
@@ -34,4 +41,5 @@ export interface WdtActivityRow {
 export interface WdtPayload {
   employee: EmployeeSnapshot;
   rows: WdtActivityRow[];
-}
+  processSelection?: ProcessSelection;
+}

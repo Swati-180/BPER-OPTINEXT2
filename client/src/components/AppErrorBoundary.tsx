@@ -10,6 +10,7 @@ type State = {
 };
 
 export default class AppErrorBoundary extends React.Component<Props, State> {
+  props!: Props;
   state: State = {
     hasError: false,
   };

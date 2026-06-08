@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Workflow, LayoutGrid, ShieldCheck } from 'lucide-react';
 import ProcessManagementPage from './ProcessManagementPage';

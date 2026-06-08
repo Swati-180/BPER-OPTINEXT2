@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
-import { ArrowLeft, ArrowRight, CircleHelp, Plus, Trash2, Sparkles, AlertCircle } from "lucide-react";
+import { ArrowLeft, ArrowRight, CircleHelp, Plus, Trash2, Sparkles, AlertCircle, Lock } from "lucide-react";
 import type { WdtActivityRow, WdtPayload, EmployeeSnapshot } from "./formTypes";
 import { apiFetch } from "../../lib/api";
 
@@ -32,22 +32,11 @@ interface StepProps {
   onNext: () => void;
   onPrev: () => void;
   onPayloadChange: (payload: WdtPayload | null) => void;
+  onAddRowRequest?: () => void;
 }
 
-const initialRows: WdtActivityRow[] = [
-  {
-    activityCategory: "core",
-    majorProcess: "Accounts Payable",
-    process: "Invoice Processing",
-    subProcess: "Validation and Posting",
-    frequency: "Daily",
-    volumesMonthly: 1000,
-    timePerTransactionMinutes: 5,
-    timeTakenHoursPerMonth: 83.3,
-    applicationsUsed: "SAP",
-    comments: "",
-  },
-];
+const initialRows: WdtActivityRow[] = [];
+
 
 function HeaderWithTooltip({ title, tooltip, required = false, centered = false }: { title: string; tooltip: string; required?: boolean; centered?: boolean }) {
   return (
@@ -70,11 +59,11 @@ function HeaderWithTooltip({ title, tooltip, required = false, centered = false 
   );
 }
 
-export function Step2({ employee, payload, onNext, onPrev, onPayloadChange }: StepProps) {
-  const [rows, setRows] = useState<WdtActivityRow[]>(payload?.rows?.length ? payload.rows : initialRows);
+export function Step2({ employee, payload, onNext, onPrev, onPayloadChange, onAddRowRequest }: StepProps) {
+  const [rows, setRows] = useState<WdtActivityRow[]>(payload?.rows ?? []);
   const [editor, setEditor] = useState<EditorState | null>(null);
   const [editorDraft, setEditorDraft] = useState("");
-  const [activeTab, setActiveTab] = useState<'existing' | 'custom'>('existing');
+  const [activeTab, setActiveTab] = useState<'existing' | 'custom'>('custom');
   const [searchQuery, setSearchQuery] = useState('');
   const [taxonomy, setTaxonomy] = useState<TaxonomyItem[]>([]);
   const [mapSuggestion, setMapSuggestion] = useState<any>(null);
@@ -258,22 +247,8 @@ export function Step2({ employee, payload, onNext, onPrev, onPayloadChange }: St
     );
   };
 
-  const addRow = () => {
-    setRows((prev) => [
-      ...prev,
-      {
-        activityCategory: "core",
-        majorProcess: "",
-        process: "",
-        subProcess: "",
-        frequency: "",
-        volumesMonthly: 0,
-        timePerTransactionMinutes: 0,
-        timeTakenHoursPerMonth: 0,
-        applicationsUsed: "",
-        comments: "",
-      },
-    ]);
+  const triggerAddRow = () => {
+    if (onAddRowRequest) onAddRowRequest();
   };
 
   const addSupportRow = () => {
@@ -281,7 +256,7 @@ export function Step2({ employee, payload, onNext, onPrev, onPayloadChange }: St
       ...prev,
       {
         activityCategory: "support",
-        majorProcess: "Miscellaneous",
+        majorProcess: "Additional Activities",
         process: "Support Activity",
         subProcess: "",
         frequency: "Monthly",
@@ -402,7 +377,19 @@ export function Step2({ employee, payload, onNext, onPrev, onPayloadChange }: St
             <table className="w-full text-left border-collapse min-w-7xl">
               <thead>
                 <tr className="bg-slate-50/80 text-[11px] font-semibold text-slate-500 tracking-[0.18em] uppercase border-y border-slate-200">
-                  <th className="py-3 px-3 w-[25%]">Subprocess/Activity*</th>
+                  <th className="py-3 px-3 w-36">
+                    <span className="inline-flex items-center gap-1">
+                      <Lock size={10} className="text-slate-400" />
+                      Major Process
+                    </span>
+                  </th>
+                  <th className="py-3 px-3 w-36">
+                    <span className="inline-flex items-center gap-1">
+                      <Lock size={10} className="text-slate-400" />
+                      Process
+                    </span>
+                  </th>
+                  <th className="py-3 px-3 w-[22%]">Subprocess/Activity*</th>
                   <th className="py-3 px-3 w-32">
                     <HeaderWithTooltip
                       title="Frequency"
@@ -439,7 +426,7 @@ export function Step2({ employee, payload, onNext, onPrev, onPayloadChange }: St
                       tooltip="List of the systems being used to perform the task / activity. Could be Oracle, Tydy, Compport, Service Now etc. Word / excel / ppt etc."
                     />
                   </th>
-                  <th className="py-3 px-3 w-[16%]">
+                  <th className="py-3 px-3 w-[14%]">
                     <HeaderWithTooltip
                       title="Comments & Process Controls"
                       tooltip="Any additional comments / list of controls (manual & system) that are currently in force e.g review mechanism, segregation of duties, access controls."
@@ -451,22 +438,29 @@ export function Step2({ employee, payload, onNext, onPrev, onPayloadChange }: St
               <tbody>
                 {coreEntries.map(({ row, rowIndex }) => (
                   <tr key={`core-${rowIndex}-${row.majorProcess}-${row.subProcess}`} className="border-b border-slate-100 last:border-0 align-top">
+                    {/* Read-only Major Process column — set from Step 2 */}
                     <td className="py-3 px-2">
-                      <CellPreview
-                        value={row.subProcess}
-                        placeholder="Click to add sub process details"
-                        onClick={() =>
-                          openEditor({
-                            rowIndex,
-                            field: "subProcess",
-                            label: "Subprocess/Activity",
-                            description: "Use natural language for complete activity detail.",
-                            kind: "multi",
-                            placeholder: "Describe sub process in detail",
-                            suggestions: getSubProcessSuggestions(rowIndex),
-                          })
-                        }
-                      />
+                      <div className="w-full min-h-11 rounded border border-slate-200 bg-blue-50/40 px-3 py-2 text-left text-sm">
+                        <span className="block truncate text-sm font-medium text-blue-800">
+                          {row.majorProcess || <span className="text-slate-400 italic">—</span>}
+                        </span>
+                      </div>
+                    </td>
+                    {/* Read-only Process column — set from Step 2 */}
+                    <td className="py-3 px-2">
+                      <div className="w-full min-h-11 rounded border border-slate-200 bg-blue-50/40 px-3 py-2 text-left text-sm">
+                        <span className="block truncate text-sm font-medium text-blue-800">
+                          {row.process || <span className="text-slate-400 italic">—</span>}
+                        </span>
+                      </div>
+                    </td>
+                    {/* Read-only Sub Process column — set from Step 2 */}
+                    <td className="py-3 px-2">
+                      <div className="w-full min-h-11 rounded border border-slate-200 bg-blue-50/40 px-3 py-2 text-left text-sm">
+                        <span className="block truncate text-sm font-medium text-blue-800">
+                          {row.subProcess || <span className="text-slate-400 italic">—</span>}
+                        </span>
+                      </div>
                     </td>
                     <td className="py-3 px-2">
                       <CellPreview
@@ -567,20 +561,42 @@ export function Step2({ employee, payload, onNext, onPrev, onPayloadChange }: St
                     </td>
                   </tr>
                 ))}
+                {coreEntries.length === 0 && (
+                  <tr>
+                    <td colSpan={10} className="py-10 text-center">
+                      <div className="flex flex-col items-center gap-3">
+                        <div className="w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center">
+                          <Plus size={22} className="text-blue-400" />
+                        </div>
+                        <p className="text-sm font-semibold text-slate-600">No process entries yet</p>
+                        <p className="text-xs text-slate-400">Go back to Step 2 to select a process and add your first entry.</p>
+                        {onAddRowRequest && (
+                          <button
+                            type="button"
+                            onClick={onAddRowRequest}
+                            className="mt-1 inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 transition-colors"
+                          >
+                            <Plus size={14} /> Select a Process
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
         </div>
 
-        <div className="mt-5 flex justify-start">
-          <button
-            type="button"
-            onClick={addRow}
-            className="text-blue-700 font-semibold text-sm bg-white border border-slate-300 py-2.5 px-5 rounded-md hover:border-blue-600 hover:text-blue-800 transition-colors inline-flex items-center gap-2"
-          >
-            <Plus size={16} /> Add Row
-          </button>
-        </div>
+          <div className="mt-5 flex justify-start">
+            <button
+              type="button"
+              onClick={triggerAddRow}
+              className="text-blue-700 font-semibold text-sm bg-white border border-slate-300 py-2.5 px-5 rounded-md hover:border-blue-600 hover:text-blue-800 transition-colors inline-flex items-center gap-2"
+            >
+              <Plus size={16} /> Add Row
+            </button>
+          </div>
 
         <div className="mt-8 rounded-xl border border-slate-200 bg-white shadow-[0_8px_20px_-14px_rgba(15,23,42,0.35)] overflow-hidden">
           <div className="px-6 py-5 border-b border-slate-100 bg-linear-to-r from-blue-50 to-slate-50">
@@ -589,8 +605,8 @@ export function Step2({ employee, payload, onNext, onPrev, onPayloadChange }: St
                 <CircleHelp size={16} />
               </div>
               <div>
-                <h3 className="text-lg font-bold text-slate-900 tracking-tight">Miscellaneous Activities</h3>
-                <p className="text-sm text-slate-500">These entries will appear as Support Activities in Step 3.</p>
+                <h3 className="text-lg font-bold text-slate-900 tracking-tight">Additional Activities</h3>
+                <p className="text-sm text-slate-500">These entries will appear as Support Activities in the Review step.</p>
               </div>
             </div>
           </div>
@@ -613,7 +629,7 @@ export function Step2({ employee, payload, onNext, onPrev, onPayloadChange }: St
                     <td className="py-3 px-2">
                       <CellPreview
                         value={row.subProcess}
-                        placeholder="Enter miscellaneous activity"
+                        placeholder="Enter additional activity description"
                         onClick={() =>
                           openEditor({
                             rowIndex,
@@ -621,7 +637,7 @@ export function Step2({ employee, payload, onNext, onPrev, onPayloadChange }: St
                             label: "Activity Description",
                             description: "Describe the support activity in detail.",
                             kind: "multi",
-                            placeholder: "Enter miscellaneous activity",
+                            placeholder: "Enter additional activity description",
                             suggestions: getSubProcessSuggestions(rowIndex),
                           })
                         }
@@ -695,7 +711,7 @@ export function Step2({ employee, payload, onNext, onPrev, onPayloadChange }: St
                 ))}
                 {supportEntries.length === 0 && (
                   <tr>
-                    <td colSpan={5} className="py-6 text-center text-slate-500">No miscellaneous activities added yet.</td>
+                    <td colSpan={5} className="py-6 text-center text-slate-500">No additional activities added yet.</td>
                   </tr>
                 )}
               </tbody>
@@ -708,7 +724,7 @@ export function Step2({ employee, payload, onNext, onPrev, onPayloadChange }: St
               onClick={addSupportRow}
               className="text-blue-700 font-semibold text-sm bg-white border border-slate-300 py-2.5 px-5 rounded-md hover:border-blue-600 hover:text-blue-800 transition-colors inline-flex items-center gap-2"
             >
-              <Plus size={16} /> Add Miscellaneous Activity
+              <Plus size={16} /> Add Additional Activity
             </button>
           </div>
         </div>
@@ -801,59 +817,7 @@ export function Step2({ employee, payload, onNext, onPrev, onPayloadChange }: St
               <div className="px-6 py-6 space-y-4">
                 {editor.kind === "multi" ? (
                   <div className="space-y-4">
-                    {editor.field === "subProcess" && (
-                      <div className="flex border-b border-slate-200 mb-2">
-                        <button
-                          type="button"
-                          onClick={() => setActiveTab('existing')}
-                          className={`px-4 py-2 text-sm font-semibold border-b-2 transition-colors ${activeTab === 'existing' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
-                        >
-                          Select Existing
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setActiveTab('custom')}
-                          className={`px-4 py-2 text-sm font-semibold border-b-2 transition-colors ${activeTab === 'custom' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
-                        >
-                          Custom Entry
-                        </button>
-                      </div>
-                    )}
-
-                    {editor.field === "subProcess" && activeTab === 'existing' ? (
-                      <div className="space-y-4">
-                        <input
-                          type="text"
-                          placeholder="Search activities..."
-                          value={searchQuery}
-                          onChange={(e) => setSearchQuery(e.target.value)}
-                          className="w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-                        />
-                        <div className="max-h-60 overflow-y-auto border border-slate-200 rounded-xl divide-y divide-slate-100">
-                          {filteredSubProcesses.length === 0 ? (
-                            <div className="p-4 text-center text-slate-500 text-sm">No activities found. Try Custom Entry.</div>
-                          ) : (
-                            filteredSubProcesses.map((item, idx) => (
-                              <button
-                                key={idx}
-                                type="button"
-                                onClick={() => {
-                                  updateRow(editor.rowIndex, "majorProcess", item.majorProcess);
-                                  updateRow(editor.rowIndex, "process", item.process);
-                                  updateRow(editor.rowIndex, "subProcess", item.subProcess);
-                                  setEditor(null);
-                                  setMapSuggestion(null);
-                                }}
-                                className="w-full text-left px-4 py-3 hover:bg-blue-50 transition-colors"
-                              >
-                                <div className="text-sm font-semibold text-slate-900">{item.subProcess}</div>
-                                <div className="text-xs text-slate-500 mt-0.5">{item.majorProcess} / {item.process}</div>
-                              </button>
-                            ))
-                          )}
-                        </div>
-                      </div>
-                    ) : (
+                    {/* Activity Description always uses custom entry */}
                       <>
                         <textarea
                           value={editorDraft}
@@ -1007,7 +971,6 @@ export function Step2({ employee, payload, onNext, onPrev, onPayloadChange }: St
                           </div>
                         )}
                       </>
-                    )}
                   </div>
                 ) : editor.kind === "number" ? (
                   <input
@@ -1082,6 +1045,7 @@ export function Step2({ employee, payload, onNext, onPrev, onPayloadChange }: St
           </div>,
           document.body
         )}
+
     </div>
   );
 }

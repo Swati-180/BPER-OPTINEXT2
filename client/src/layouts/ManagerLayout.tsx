@@ -13,7 +13,8 @@ import {
   MessagesSquare,
   UserCircle,
   Briefcase,
-  Zap
+  Zap,
+  Mail
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { motion } from 'motion/react';
@@ -59,6 +60,7 @@ export default function ManagerLayout({ children, user, onLogout }: ManagerLayou
     { name: '6x6 Analysis', path: '/manager/6x6-analysis', icon: Grid3X3 },
     { name: 'Deep Analysis', path: '/manager/deep-analysis', icon: Briefcase },
     { name: 'Process Operations', path: '/manager/process-operations', icon: Zap },
+    { name: 'Employee Invites', path: '/manager/employee-invites', icon: Mail },
   ];
 
   const isSidebarExpanded = isSidebarOpen || isSidebarHovered;

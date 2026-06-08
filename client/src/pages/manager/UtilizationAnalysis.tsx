@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   AlertCircle,
   Download,
@@ -107,7 +107,7 @@ export default function UtilizationAnalysisPage() {
 
   const departments = useMemo(() => {
     const options = byDepartment.map((item) => item.department).filter(Boolean);
-    return ['All Departments', ...Array.from(new Set(options)).sort((a, b) => a.localeCompare(b))];
+    return ['All Departments', ...Array.from(new Set(options)).sort((a: string, b: string) => a.localeCompare(b))];
   }, [byDepartment]);
 
   function handleExportByFrequency() {

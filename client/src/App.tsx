@@ -35,6 +35,8 @@ import DeepAnalysis from './pages/manager/DeepAnalysis';
 import ProcessOperationsHub from './pages/manager/ProcessOperationsHub';
 import PersonalProfile from './pages/manager/PersonalProfile';
 import APIDebug from './pages/manager/APIDebug';
+import EmployeeInvites from './pages/manager/EmployeeInvites';
+import InviteRegistration from './pages/InviteRegistration';
 
 import Unauthorized from './pages/Unauthorized';
 import { clearActiveUnderReviewReferenceId } from './pages/employee/bperSubmissionStorage';
@@ -293,6 +295,7 @@ export default function App() {
           element={<LoginPage onLogin={handleLogin} />} 
         />
         <Route path="/auth/signup" element={<InviteSignupPage onLogin={handleLogin} />} />
+        <Route path="/register/invite/:token" element={<InviteRegistration />} />
         <Route path="/choose-portal" element={<ManagerChoosePortalRoute user={user} />} />
         <Route
           path="/employee-portal"
@@ -356,6 +359,7 @@ export default function App() {
                   <Route path="audit-logs" element={<Navigate to="/manager/process-operations?tab=audit" replace />} />
                   <Route path="api-debug" element={<APIDebug />} />
                   <Route path="my-profile" element={<PersonalProfile />} />
+                  <Route path="employee-invites" element={<EmployeeInvites />} />
                   <Route path="*" element={<Navigate to="dashboard" replace />} />
                 </Routes>
               </ManagerLayout>

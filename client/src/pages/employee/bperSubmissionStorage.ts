@@ -145,7 +145,7 @@ export async function loadBperSubmissions(): Promise<BperSubmissionRecord[]> {
       headers: { 'Authorization': `Bearer ${token}` }
     });
     const data = await readJson<BperSubmissionRecord[]>(response);
-    return response.ok ? data : [];
+    return response.ok ? (Array.isArray(data) ? data : []) : [];
   } catch (error) {
     console.error('Failed to load submissions:', error);
     return [];
