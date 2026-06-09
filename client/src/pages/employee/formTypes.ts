@@ -22,6 +22,8 @@ export interface ProcessSelection {
   isMiscellaneous: boolean;
 }
 
+export type ProcessSelectionList = ProcessSelection[];
+
 export interface WdtActivityRow {
   activityCategory?: "core" | "support";
   majorProcess: string;
@@ -42,4 +44,4 @@ export interface WdtPayload {
   employee: EmployeeSnapshot;
   rows: WdtActivityRow[];
   processSelection?: ProcessSelection;
-}
+}

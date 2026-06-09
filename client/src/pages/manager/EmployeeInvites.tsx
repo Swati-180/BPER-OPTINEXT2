@@ -292,8 +292,10 @@ export default function EmployeeInvites() {
                       <td className="py-3 px-4 text-sm text-slate-600">{invite.email}</td>
                       <td className="py-3 px-4">
                         <StatusPill status={invite.status} />
-                        {invite.errorMessage && (
-                          <div className="text-[10px] text-red-500 mt-1">{invite.errorMessage}</div>
+                        {invite.status === 'failed' && (
+                          <div className="text-[10px] text-red-500 mt-1">
+                            {invite.errorMessage || 'Email is not registered.'}
+                          </div>
                         )}
                       </td>
                       <td className="py-3 px-4">

@@ -313,22 +313,24 @@ export default function BPERForm() {
               <div className="p-5 sm:p-6">
                 <ProcessSelectionPanel
                   onSelectionComplete={(selection) => {
-                    const newRow: WdtActivityRow = {
-                      activityCategory: selection.isMiscellaneous ? 'support' : 'core',
-                      majorProcess: selection.majorProcess || '',
-                      process: selection.process || '',
-                      subProcess: selection.subProcess || '',
+                    const selections = Array.isArray(selection) ? selection : [selection];
+                    const newRows = selections.map((item) => ({
+                      activityCategory: item.isMiscellaneous ? 'support' : 'core',
+                      majorProcess: item.majorProcess || '',
+                      process: item.process || '',
+                      subProcess: item.subProcess || '',
                       frequency: '',
                       volumesMonthly: 0,
                       timePerTransactionMinutes: 0,
                       timeTakenHoursPerMonth: 0,
                       applicationsUsed: '',
                       comments: ''
-                    };
+                    }));
+
                     if (payload) {
-                      setPayload({ ...payload, rows: [...payload.rows, newRow] });
+                      setPayload({ ...payload, rows: [...payload.rows, ...newRows] });
                     } else {
-                      setPayload({ employee: profile, rows: [newRow] });
+                      setPayload({ employee: profile, rows: newRows });
                     }
                     setCurrentStep(3);
                   }}
