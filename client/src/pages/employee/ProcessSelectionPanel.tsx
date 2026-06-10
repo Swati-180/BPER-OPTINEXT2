@@ -4,6 +4,7 @@ import { apiFetch } from "../../lib/api";
 import type { ProcessSelection } from "./formTypes";
 
 interface ProcessSelectionPanelProps {
+  existingSubProcesses?: string[];
   onSelectionComplete: (selection: ProcessSelection[]) => void;
   initialSelection?: ProcessSelection | ProcessSelection[] | null;
   hideAdditionalActivities?: boolean;
@@ -109,6 +110,7 @@ function SelectionBadgeStrip({ label, items }: { label: string; items: string[] 
 }
 
 export function ProcessSelectionPanel({
+  existingSubProcesses = [],
   onSelectionComplete,
   initialSelection,
   hideAdditionalActivities = false,
@@ -120,8 +122,8 @@ export function ProcessSelectionPanel({
   const [subProcesses, setSubProcesses] = useState<string[]>([]);
 
   const [selectedMajors, setSelectedMajors] = useState<string[]>([]);
-  const [selectedProcesses, setSelectedProcesses] = useState<string[]>([]);
-  const [selectedSubProcesses, setSelectedSubProcesses] = useState<string[]>([]);
+  const [selectedProcesses, setSelectedProcesses] = useState<string[]>([]); // format: "Major / Process"
+  const [selectedSubProcesses, setSelectedSubProcesses] = useState<string[]>([]); // JSON string of {majorProcess, process, subProcess}
   const [completedSelections, setCompletedSelections] = useState<ProcessSelection[]>([]);
 
   const [majorSearch, setMajorSearch] = useState("");
@@ -159,25 +161,29 @@ export function ProcessSelectionPanel({
 
   // Load processes when majors are selected
   useEffect(() => {
-    if (selectedMajors.length === 0 || stage !== "process") return;
+    if (stage !== "process" || selectedMajors.length === 0) return;
     setLoadingProcess(true);
     setProcesses([]);
     setSelectedProcesses([]);
 
     async function load() {
       try {
-        // Load processes for each selected major and merge
-        const allProcesses = new Set<string>();
-        for (const major of selectedMajors) {
-          const res = await apiFetch(
-            `/taxonomy/processes-by-major?major=${encodeURIComponent(major)}`
-          );
-          if (res.ok) {
-            const data = await res.json();
-            (data || []).forEach((p: string) => allProcesses.add(p));
-          }
-        }
-        setProcesses(Array.from(allProcesses).sort());
+        const lists = await Promise.all(
+          selectedMajors.map((maj) =>
+            apiFetch(`/taxonomy/processes-by-major?major=${encodeURIComponent(maj)}`).then((r) =>
+              r.ok ? r.json().catch(() => []) : []
+            )
+          )
+        );
+
+        const merged: string[] = [];
+        selectedMajors.forEach((maj, idx) => {
+          const procs = lists[idx] || [];
+          procs.forEach((p) => merged.push(`${maj} / ${p}`));
+        });
+
+        const uniq = Array.from(new Set(merged)).sort();
+        setProcesses(uniq);
       } catch (e) {
         console.error("Failed to load processes", e);
       } finally {
@@ -187,29 +193,35 @@ export function ProcessSelectionPanel({
     load();
   }, [selectedMajors, stage]);
 
-  // Load sub-processes when processes are selected
+  // Load sub-processes when a process is selected
   useEffect(() => {
-    if (selectedProcesses.length === 0 || stage !== "subprocess") return;
+    if (stage !== "subprocess" || selectedProcesses.length === 0) return;
     setLoadingSub(true);
     setSubProcesses([]);
     setSelectedSubProcesses([]);
 
     async function load() {
       try {
-        // Load subprocesses for each combination of major and selected processes
-        const allSubProcesses = new Set<string>();
-        for (const major of selectedMajors) {
-          for (const process of selectedProcesses) {
-            const res = await apiFetch(
-              `/taxonomy/subprocesses-by-process?major=${encodeURIComponent(major)}&process=${encodeURIComponent(process)}`
-            );
-            if (res.ok) {
-              const data = await res.json();
-              (data || []).forEach((sp: string) => allSubProcesses.add(sp));
-            }
-          }
-        }
-        setSubProcesses(Array.from(allSubProcesses).sort());
+        const lists = await Promise.all(
+          selectedProcesses.map((procStr) => {
+            const [maj, proc] = procStr.split(" / ").map((s) => s.trim());
+            return apiFetch(`/taxonomy/subprocesses-by-process?major=${encodeURIComponent(maj)}&process=${encodeURIComponent(proc)}`)
+              .then((r) => (r.ok ? r.json().catch(() => []) : []))
+              .then((subs) => ({ major: maj, process: proc, subs: subs || [] }));
+          })
+        );
+
+        const items: string[] = [];
+        lists.forEach((entry) => {
+          (entry.subs || []).forEach((s: string) => {
+            if ((existingSubProcesses || []).includes(s)) return;
+            const obj = { majorProcess: entry.major, process: entry.process, subProcess: s };
+            items.push(JSON.stringify(obj));
+          });
+        });
+
+        // Show label as "Process / SubProcess" in pills; MultiSelectPillGrid expects strings, so we store JSON but display pretty labels via mapping below
+        setSubProcesses(items);
       } catch (e) {
         console.error("Failed to load sub-processes", e);
       } finally {
@@ -217,12 +229,27 @@ export function ProcessSelectionPanel({
       }
     }
     load();
-  }, [selectedMajors, selectedProcesses, stage]);
+  }, [selectedProcesses, stage, existingSubProcesses]);
+
+  // subProcesses are stored as stable JSON strings: { majorProcess, process, subProcess }
+  // We must not derive selection from UI label strings; that breaks parent mapping when duplicates exist.
+  const subItems = React.useMemo(() => subProcesses, [subProcesses]);
+
+  const getSubLabel = (jsonString: string) => {
+    try {
+      const obj = JSON.parse(jsonString);
+      return `${obj.majorProcess} → ${obj.process} → ${obj.subProcess}`;
+    } catch {
+      return jsonString;
+    }
+  };
 
   const handleSelectMajor = (item: string) => {
-    setSelectedMajors((prev) =>
-      prev.includes(item) ? prev.filter((m) => m !== item) : [...prev, item]
-    );
+    setSelectedMajors((prev) => {
+      const exists = prev.includes(item);
+      if (exists) return prev.filter((p) => p !== item);
+      return [...prev, item];
+    });
   };
 
   const handleProceedToProcess = () => {
@@ -232,9 +259,11 @@ export function ProcessSelectionPanel({
   };
 
   const handleSelectProcess = (item: string) => {
-    setSelectedProcesses((prev) =>
-      prev.includes(item) ? prev.filter((p) => p !== item) : [...prev, item]
-    );
+    setSelectedProcesses((prev) => {
+      const exists = prev.includes(item);
+      if (exists) return prev.filter((p) => p !== item);
+      return [...prev, item];
+    });
   };
 
   const handleProceedToSubProcess = () => {
@@ -244,39 +273,46 @@ export function ProcessSelectionPanel({
   };
 
   const handleSelectSubProcess = (item: string) => {
-    setSelectedSubProcesses((prev) =>
-      prev.includes(item) ? prev.filter((sp) => sp !== item) : [...prev, item]
-    );
+    // item is JSON string representing {majorProcess,process,subProcess}
+    setSelectedSubProcesses((prev) => {
+      const exists = prev.includes(item);
+      if (exists) return prev.filter((p) => p !== item);
+      return [...prev, item];
+    });
   };
+
+  useEffect(() => {
+    // clear lower-level selections when majors change
+    setSelectedProcesses([]);
+    setSelectedSubProcesses([]);
+  }, [selectedMajors]);
+
+  useEffect(() => {
+    // clear subprocess selections when processes change
+    setSelectedSubProcesses([]);
+  }, [selectedProcesses]);
 
   const handleAddSelections = () => {
     if (selectedSubProcesses.length === 0) return;
 
-    // Create a selection for each combination
-    const newSelections = selectedMajors.flatMap((major) =>
-      selectedProcesses.flatMap((process) =>
-        selectedSubProcesses.map((subprocess) => ({
-          majorProcess: major,
-          process,
-          subProcess: subprocess,
-          isMiscellaneous: false,
-        }))
-      )
-    );
+    const parsed: ProcessSelection[] = selectedSubProcesses.map((s) => JSON.parse(s));
 
     setCompletedSelections((prev) => {
-      const combined = [...prev, ...newSelections];
-      // Remove duplicates
-      const seen = new Set<string>();
-      return combined.filter((sel) => {
-        const key = `${sel.majorProcess}|${sel.process}|${sel.subProcess}|${sel.isMiscellaneous}`;
-        if (seen.has(key)) return false;
-        seen.add(key);
-        return true;
+      const next = [...prev];
+      parsed.forEach((newSelection) => {
+        const key = `${newSelection.majorProcess}|${newSelection.process}|${newSelection.subProcess}|${newSelection.isMiscellaneous}`;
+        const alreadyExists = next.some(
+          (sel) => `${sel.majorProcess}|${sel.process}|${sel.subProcess}|${sel.isMiscellaneous}` === key
+        );
+        if (!alreadyExists) next.push({ ...newSelection, isMiscellaneous: false });
       });
+      return next;
     });
 
-    // Reset for next selection
+    console.debug("DEBUG_PANEL: emitting selection (add):", JSON.stringify(parsed), "completedBeforeEmit:", JSON.stringify(completedSelections));
+    onSelectionComplete(parsed);
+
+    // reset to start for next add
     setSelectedMajors([]);
     setSelectedProcesses([]);
     setSelectedSubProcesses([]);
@@ -288,18 +324,19 @@ export function ProcessSelectionPanel({
 
   const handleFinishSelection = () => {
     if (completedSelections.length === 0) return;
+    console.debug("DEBUG_PANEL: emitting selection (finish):", JSON.stringify(completedSelections));
     onSelectionComplete(completedSelections);
   };
 
   const handleAdditionalActivities = () => {
-    onSelectionComplete([
-      {
-        majorProcess: "",
-        process: "",
-        subProcess: "",
-        isMiscellaneous: true,
-      },
-    ]);
+    const misc: ProcessSelection = {
+      majorProcess: "",
+      process: "",
+      subProcess: "",
+      isMiscellaneous: true,
+    };
+    console.debug("DEBUG_PANEL: emitting additional activities selection:", JSON.stringify(misc));
+    onSelectionComplete([misc]);
   };
 
   const handleRemoveSelection = (selection: ProcessSelection) => {
@@ -342,15 +379,15 @@ export function ProcessSelectionPanel({
             </div>
             <button
               type="button"
-              onClick={() => {
-                setSelectedMajors([]);
-                setSelectedProcesses([]);
-                setSelectedSubProcesses([]);
-                setStage("major");
-                setMajorSearch("");
-                setProcessSearch("");
-                setSubSearch("");
-              }}
+                onClick={() => {
+                  setSelectedMajors([]);
+                  setSelectedProcesses([]);
+                  setSelectedSubProcesses([]);
+                  setStage("major");
+                  setMajorSearch("");
+                  setProcessSearch("");
+                  setSubSearch("");
+                }}
               className="rounded-full border border-blue-200 bg-white px-3 py-1 text-xs font-semibold text-blue-700 hover:bg-blue-50 transition-colors"
             >
               Add another process
@@ -386,7 +423,7 @@ export function ProcessSelectionPanel({
         </div>
       )}
 
-      {/* Stage 1: Select Multiple Major Processes */}
+      {/* Stage 1: Select One Major Process */}
       {stage === "major" && (
         <div className="space-y-3 animate-in fade-in slide-in-from-bottom-2 duration-300">
           <div className="flex items-center gap-2 mb-2">
@@ -394,7 +431,7 @@ export function ProcessSelectionPanel({
               1
             </span>
             <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider">
-              Select Major Processes (Multiple)
+              Select a Major Process
             </h3>
           </div>
           <MultiSelectPillGrid
@@ -414,13 +451,13 @@ export function ProcessSelectionPanel({
               onClick={handleProceedToProcess}
               className="mt-3 w-full rounded-full bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 transition-colors"
             >
-              Select Processes
+              Choose a Process
             </button>
           )}
         </div>
       )}
 
-      {/* Stage 2: Select Multiple Processes */}
+      {/* Stage 2: Select One Process */}
       {stage === "process" && (
         <div className="space-y-3 animate-in fade-in slide-in-from-bottom-2 duration-300">
           <button
@@ -438,10 +475,10 @@ export function ProcessSelectionPanel({
               2
             </span>
             <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider">
-              Select Processes (Multiple)
+              Select a Process
             </h3>
           </div>
-          <SelectionBadgeStrip label="From majors" items={selectedMajors} />
+          <SelectionBadgeStrip label="Major Process" items={selectedMajors.length ? selectedMajors : []} />
           <MultiSelectPillGrid
             items={processes}
             selected={selectedProcesses}
@@ -458,13 +495,13 @@ export function ProcessSelectionPanel({
               onClick={handleProceedToSubProcess}
               className="mt-3 w-full rounded-full bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 transition-colors"
             >
-              Select Sub-Processes
+              Choose a Sub-Process
             </button>
           )}
         </div>
       )}
 
-      {/* Stage 3: Select Multiple Sub-Processes */}
+      {/* Stage 3: Select One Sub-Process */}
       {stage === "subprocess" && (
         <div className="space-y-3 animate-in fade-in slide-in-from-bottom-2 duration-300">
           <button
@@ -482,32 +519,46 @@ export function ProcessSelectionPanel({
               3
             </span>
             <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider">
-              Select Sub-Processes / Activities (Multiple)
+              Select a Sub-Process
             </h3>
           </div>
-          <SelectionBadgeStrip label="From processes" items={selectedProcesses} />
+          <SelectionBadgeStrip label="Major Process" items={selectedMajors.length ? selectedMajors : []} />
+          <SelectionBadgeStrip label="Process" items={selectedProcesses.length ? selectedProcesses : []} />
           <MultiSelectPillGrid
-            items={subProcesses}
+            items={subItems}
             selected={selectedSubProcesses}
             searchQuery={subSearch}
             onSearchChange={setSubSearch}
-            onSelect={handleSelectSubProcess}
+            onSelect={(json) => {
+              if (!json) return;
+              setSelectedSubProcesses((prev) => {
+                const exists = prev.includes(json);
+                if (exists) return prev.filter((p) => p !== json);
+                return [...prev, json];
+              });
+            }}
             searchPlaceholder="Search sub-processes..."
             isLoading={loadingSub}
+            extraPill={undefined}
           />
           {subProcesses.length === 0 && !loadingSub && (
             <p className="text-xs text-slate-500 mt-1">
               No sub-processes found. You can proceed to enter details manually.
             </p>
           )}
-          {selectedSubProcesses.length > 0 && <SelectionBadgeStrip label="Selected" items={selectedSubProcesses} />}
+          {selectedSubProcesses.length > 0 && (
+            <SelectionBadgeStrip
+              label="Selected"
+              items={selectedSubProcesses.map((s) => getSubLabel(s)).filter(Boolean)}
+            />
+          )}
           {selectedSubProcesses.length > 0 && (
             <button
               type="button"
               onClick={handleAddSelections}
               className="mt-3 w-full rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 transition-colors"
             >
-              Add to List
+              Add Row and Continue
             </button>
           )}
         </div>
