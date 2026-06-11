@@ -57,6 +57,8 @@ async function startServer() {
       await seed();
     } catch (fallbackErr) {
       console.error('CRITICAL: Could not connect to primary DB and mongodb-memory-server is not available.');
+      console.error('Fallback error:');
+      console.error(fallbackErr && fallbackErr.stack ? fallbackErr.stack : fallbackErr);
       console.error('Please check your MONGODB_URI in .env or run "npm install" in the server directory.');
       process.exit(1);
     }

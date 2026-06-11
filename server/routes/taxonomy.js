@@ -8,6 +8,7 @@ const { mapActivity, createTaxonomy, updateTaxonomy, deleteTaxonomy, getMajorPro
 router.get('/major-processes', verifyToken, getMajorProcesses);
 router.get('/processes-by-major', verifyToken, getProcessesByMajor);
 router.get('/subprocesses-by-process', verifyToken, getSubProcessesByProcess);
+router.get('/all-subprocesses-with-parents', verifyToken, require('../controllers/taxonomyController').getAllSubProcessesWithParents);
 
 router.get('/processes', verifyToken, async (req, res) => {
   try {

@@ -1,0 +1,7 @@
+﻿{
+    "isOpen":  true,
+    "currentMonth":  6,
+    "currentYear":  2026,
+    "daysUntilNext":  0,
+    "message":  "Submission Window is Open (Admin Override)"
+}
