@@ -333,6 +333,7 @@ export default function BPERForm() {
                     }));
 
                     console.debug("DEBUG: generated rows:", newRows);
+                    console.log("Generated rows:", newRows);
 
                     if (payload) {
                       setPayload({ ...payload, rows: [...payload.rows, ...newRows] });

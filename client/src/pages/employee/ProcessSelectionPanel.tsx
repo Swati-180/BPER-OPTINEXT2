@@ -525,16 +525,50 @@ export function ProcessSelectionPanel({
           <SelectionBadgeStrip label="Major Process" items={selectedMajors.length ? selectedMajors : []} />
           <SelectionBadgeStrip label="Process" items={selectedProcesses.length ? selectedProcesses : []} />
           <MultiSelectPillGrid
-            items={subItems}
-            selected={selectedSubProcesses}
+            items={subItems.map((s) => {
+              try {
+                const obj = JSON.parse(s);
+                return obj?.subProcess ?? s;
+              } catch {
+                return s;
+              }
+            })}
+            selected={selectedSubProcesses.map((s) => {
+              try {
+                const obj = JSON.parse(s);
+                return obj?.subProcess ?? s;
+              } catch {
+                return s;
+              }
+            })}
             searchQuery={subSearch}
             onSearchChange={setSubSearch}
-            onSelect={(json) => {
-              if (!json) return;
+            onSelect={(subProcessName) => {
+              // Find matching JSON payloads for this displayed name.
+              const matches = subItems.filter((json) => {
+                try {
+                  const obj = JSON.parse(json);
+                  return obj?.subProcess === subProcessName;
+                } catch {
+                  return false;
+                }
+              });
+
+              if (matches.length === 0) return;
+
+              // Toggle all matches to avoid silently dropping duplicates.
               setSelectedSubProcesses((prev) => {
-                const exists = prev.includes(json);
-                if (exists) return prev.filter((p) => p !== json);
-                return [...prev, json];
+                const next = [...prev];
+                matches.forEach((m) => {
+                  const exists = next.includes(m);
+                  if (exists) {
+                    const idx = next.indexOf(m);
+                    if (idx !== -1) next.splice(idx, 1);
+                  } else {
+                    next.push(m);
+                  }
+                });
+                return next;
               });
             }}
             searchPlaceholder="Search sub-processes..."
