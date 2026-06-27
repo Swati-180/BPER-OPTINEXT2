@@ -67,6 +67,7 @@ export function saveAuthUser(user: AppAuthUser) {
 export function clearAuthUser() {
   if (typeof window === 'undefined') return;
   window.localStorage.removeItem(AUTH_USER_KEY);
+  window.dispatchEvent(new CustomEvent('bper:auth-cleared'));
 }
 
 export function loadInvites(): InviteRecord[] {

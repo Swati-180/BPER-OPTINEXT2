@@ -121,7 +121,7 @@ export default function Dashboard() {
     } else {
       setIsRefreshing(true);
     }
-    setError(null);
+    if (blocking) setError(null);
     try {
       const [dashboardData, fteSummaryData, consolidationData, fitmentData] = await Promise.all([
         getDashboardReport(),
@@ -135,7 +135,14 @@ export default function Dashboard() {
       setFteConsolidation(consolidationData);
       setFitmentSummary(fitmentData);
     } catch (err: any) {
-      setError(err?.message || 'Failed to load dashboard reports.');
+      // Only show errors on the initial blocking load.
+      // Swallow background refresh errors (network hiccups, 401 race conditions)
+      // to avoid crashing the component or triggering the error boundary.
+      if (blocking) {
+        setError(err?.message || 'Failed to load dashboard reports.');
+      } else {
+        console.warn('Dashboard background refresh failed (swallowed):', err?.message);
+      }
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);
@@ -151,9 +158,11 @@ export default function Dashboard() {
       loadReports(false);
     };
 
+    // Refresh every 2 minutes instead of 30s to reduce API pressure
+    // and lower the chance of concurrent request failures.
     const refreshInterval = window.setInterval(() => {
       loadReports(false);
-    }, 30000);
+    }, 120_000);
 
     window.addEventListener('bper:data-updated', refreshOnDataUpdate as EventListener);
 

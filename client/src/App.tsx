@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useState, type FormEvent } from 'react';
+import { useState, useEffect, type FormEvent } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -262,6 +262,14 @@ function ManagerChoosePortalRoute({ user }: { user: AppAuthUser | null }) {
 
 export default function App() {
   const [user, setUser] = useState<AppAuthUser | null>(() => loadAuthUser());
+
+  useEffect(() => {
+    const handleAuthCleared = () => {
+      setUser(null);
+    };
+    window.addEventListener('bper:auth-cleared', handleAuthCleared);
+    return () => window.removeEventListener('bper:auth-cleared', handleAuthCleared);
+  }, []);
 
   const handleLogin = (userData: AppAuthUser) => {
     if (typeof window !== 'undefined') {
