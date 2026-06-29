@@ -81,13 +81,17 @@ const register = async (req, res) => {
       return res.status(400).json({ message: 'Password must be at least 6 characters' });
     }
     
-    const validRoles = ['manager', 'employee'];
+    const validRoles = ['manager', 'employee', 'admin'];
     if (!validRoles.includes(role)) {
       return res.status(400).json({ message: `Invalid role. Choose from: ${validRoles.join(', ')}` });
     }
 
     if (role === 'employee' && !organization.trim()) {
       return res.status(400).json({ message: 'Organization is required for employee signup.' });
+    }
+
+    if (role === 'admin' && !organization.trim()) {
+      organization = 'BPER';
     }
 
     const existing = await User.findOne({ email: email.toLowerCase().trim() });

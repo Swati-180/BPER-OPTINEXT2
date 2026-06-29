@@ -36,6 +36,7 @@ import ProcessOperationsHub from './pages/manager/ProcessOperationsHub';
 import PersonalProfile from './pages/manager/PersonalProfile';
 import APIDebug from './pages/manager/APIDebug';
 import EmployeeInvites from './pages/manager/EmployeeInvites';
+import AdminInvites from './pages/manager/AdminInvites';
 import InviteRegistration from './pages/InviteRegistration';
 
 import Unauthorized from './pages/Unauthorized';
@@ -122,9 +123,9 @@ function LoginPage({ onLogin }: { onLogin: (user: AppAuthUser) => void }) {
         window.sessionStorage.setItem(LOGIN_SESSION_KEY, new Date().toISOString());
         window.localStorage.setItem('bper.auth.token', data.token);
       }
-      
+
       saveAuthUser(nextUser);
-      
+
       onLogin(nextUser);
       if (nextUser.role === 'employee') {
         navigate('/employee-portal', { replace: true });
@@ -225,8 +226,8 @@ function LoginPage({ onLogin }: { onLogin: (user: AppAuthUser) => void }) {
                   </p>
                 )}
               </div>
-              <Button 
-                type="submit" 
+              <Button
+                type="submit"
                 disabled={isLoading}
                 className="w-full h-12 text-base font-bold bg-[#165BAA] hover:bg-[#124a8a] shadow-lg transition-all duration-200 active:scale-[0.98] rounded-lg"
               >
@@ -253,7 +254,7 @@ function ManagerChoosePortalRoute({ user }: { user: AppAuthUser | null }) {
     return <Navigate to="/auth/login" replace />;
   }
 
-  if (user.role !== 'manager' && user.role !== 'admin') {
+  if (user.role === 'employee') {
     return <Navigate to="/employee-portal" replace />;
   }
 
@@ -294,13 +295,13 @@ export default function App() {
     <BrowserRouter>
       <Routes>
         {/* Public Routes */}
-        <Route 
-          path="/" 
-          element={<Navigate to="/auth/login" replace />} 
+        <Route
+          path="/"
+          element={<Navigate to="/auth/login" replace />}
         />
-        <Route 
-          path="/auth/login" 
-          element={<LoginPage onLogin={handleLogin} />} 
+        <Route
+          path="/auth/login"
+          element={<LoginPage onLogin={handleLogin} />}
         />
         <Route path="/auth/signup" element={<InviteSignupPage onLogin={handleLogin} />} />
         <Route path="/register/invite/:token" element={<InviteRegistration />} />
@@ -309,9 +310,7 @@ export default function App() {
           path="/employee-portal"
           element={
             user ? (
-              user.role === 'employee' || user.role === 'manager' || user.role === 'admin'
-                ? <Navigate to="/employee/dashboard" replace />
-                : <Navigate to="/auth/login" replace />
+              <Navigate to="/employee/dashboard" replace />
             ) : (
               <Navigate to="/auth/login" replace />
             )
@@ -321,7 +320,23 @@ export default function App() {
           path="/manager-portal"
           element={
             user ? (
-              user.role === 'manager' || user.role === 'admin' ? <Navigate to="/manager/dashboard" replace /> : <Navigate to="/employee-portal" replace />
+              user.role === 'manager'
+                ? <Navigate to="/manager/forms" replace />
+                : user.role === 'admin'
+                  ? <Navigate to="/admin/dashboard" replace />
+                  : <Navigate to="/employee-portal" replace />
+            ) : (
+              <Navigate to="/auth/login" replace />
+            )
+          }
+        />
+        <Route
+          path="/admin-portal"
+          element={
+            user ? (
+              user.role === 'admin'
+                ? <Navigate to="/admin/dashboard" replace />
+                : <Navigate to={user.role === 'manager' ? '/manager-portal' : '/employee-portal'} replace />
             ) : (
               <Navigate to="/auth/login" replace />
             )
@@ -352,22 +367,44 @@ export default function App() {
         <Route
           path="/manager/*"
           element={
-            <ProtectedRoute user={user} allowedRoles={["manager", "admin"]}>
+            <ProtectedRoute user={user} allowedRoles={["manager"]}>
+              <ManagerLayout user={user} onLogout={handleLogout}>
+                <Routes>
+                  <Route path="users" element={<ManagerUsers />} />
+                  <Route path="forms" element={<ManagerForms />} />
+                  <Route path="employee-invites" element={<EmployeeInvites />} />
+                  <Route path="*" element={<Navigate to="forms" replace />} />
+                </Routes>
+              </ManagerLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Admin Routes */}
+        <Route
+          path="/admin/*"
+          element={
+            <ProtectedRoute user={user} allowedRoles={["admin"]}>
               <ManagerLayout user={user} onLogout={handleLogout}>
                 <Routes>
                   <Route path="dashboard" element={<ManagerDashboard />} />
+                  <Route path="all-records" element={<ManagerForms />} />
                   <Route path="users" element={<ManagerUsers />} />
                   <Route path="forms" element={<ManagerForms />} />
                   <Route path="wdt-analytics" element={<ManagerWDTAnalytics />} />
                   <Route path="6x6-analysis" element={<ManagerSixBySixAnalysis />} />
                   <Route path="deep-analysis" element={<DeepAnalysis />} />
                   <Route path="process-operations" element={<ProcessOperationsHub />} />
-                  <Route path="process-management" element={<Navigate to="/manager/process-operations?tab=process" replace />} />
-                  <Route path="taxonomy" element={<Navigate to="/manager/process-operations?tab=taxonomy" replace />} />
-                  <Route path="audit-logs" element={<Navigate to="/manager/process-operations?tab=audit" replace />} />
+                  <Route path="process-management" element={<Navigate to="/admin/process-operations?tab=process" replace />} />
+                  <Route path="taxonomy" element={<Navigate to="/admin/process-operations?tab=taxonomy" replace />} />
+                  <Route path="audit-logs" element={<Navigate to="/admin/process-operations?tab=audit" replace />} />
                   <Route path="api-debug" element={<APIDebug />} />
                   <Route path="my-profile" element={<PersonalProfile />} />
                   <Route path="employee-invites" element={<EmployeeInvites />} />
+                  <Route path="admin-invites" element={<AdminInvites />} />
+                  <Route path="fitment-scorer" element={<DeepAnalysis />} />
+                  <Route path="process-analytics" element={<ProcessOperationsHub />} />
+                  <Route path="employee-360" element={<PersonalProfile />} />
                   <Route path="*" element={<Navigate to="dashboard" replace />} />
                 </Routes>
               </ManagerLayout>

@@ -62,6 +62,11 @@ export default function PersonalProfile() {
   const [editDraft, setEditDraft] = useState(EMPTY_EDIT);
   const [passwordDraft, setPasswordDraft] = useState(EMPTY_PASSWORD);
 
+  const userRole = loadAuthUser()?.role;
+  const isManager = userRole === 'manager';
+  const isAdmin = userRole === 'admin';
+  const roleLabel = isAdmin ? 'Admin' : isManager ? 'Manager' : 'Employee';
+
   useEffect(() => {
     async function fetchProfile() {
       setIsLoading(true);
@@ -210,8 +215,8 @@ export default function PersonalProfile() {
       <div className="flex flex-col gap-2">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">My Profile</h1>
-            <p className="text-sm text-gray-500 max-w-3xl">Manager profile details, reporting context, and account security controls.</p>
+            <h2 className="text-2xl font-bold text-gray-900 tracking-tight">Your Profile</h2>
+            <p className="text-sm text-gray-500 max-w-3xl">{roleLabel} profile details, reporting context, and account security controls.</p>
           </div>
           <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 shadow-sm w-fit">
             <span className={`h-2 w-2 rounded-full ${profile?.isActive ? 'bg-emerald-500' : 'bg-gray-300'}`} />
@@ -231,7 +236,7 @@ export default function PersonalProfile() {
               </div>
 
               <div className="min-w-0">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-blue-100/90 mb-2">Manager Profile</p>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-blue-100/90 mb-2">{roleLabel} Profile</p>
                 <h2 className="text-3xl font-bold tracking-tight md:text-4xl">{profile?.name}</h2>
                 <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-blue-100">
                   <span className="inline-flex items-center gap-1.5">

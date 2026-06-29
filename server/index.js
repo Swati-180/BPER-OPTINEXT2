@@ -21,7 +21,11 @@ const DEFAULT_PORT = Number.parseInt(process.env.PORT || '5000', 10);
 const MAX_PORT_RETRIES = 10;
 
 // Middleware
-app.use(cors());
+app.use(cors({
+  origin: ['http://localhost:3000', 'http://localhost:3001', 'http://localhost:5173'],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS']
+}));
 app.use(express.json());
 
 // Routes
