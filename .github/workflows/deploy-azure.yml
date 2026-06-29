@@ -1,0 +1,130 @@
+name: Deploy to Azure
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  # Backend (Azure Container Apps)
+  AZURE_CONTAINER_REGISTRY: bperacr
+  BACKEND_IMAGE_NAME: bper-backend
+  CONTAINER_APP_NAME: bper-backend
+  CONTAINER_APP_RESOURCE_GROUP: bper-rg
+  CONTAINER_APP_ENVIRONMENT_ID: /subscriptions/cdde377a-7f09-46e1-8d17-9d340ed65031/resourceGroups/eleviq-rg/providers/Microsoft.App/managedEnvironments/eleviq-backend-env
+  SWA_URL: https://kind-grass-05f1f351e.7.azurestaticapps.net
+
+  # Frontend (Azure Static Web Apps)
+  SWA_DEPLOY_TOKEN: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
+
+jobs:
+  deploy-backend:
+    name: Build & Deploy Backend (ACA)
+    runs-on: ubuntu-latest
+    outputs:
+      aca_url: ${{ steps.save-url.outputs.aca_url }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to Azure
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Log in to Azure Container Registry
+        run: az acr login --name ${{ env.AZURE_CONTAINER_REGISTRY }}
+
+      - name: Build and push Docker image
+        run: |
+          docker build \
+            -f server/Dockerfile \
+            -t $AZURE_CONTAINER_REGISTRY.azurecr.io/$BACKEND_IMAGE_NAME:${{ github.sha }} \
+            -t $AZURE_CONTAINER_REGISTRY.azurecr.io/$BACKEND_IMAGE_NAME:latest \
+            server/
+          docker push $AZURE_CONTAINER_REGISTRY.azurecr.io/$BACKEND_IMAGE_NAME --all-tags
+
+      - name: Deploy to Azure Container Apps
+        env:
+          AZURE_CREDS: ${{ secrets.AZURE_CREDENTIALS }}
+        run: |
+          IMAGE="${AZURE_CONTAINER_REGISTRY}.azurecr.io/${BACKEND_IMAGE_NAME}:${{ github.sha }}"
+          SP_CLIENT_ID=$(echo "$AZURE_CREDS" | jq -r '.clientId')
+          SP_CLIENT_SECRET=$(echo "$AZURE_CREDS" | jq -r '.clientSecret')
+
+          if az containerapp show -n $CONTAINER_APP_NAME -g $CONTAINER_APP_RESOURCE_GROUP &>/dev/null; then
+            echo "Updating existing Container App..."
+            az containerapp update \
+              -n $CONTAINER_APP_NAME \
+              -g $CONTAINER_APP_RESOURCE_GROUP \
+              --image "$IMAGE" \
+              --set-env-vars \
+                NODE_ENV=production \
+                PORT=5000 \
+                MONGODB_URI=${{ secrets.MONGODB_URI }} \
+                JWT_SECRET=${{ secrets.JWT_SECRET }} \
+                CORS_ORIGIN=${{ env.SWA_URL }}
+          else
+            echo "Creating new Container App..."
+            az containerapp create \
+              -n $CONTAINER_APP_NAME \
+              -g $CONTAINER_APP_RESOURCE_GROUP \
+              --environment "${{ env.CONTAINER_APP_ENVIRONMENT_ID }}" \
+              --image "$IMAGE" \
+              --registry-server ${AZURE_CONTAINER_REGISTRY}.azurecr.io \
+              --registry-username "$SP_CLIENT_ID" \
+              --registry-password "$SP_CLIENT_SECRET" \
+              --ingress external \
+              --target-port 5000 \
+              --env-vars \
+                NODE_ENV=production \
+                PORT=5000 \
+                MONGODB_URI=${{ secrets.MONGODB_URI }} \
+                JWT_SECRET=${{ secrets.JWT_SECRET }} \
+                CORS_ORIGIN=${{ env.SWA_URL }}
+          fi
+
+      - name: Save ACA URL
+        id: save-url
+        run: |
+          FQDN=$(az containerapp show \
+            -n $CONTAINER_APP_NAME \
+            -g $CONTAINER_APP_RESOURCE_GROUP \
+            --query properties.configuration.ingress.fqdn \
+            -o tsv)
+          echo "aca_url=https://${FQDN}" >> $GITHUB_OUTPUT
+
+  deploy-frontend:
+    name: Build & Deploy Frontend (SWA)
+    runs-on: ubuntu-latest
+    needs: [deploy-backend]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: client/package-lock.json
+
+      - name: Install dependencies
+        working-directory: client
+        run: npm ci
+
+      - name: Build frontend
+        working-directory: client
+        run: npm run build
+        env:
+          VITE_API_URL: ${{ needs.deploy-backend.outputs.aca_url }}/api
+
+      - name: Deploy to Azure Static Web Apps
+        uses: Azure/static-web-apps-deploy@v1
+        with:
+          azure_static_web_apps_api_token: ${{ env.SWA_DEPLOY_TOKEN }}
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          action: upload
+          app_location: client/dist
+          skip_app_build: true
+          skip_api_build: true

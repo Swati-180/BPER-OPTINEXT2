@@ -4,7 +4,6 @@ const mongoose = require('mongoose');
 const ProcessAnalysis = require('./models/ProcessAnalysis');
 require('dotenv').config();
 
-// Order of criteria based on 6x6 matrix columns
 const CRITERIA_ORDER = [
   'Multiple Locns',
   'Routine',
@@ -41,7 +40,6 @@ async function seed6x6Data() {
     await mongoose.connect(process.env.MONGODB_URI);
     console.log('Connected to MongoDB\n');
 
-    // Read 6x6 data
     const filePath = path.join(__dirname, '..', '6x6_data (1).json');
     const data = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
 
@@ -51,20 +49,16 @@ async function seed6x6Data() {
     let totalReplaced = 0;
     let totalSkipped = 0;
 
-    // Process each department
     for (const dept of data.departments) {
-      const departmentName = dept.name;
-      console.log(`Processing Department: ${departmentName}`);
+      const departmentId = dept.id;
+      console.log(`Processing Department: ${departmentId}`);
 
-      // Process each process in the department
       for (const process of dept.processes) {
         if (!process.activities || process.activities.length === 0) {
           continue;
         }
 
-        // Process each activity
         for (const activity of process.activities) {
-          // Build criteria array from parameters in order
           const criteria = CRITERIA_ORDER.map(key => {
             const value = activity.parameters?.[key];
             return value || '-';
@@ -78,16 +72,15 @@ async function seed6x6Data() {
 
           const record = {
             process: processLabel,
-            department: departmentName,
+            department: departmentId,
             type: activity.type || 'General',
             criteria: criteria,
             consolidated: activity.consolidate || false
           };
 
-          // Try to find and replace, otherwise create
           const existingRecord = await ProcessAnalysis.findOne({
             process: processLabel,
-            department: departmentName
+            department: departmentId
           });
 
           if (existingRecord) {
@@ -107,7 +100,6 @@ async function seed6x6Data() {
     console.log(`  - Skipped numeric mock rows: ${totalSkipped}`);
     console.log(`  - Total processed: ${totalCreated + totalReplaced} records\n`);
 
-    // Show summary
     const summary = await ProcessAnalysis.aggregate([
       { $group: { _id: '$department', count: { $sum: 1 } } },
       { $sort: { _id: 1 } }

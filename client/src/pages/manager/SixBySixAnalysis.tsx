@@ -18,6 +18,8 @@ type ProcessRow = {
 	fte?: number;
 };
 
+const ACTIVITY_TYPES = ['All', 'Analytics', 'Transactional', 'Reporting', 'Functional'] as const;
+
 function normalizeCriteria(input: unknown): CriteriaValue[] {
 	const allowed: CriteriaValue[] = ['H', 'M', 'L'];
 	const parsed = Array.isArray(input)
@@ -52,7 +54,7 @@ function normalizeRow(raw: any): ProcessRow {
 		process: String(raw?.process || 'Unnamed Process'),
 		tower: raw?.tower ? String(raw.tower) : 'Unknown',
 		department: (String(raw?.department || 'HR') as Department),
-		type: String(raw?.type || 'core'),
+		type: String(raw?.type || 'general'),
 		criteria,
 		score,
 		consolidated: typeof raw?.consolidated === 'boolean' ? raw.consolidated : score >= 7,
@@ -93,7 +95,7 @@ export default function SixBySixAnalysisPage() {
 	const [departmentFilter, setDepartmentFilter] = useState<'All Departments' | Department>('All Departments');
 	const [towerFilter, setTowerFilter] = useState<string>('All');
 	const [processFilter, setProcessFilter] = useState<string>('All');
-	const [typeFilter, setTypeFilter] = useState<'All' | 'core' | 'support' | 'specialized'>('All');
+	const [typeFilter, setTypeFilter] = useState<string>('All');
 	const [scoreRangeFilter, setScoreRangeFilter] = useState<'All' | '0-4' | '5-6' | '7-8' | '9-12'>('All');
 	const [consolidationFilter, setConsolidationFilter] = useState<'All' | 'consolidate' | 'not'>('All');
 	const [processData, setProcessData] = useState<ProcessRow[]>([]);
@@ -151,13 +153,13 @@ export default function SixBySixAnalysisPage() {
 		let rows = draftRows;
 		if (towerFilter !== 'All') rows = rows.filter(r => r.tower === towerFilter);
 		if (processFilter !== 'All') rows = rows.filter(r => r.process === processFilter);
-		if (typeFilter !== 'All') rows = rows.filter(r => r.type.toLowerCase() === typeFilter);
+		if (typeFilter !== 'All') rows = rows.filter(r => r.type.toLowerCase() === typeFilter.toLowerCase());
 		if (scoreRangeFilter !== 'All') {
 			const [min, max] = scoreRangeFilter.split('-').map(Number);
 			rows = rows.filter(r => r.score >= min && r.score <= max);
 		}
-		if (consolidationFilter === 'consolidate') rows = rows.filter(r => r.consolidated);
-		if (consolidationFilter === 'not') rows = rows.filter(r => !r.consolidated);
+		if (consolidationFilter === 'consolidate') rows = rows.filter(r => r.consolidated === true);
+		if (consolidationFilter === 'not') rows = rows.filter(r => r.consolidated === false);
 		return rows;
 	}, [draftRows, towerFilter, processFilter, typeFilter, scoreRangeFilter, consolidationFilter]);
 
@@ -174,11 +176,22 @@ export default function SixBySixAnalysisPage() {
 			const characteristicScore = newCriteria.slice(6, 12).filter(v => v === 'L').length;
 			const newScore = performanceScore + characteristicScore;
 			
+			let newConsolidated = row.consolidated;
+			if (newConsolidated !== null && newConsolidated !== undefined) {
+				const proximity = newCriteria[9];
+				const sensitivity = newCriteria[6];
+				const controls = newCriteria[8];
+				const regulatory = newCriteria[10];
+				const skill = newCriteria[11];
+				const hasException = proximity === 'H' && (sensitivity === 'H' || controls === 'H' || regulatory === 'H' || skill === 'H');
+				newConsolidated = hasException ? false : (newScore >= 7);
+			}
+			
 			return { 
 				...row, 
 				criteria: newCriteria, 
 				score: newScore, 
-				consolidated: newScore >= 7 
+				consolidated: newConsolidated 
 			};
 		}));
 	};
@@ -208,9 +221,9 @@ export default function SixBySixAnalysisPage() {
 
 		filteredRows.forEach((item) => {
 			const existing = map.get(item.department) ?? { consolidated: 0, notConsolidated: 0 };
-			if (item.consolidated) {
+			if (item.consolidated === true) {
 				existing.consolidated += 1;
-			} else {
+			} else if (item.consolidated === false) {
 				existing.notConsolidated += 1;
 			}
 			map.set(item.department, existing);
@@ -241,7 +254,7 @@ export default function SixBySixAnalysisPage() {
 				out['Score'] = row.score;
 				const fteVal = typeof (row as any).fte === 'number' ? (row as any).fte : 0;
 				out['FTE'] = fteVal;
-				out['Consolidated'] = row.consolidated ? 'Yes' : 'No';
+				out['Consolidated'] = row.consolidated === null || row.consolidated === undefined ? 'N/A' : (row.consolidated ? 'Yes' : 'No');
 				return out;
 			});
 			exportToExcelClient(data, '6x6-Matrix');
@@ -260,7 +273,7 @@ export default function SixBySixAnalysisPage() {
 	};
 
 	const exportConsolidatable = () => {
-		const data = filteredRows.filter(r => r.consolidated).map(row => ({
+		const data = filteredRows.filter(r => r.consolidated === true).map(row => ({
 			Process: row.process,
 			Tower: row.tower || 'Unknown',
 			Department: row.department,
@@ -271,7 +284,7 @@ export default function SixBySixAnalysisPage() {
 	};
 
 	const exportNonConsolidatable = () => {
-		const data = filteredRows.filter(r => !r.consolidated).map(row => ({
+		const data = filteredRows.filter(r => r.consolidated === false).map(row => ({
 			Process: row.process,
 			Tower: row.tower || 'Unknown',
 			Department: row.department,
@@ -295,9 +308,9 @@ export default function SixBySixAnalysisPage() {
 			};
 
 			existing.total += 1;
-			if (item.consolidated) {
+			if (item.consolidated === true) {
 				existing.consolidated += 1;
-			} else {
+			} else if (item.consolidated === false) {
 				existing.notConsolidated += 1;
 			}
 			grouped.set(key, existing);
@@ -321,8 +334,8 @@ export default function SixBySixAnalysisPage() {
 	);
 
 	const total = filteredRows.length;
-	const consolidatedCount = filteredRows.filter((item) => item.consolidated).length;
-	const notConsolidatedCount = total - consolidatedCount;
+	const consolidatedCount = filteredRows.filter((item) => item.consolidated === true).length;
+	const notConsolidatedCount = filteredRows.filter((item) => item.consolidated === false).length;
 	const consolidatedPct = total === 0 ? 0 : Math.round((consolidatedCount / total) * 100);
 	const notConsolidatedPct = Math.max(0, 100 - consolidatedPct);
 
@@ -377,11 +390,10 @@ export default function SixBySixAnalysisPage() {
 							))}
 						</select>
 
-						<select value={typeFilter} onChange={e => setTypeFilter(e.target.value as typeof typeFilter)} className="h-9 w-full min-w-0 rounded-xl border border-[#C8D7EC] bg-white px-3 text-xs font-semibold text-[#2B4467] outline-none focus:border-[#6E97CB]">
-							<option value="All">Activity Type (All)</option>
-							<option value="core">Core</option>
-							<option value="support">Support</option>
-							<option value="specialized">Specialized</option>
+						<select value={typeFilter} onChange={e => setTypeFilter(e.target.value)} className="h-9 w-full min-w-0 rounded-xl border border-[#C8D7EC] bg-white px-3 text-xs font-semibold text-[#2B4467] outline-none focus:border-[#6E97CB]">
+							{ACTIVITY_TYPES.map(t => (
+								<option key={t} value={t}>{t === 'All' ? 'Activity Type (All)' : t}</option>
+							))}
 						</select>
 
 						<select value={scoreRangeFilter} onChange={e => setScoreRangeFilter(e.target.value as typeof scoreRangeFilter)} className="h-9 w-full min-w-0 rounded-xl border border-[#C8D7EC] bg-white px-3 text-xs font-semibold text-[#2B4467] outline-none focus:border-[#6E97CB]">
@@ -556,14 +568,14 @@ export default function SixBySixAnalysisPage() {
 									</tr>
 								</thead>
 								<tbody>
-									{filteredRows.filter(r => r.consolidated).length === 0 ? (
+									{filteredRows.filter(r => r.consolidated === true).length === 0 ? (
 										<tr>
 											<td colSpan={5} className="px-4 py-7 text-center text-xs text-[#7086A1]">
 												No consolidatable processes found.
 											</td>
 										</tr>
 									) : (
-										filteredRows.filter(r => r.consolidated).map((item) => (
+										filteredRows.filter(r => r.consolidated === true).map((item) => (
 											<tr key={item._id || `${item.process}-${item.department}`} className="border-b border-[#E8EEF7] last:border-b-0 hover:bg-[#F9FBFD]">
 												<td className="px-4 py-3 text-xs font-semibold text-[#203A5D]">{item.process}</td>
 												<td className="px-4 py-3 text-xs text-[#314E72]">{item.tower && item.tower !== 'Unknown' ? item.tower : '-'}</td>
@@ -603,14 +615,14 @@ export default function SixBySixAnalysisPage() {
 									</tr>
 								</thead>
 								<tbody>
-									{filteredRows.filter(r => !r.consolidated).length === 0 ? (
+									{filteredRows.filter(r => r.consolidated === false).length === 0 ? (
 										<tr>
 											<td colSpan={5} className="px-4 py-7 text-center text-xs text-[#7086A1]">
 												No non-consolidatable processes found.
 											</td>
 										</tr>
 									) : (
-										filteredRows.filter(r => !r.consolidated).map((item) => (
+										filteredRows.filter(r => r.consolidated === false).map((item) => (
 											<tr key={item._id || `${item.process}-${item.department}`} className="border-b border-[#E8EEF7] last:border-b-0 hover:bg-[#F9FBFD]">
 												<td className="px-4 py-3 text-xs font-semibold text-[#203A5D]">{item.process}</td>
 												<td className="px-4 py-3 text-xs text-[#314E72]">{item.tower && item.tower !== 'Unknown' ? item.tower : '-'}</td>

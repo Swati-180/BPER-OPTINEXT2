@@ -21,13 +21,15 @@ async function seed() {
     const data = JSON.parse(raw);
 
     const records = [];
-    
+    let created = 0;
+    let updated = 0;
+
     if (data.departments && Array.isArray(data.departments)) {
-      data.departments.forEach(dept => {
+      for (const dept of data.departments) {
         if (dept.processes && Array.isArray(dept.processes)) {
-          dept.processes.forEach(proc => {
+          for (const proc of dept.processes) {
             if (proc.activities && Array.isArray(proc.activities)) {
-              proc.activities.forEach(act => {
+              for (const act of proc.activities) {
                 const criteriaMap = act.parameters || {};
                 const criteria = [
                   criteriaMap['Multiple Locns'] || '-',
@@ -44,30 +46,37 @@ async function seed() {
                   criteriaMap['Skill'] || '-'
                 ];
 
-                records.push({
+                const record = {
                   process: act.name,
-                  department: dept.id, // e.g. "F&A"
-                  type: (act.type || 'core').toLowerCase(),
+                  department: dept.id,
+                  type: (act.type || 'general').toLowerCase(),
                   criteria: criteria,
                   score: act.score,
                   consolidated: !!act.consolidate
+                };
+
+                const existing = await ProcessAnalysis.findOne({
+                  process: act.name,
+                  department: dept.id
                 });
-              });
+
+                if (existing) {
+                  await ProcessAnalysis.findByIdAndUpdate(existing._id, record, { new: true });
+                  updated++;
+                } else {
+                  await ProcessAnalysis.create(record);
+                  created++;
+                }
+
+                records.push(record);
+              }
             }
-          });
+          }
         }
-      });
+      }
     }
 
-    console.log(`Parsed ${records.length} records. Cleaning up existing data...`);
-    // Optional: Delete existing or only upsert
-    // For now, let's just clear and re-insert to ensure it matches the JSON
-    await ProcessAnalysis.deleteMany({});
-    
-    console.log('Inserting records...');
-    const result = await ProcessAnalysis.insertMany(records);
-    console.log(`Successfully seeded ${result.length} records.`);
-
+    console.log(`Seeding completed: ${created} created, ${updated} updated.`);
     process.exit(0);
   } catch (err) {
     console.error('Seed failed:', err);
