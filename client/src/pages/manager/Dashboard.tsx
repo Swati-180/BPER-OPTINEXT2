@@ -1,14 +1,16 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   AlertCircle,
   ArrowRight,
   Check,
   Clock3,
+  Download,
   FileCheck2,
   TrendingUp,
   Users,
   X,
 } from 'lucide-react';
+import { exportDashboardPdf } from '../../lib/pdfExport';
 import {
   getDashboardReport,
   getFteConsolidationSummaryReport,
@@ -118,6 +120,15 @@ export default function Dashboard() {
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isExporting, setIsExporting] = useState(false);
+
+  const headerRef = useRef<HTMLDivElement>(null);
+  const chartsRowRef = useRef<HTMLDivElement>(null);
+  const fteBandRef = useRef<HTMLDivElement>(null);
+  const activitiesUtilizationRef = useRef<HTMLDivElement>(null);
+  const consolidationRef = useRef<HTMLDivElement>(null);
+  const recentReviewsRef = useRef<HTMLDivElement>(null);
+
 
   async function loadReports(blocking = false) {
     if (blocking || !dashboard) {
@@ -156,6 +167,25 @@ export default function Dashboard() {
   useEffect(() => {
     loadReports(true);
   }, []);
+
+  async function handleDownloadPdf() {
+    if (isExporting || !dashboard) return;
+    setIsExporting(true);
+    try {
+      await exportDashboardPdf({
+        header: headerRef.current,
+        chartsRow: chartsRowRef.current,
+        fteBand: fteBandRef.current,
+        activitiesUtilization: activitiesUtilizationRef.current,
+        consolidation: consolidationRef.current,
+        recentReviews: recentReviewsRef.current,
+      });
+    } catch (err) {
+      console.error('PDF export failed:', err);
+    } finally {
+      setIsExporting(false);
+    }
+  }
 
   useEffect(() => {
     const refreshOnDataUpdate = () => {
@@ -273,7 +303,7 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-3.5 animate-in fade-in duration-500">
-      <section className="rounded-2xl border border-[#D9E4F2] bg-white p-4 shadow-[0_5px_14px_rgba(16,42,80,0.08)]">
+      <section ref={headerRef} className="rounded-2xl border border-[#D9E4F2] bg-white p-4 shadow-[0_5px_14px_rgba(16,42,80,0.08)]">
         <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
           <div>
             <h1 className="text-2xl font-bold text-[#0F2649]">{roleLabel} Dashboard</h1>
@@ -283,6 +313,15 @@ export default function Dashboard() {
           </div>
 
           <div className="flex flex-col gap-1.5 text-[11px] font-semibold md:items-end">
+            <button
+              type="button"
+              onClick={handleDownloadPdf}
+              disabled={isExporting || !dashboard}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-[#165BAA] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#134A91] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              <Download className="h-3.5 w-3.5" />
+              {isExporting ? 'Exporting...' : 'Download PDF'}
+            </button>
             <div className="flex items-center gap-2">
               <span className="inline-flex items-center rounded-xl border border-[#D6E2F0] bg-[#F7FAFE] px-3 py-1.5 text-[#5F7898]">
                 Last Updated: {formatDateISO(dashboard?.generatedAt || new Date().toISOString())}
@@ -316,7 +355,7 @@ export default function Dashboard() {
         </div>
       </section>
 
-      <section className="grid grid-cols-1 gap-3.5 xl:grid-cols-[2fr_1fr]">
+      <section ref={chartsRowRef} className="grid grid-cols-1 gap-3.5 xl:grid-cols-[2fr_1fr]">
         <article className="rounded-2xl border border-[#D9E4F2] bg-white p-3.5 shadow-[0_5px_14px_rgba(16,42,80,0.06)] xl:h-[415px] flex flex-col">
           <h3 className="text-xl font-bold text-[#102846]">FTE Distribution by Tower</h3>
           <p className="mt-1 text-xs text-[#617C9E]">Live FTE split from monthly activity effort</p>
@@ -374,7 +413,7 @@ export default function Dashboard() {
       </section>
 
       {dashboard?.charts?.employeeFteData && dashboard.charts.employeeFteData.length > 0 && (
-        <section className="rounded-2xl border border-[#D9E4F2] bg-white p-4 shadow-[0_5px_14px_rgba(16,42,80,0.06)]">
+        <section ref={fteBandRef} className="rounded-2xl border border-[#D9E4F2] bg-white p-4 shadow-[0_5px_14px_rgba(16,42,80,0.06)]">
           <h3 className="text-xl font-bold text-[#102846]">FTE Band Distribution</h3>
           <p className="mt-1 text-xs text-[#6E86A3]">Distribution of employee FTE values across 5 utilization bands (based on 160h/month baseline)</p>
           <div className="mt-4">
@@ -383,7 +422,7 @@ export default function Dashboard() {
         </section>
       )}
 
-      <section className="grid grid-cols-1 gap-3.5 xl:grid-cols-[2fr_1.2fr]">
+      <section ref={activitiesUtilizationRef} className="grid grid-cols-1 gap-3.5 xl:grid-cols-[2fr_1.2fr]">
         <article className="rounded-2xl border border-[#D9E4F2] bg-white shadow-[0_5px_14px_rgba(16,42,80,0.06)] overflow-hidden">
           <div className="flex items-center justify-between border-b border-[#E4ECF7] px-4 py-3">
             <h3 className="text-xl font-bold text-[#102846]">Top Activities by FTE</h3>
@@ -465,7 +504,7 @@ export default function Dashboard() {
         </article>
       </section>
 
-      <section className="rounded-2xl border border-[#0F386A] bg-linear-to-r from-[#001F45] via-[#032C5D] to-[#05396E] p-4.5 shadow-[0_8px_18px_rgba(5,34,72,0.3)]">
+      <section ref={consolidationRef} className="rounded-2xl border border-[#0F386A] bg-linear-to-r from-[#001F45] via-[#032C5D] to-[#05396E] p-4.5 shadow-[0_8px_18px_rgba(5,34,72,0.3)]">
         <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#6BB4FF]">Platform Insights</p>
         <div className="mt-2.5 grid grid-cols-1 gap-3 xl:grid-cols-[1.35fr_1.4fr_auto] xl:items-start">
           <div>
@@ -495,7 +534,7 @@ export default function Dashboard() {
         </div>
       </section>
 
-      <section className="rounded-2xl border border-[#D9E4F2] bg-white shadow-[0_5px_14px_rgba(16,42,80,0.06)] overflow-hidden">
+      <section ref={recentReviewsRef} className="rounded-2xl border border-[#D9E4F2] bg-white shadow-[0_5px_14px_rgba(16,42,80,0.06)] overflow-hidden">
         <div className="flex items-center justify-between border-b border-[#E3EBF6] px-4 py-3">
           <h3 className="text-lg font-bold text-[#102846]">Recent Form Reviews</h3>
           <span className="text-xs font-semibold uppercase tracking-[0.12em] text-[#7B93AF]">{roleLabel} Queue</span>

@@ -165,6 +165,46 @@ export function Step2({ employee, payload, onNext, onPrev, onPayloadChange, onAd
 
   const applicationSuggestions = ["SAP", "ServiceNow", "Excel", "Power BI", "Concur"];
 
+  // Helper: Calculate volume per frequency from volumesMonthly
+  const calculateVolumesPerFrequency = (volumesMonthly: number, frequency: string): number => {
+    switch (frequency) {
+      case "Daily":
+        return Math.round((volumesMonthly / 30) * 100) / 100;
+      case "Weekly":
+        return Math.round((volumesMonthly / 4) * 100) / 100;
+      case "Fortnightly":
+        return Math.round((volumesMonthly / 2) * 100) / 100;
+      case "Monthly":
+        return volumesMonthly;
+      case "Quarterly":
+        return Math.round((volumesMonthly / 3) * 100) / 100;
+      case "Annual":
+        return Math.round((volumesMonthly / 12) * 100) / 100;
+      default:
+        return volumesMonthly;
+    }
+  };
+
+  // Helper: Calculate volumesMonthly from volume per frequency
+  const calculateVolumesMonthlyFromFrequency = (volumesPerFrequency: number, frequency: string): number => {
+    switch (frequency) {
+      case "Daily":
+        return Math.round(volumesPerFrequency * 30);
+      case "Weekly":
+        return Math.round(volumesPerFrequency * 4);
+      case "Fortnightly":
+        return Math.round(volumesPerFrequency * 2);
+      case "Monthly":
+        return Math.round(volumesPerFrequency);
+      case "Quarterly":
+        return Math.round(volumesPerFrequency * 3);
+      case "Annual":
+        return Math.round(volumesPerFrequency * 12);
+      default:
+        return Math.round(volumesPerFrequency);
+    }
+  };
+
   const coreEntries = useMemo(
     () => rows.map((row, rowIndex) => ({ row, rowIndex })).filter((entry) => entry.row.activityCategory !== "support"),
     [rows]
@@ -200,6 +240,12 @@ export function Step2({ employee, payload, onNext, onPrev, onPayloadChange, onAd
   );
 
   const [validationError, setValidationError] = useState("");
+  const [hoursExceeded, setHoursExceeded] = useState(false);
+
+  useEffect(() => {
+    const monthlyLimit = employee.maxMonthlyHours || 160;
+    setHoursExceeded(totalHours > monthlyLimit);
+  }, [totalHours, employee.maxMonthlyHours]);
 
   const isStepValid = useMemo(() => {
     if (rows.length === 0) return false;
@@ -235,11 +281,25 @@ export function Step2({ employee, payload, onNext, onPrev, onPayloadChange, onAd
         if (rowIndex !== index) return row;
         const nextRow = { ...row, [field]: value };
         
+        // Handle volumesPerFrequency input (for Daily frequency)
+        if (field === "volumesPerFrequency") {
+          const vol = Number(value) || 0;
+          nextRow.volumesPerFrequency = vol;
+          nextRow.volumesMonthly = calculateVolumesMonthlyFromFrequency(vol, nextRow.frequency);
+        }
+        
         // Auto-calculate hours if volume or time per trans changed
         if (field === "volumesMonthly" || field === "timePerTransactionMinutes") {
           const vol = Number(nextRow.volumesMonthly) || 0;
           const min = Number(nextRow.timePerTransactionMinutes) || 0;
           nextRow.timeTakenHoursPerMonth = ((vol * min) / 60) || 0;
+        }
+        
+        // When frequency changes, recalculate volumesPerFrequency
+        if (field === "frequency") {
+          const newFreq = String(value);
+          const perFreq = calculateVolumesPerFrequency(nextRow.volumesMonthly, newFreq);
+          nextRow.volumesPerFrequency = perFreq;
         }
         
         return nextRow;
@@ -400,10 +460,18 @@ export function Step2({ employee, payload, onNext, onPrev, onPayloadChange, onAd
                   </th>
                   <th className="py-3 px-3 text-center w-28">
                     <HeaderWithTooltip
+                      title="Vol"
+                      required
+                      centered
+                      tooltip="Enter the volume for the selected frequency. The system automatically converts it into Monthly Volume for calculations."
+                    />
+                  </th>
+                  <th className="py-3 px-3 text-center w-28">
+                    <HeaderWithTooltip
                       title="Vol/Mo"
                       required
                       centered
-                      tooltip="Number of requests received and processed for the sub process in a month."
+                      tooltip="Auto-calculated monthly volume based on the frequency and volume entered."
                     />
                   </th>
                   <th className="py-3 px-3 text-center w-28">
@@ -481,21 +549,31 @@ export function Step2({ employee, payload, onNext, onPrev, onPayloadChange, onAd
                       />
                     </td>
                     <td className="py-3 px-2 text-center">
-                      <CellPreview
-                        value={row.volumesMonthly !== undefined && row.volumesMonthly !== null ? String(row.volumesMonthly) : "0"}
-                        placeholder="0"
-                        mono
+                      <button
+                        type="button"
                         onClick={() =>
                           openEditor({
                             rowIndex,
-                            field: "volumesMonthly",
-                            label: "Monthly Volume",
-                            description: "Number of units or requests processed per month.",
+                            field: "volumesPerFrequency",
+                            label: "Volume",
+                            description: `Enter volume per ${row.frequency.toLowerCase()}. This will be auto-converted to monthly volume.`,
                             kind: "number",
-                            placeholder: "e.g. 100",
+                            placeholder: "e.g. 10",
                           })
                         }
-                      />
+                        className="w-full min-h-11 rounded border border-blue-200 bg-blue-50/40 px-3 py-2 hover:border-blue-300 hover:bg-white transition-colors"
+                      >
+                        <span className="text-sm font-bold text-blue-800 tabular-nums">
+                          {row.volumesPerFrequency !== undefined ? Number(row.volumesPerFrequency).toFixed(1) : "0"}
+                        </span>
+                      </button>
+                    </td>
+                    <td className="py-3 px-2 text-center">
+                      <div className="w-full min-h-11 rounded border border-slate-200 bg-slate-50 px-3 py-2">
+                        <span className="text-sm font-bold text-slate-700 tabular-nums">
+                          {Number(row.volumesMonthly || 0)}
+                        </span>
+                      </div>
                     </td>
                     <td className="py-3 px-2 text-center">
                       <CellPreview
@@ -565,7 +643,7 @@ export function Step2({ employee, payload, onNext, onPrev, onPayloadChange, onAd
                 ))}
                 {coreEntries.length === 0 && (
                   <tr>
-                    <td colSpan={10} className="py-10 text-center">
+                    <td colSpan={11} className="py-10 text-center">
                       <div className="flex flex-col items-center gap-3">
                         <div className="w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center">
                           <Plus size={22} className="text-blue-400" />
@@ -594,7 +672,8 @@ export function Step2({ employee, payload, onNext, onPrev, onPayloadChange, onAd
             <button
               type="button"
               onClick={triggerAddRow}
-              className="text-blue-700 font-semibold text-sm bg-white border border-slate-300 py-2.5 px-5 rounded-md hover:border-blue-600 hover:text-blue-800 transition-colors inline-flex items-center gap-2"
+              disabled={hoursExceeded}
+              className="text-blue-700 font-semibold text-sm bg-white border border-slate-300 py-2.5 px-5 rounded-md hover:border-blue-600 hover:text-blue-800 transition-colors inline-flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:border-slate-300 disabled:hover:text-blue-700"
             >
               <Plus size={16} /> Add Row
             </button>
@@ -792,8 +871,9 @@ export function Step2({ employee, payload, onNext, onPrev, onPayloadChange, onAd
           <button
             type="button"
             onClick={handleNext}
+            disabled={!isStepValid || hoursExceeded}
             className={`font-bold py-3 px-8 rounded-xl shadow-lg transition-all inline-flex items-center gap-2 group ${
-              isStepValid 
+              isStepValid && !hoursExceeded
                 ? "bg-blue-700 hover:bg-blue-800 text-white hover:translate-y-[-1px] active:translate-y-[1px]" 
                 : "bg-slate-200 text-slate-400 cursor-not-allowed"
             }`}

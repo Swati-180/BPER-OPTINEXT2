@@ -146,7 +146,6 @@ export default function EmployeeLayout({ children, user, onLogout }: EmployeeLay
               <span className="text-[17px] font-bold tracking-tight text-[#4D89C9]">QG</span>
             </motion.div>
             <motion.span
-              initial={{ maxWidth: 0, opacity: 0, x: -8, marginLeft: -4 }}
               animate={{
                 opacity: isSidebarExpanded ? 1 : 0,
                 x: isSidebarExpanded ? 0 : -8,
@@ -175,7 +174,6 @@ export default function EmployeeLayout({ children, user, onLogout }: EmployeeLay
               <UserCircle className="w-6 h-6 text-white" />
             </motion.div>
             <motion.div
-              initial={{ maxWidth: 0, opacity: 0, x: -8 }}
               animate={{
                 opacity: isSidebarExpanded ? 1 : 0,
                 x: isSidebarExpanded ? 0 : -8,
@@ -217,7 +215,6 @@ export default function EmployeeLayout({ children, user, onLogout }: EmployeeLay
                       <item.icon className={`w-5 h-5 shrink-0 ${isActive ? 'text-white' : 'text-white/90 group-hover:text-white'}`} />
                     </motion.span>
                     <motion.span
-                      initial={{ maxWidth: 0, opacity: 0, x: -8, marginLeft: 0 }}
                       animate={{
                         opacity: isSidebarExpanded ? 1 : 0,
                         x: isSidebarExpanded ? 0 : -8,
@@ -246,7 +243,6 @@ export default function EmployeeLayout({ children, user, onLogout }: EmployeeLay
             >
               <ArrowLeftRight className="w-5 h-5 shrink-0 text-white/90 group-hover:text-white" />
               <motion.span
-                initial={{ maxWidth: 0, opacity: 0, x: -8 }}
                 animate={{
                   opacity: isSidebarExpanded ? 1 : 0,
                   x: isSidebarExpanded ? 0 : -8,
@@ -273,7 +269,6 @@ export default function EmployeeLayout({ children, user, onLogout }: EmployeeLay
           >
             <LogOut className="w-5 h-5 shrink-0 text-white/90 group-hover:text-white" />
             <motion.span
-              initial={{ maxWidth: 0, opacity: 0, x: -8 }}
               animate={{
                 opacity: isSidebarExpanded ? 1 : 0,
                 x: isSidebarExpanded ? 0 : -8,
