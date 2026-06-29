@@ -18,6 +18,8 @@ type ProcessRow = {
 	fte?: number;
 };
 
+const ACTIVITY_TYPES = ['All', 'Analytics', 'Transactional', 'Reporting', 'Functional'] as const;
+
 function normalizeCriteria(input: unknown): CriteriaValue[] {
 	const allowed: CriteriaValue[] = ['H', 'M', 'L'];
 	const parsed = Array.isArray(input)
@@ -52,7 +54,7 @@ function normalizeRow(raw: any): ProcessRow {
 		process: String(raw?.process || 'Unnamed Process'),
 		tower: raw?.tower ? String(raw.tower) : 'Unknown',
 		department: (String(raw?.department || 'HR') as Department),
-		type: String(raw?.type || 'core'),
+		type: String(raw?.type || 'general'),
 		criteria,
 		score,
 		consolidated: typeof raw?.consolidated === 'boolean' ? raw.consolidated : score >= 7,
@@ -93,7 +95,7 @@ export default function SixBySixAnalysisPage() {
 	const [departmentFilter, setDepartmentFilter] = useState<'All Departments' | Department>('All Departments');
 	const [towerFilter, setTowerFilter] = useState<string>('All');
 	const [processFilter, setProcessFilter] = useState<string>('All');
-	const [typeFilter, setTypeFilter] = useState<'All' | 'core' | 'support' | 'specialized'>('All');
+	const [typeFilter, setTypeFilter] = useState<string>('All');
 	const [scoreRangeFilter, setScoreRangeFilter] = useState<'All' | '0-4' | '5-6' | '7-8' | '9-12'>('All');
 	const [consolidationFilter, setConsolidationFilter] = useState<'All' | 'consolidate' | 'not'>('All');
 	const [processData, setProcessData] = useState<ProcessRow[]>([]);
@@ -151,7 +153,7 @@ export default function SixBySixAnalysisPage() {
 		let rows = draftRows;
 		if (towerFilter !== 'All') rows = rows.filter(r => r.tower === towerFilter);
 		if (processFilter !== 'All') rows = rows.filter(r => r.process === processFilter);
-		if (typeFilter !== 'All') rows = rows.filter(r => r.type.toLowerCase() === typeFilter);
+		if (typeFilter !== 'All') rows = rows.filter(r => r.type.toLowerCase() === typeFilter.toLowerCase());
 		if (scoreRangeFilter !== 'All') {
 			const [min, max] = scoreRangeFilter.split('-').map(Number);
 			rows = rows.filter(r => r.score >= min && r.score <= max);
@@ -377,11 +379,10 @@ export default function SixBySixAnalysisPage() {
 							))}
 						</select>
 
-						<select value={typeFilter} onChange={e => setTypeFilter(e.target.value as typeof typeFilter)} className="h-9 w-full min-w-0 rounded-xl border border-[#C8D7EC] bg-white px-3 text-xs font-semibold text-[#2B4467] outline-none focus:border-[#6E97CB]">
-							<option value="All">Activity Type (All)</option>
-							<option value="core">Core</option>
-							<option value="support">Support</option>
-							<option value="specialized">Specialized</option>
+						<select value={typeFilter} onChange={e => setTypeFilter(e.target.value)} className="h-9 w-full min-w-0 rounded-xl border border-[#C8D7EC] bg-white px-3 text-xs font-semibold text-[#2B4467] outline-none focus:border-[#6E97CB]">
+							{ACTIVITY_TYPES.map(t => (
+								<option key={t} value={t}>{t === 'All' ? 'Activity Type (All)' : t}</option>
+							))}
 						</select>
 
 						<select value={scoreRangeFilter} onChange={e => setScoreRangeFilter(e.target.value as typeof scoreRangeFilter)} className="h-9 w-full min-w-0 rounded-xl border border-[#C8D7EC] bg-white px-3 text-xs font-semibold text-[#2B4467] outline-none focus:border-[#6E97CB]">
