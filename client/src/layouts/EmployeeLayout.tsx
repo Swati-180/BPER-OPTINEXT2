@@ -235,7 +235,7 @@ export default function EmployeeLayout({ children, user, onLogout }: EmployeeLay
 
         {/* Sidebar Footer - Logout */}
         <div className="p-3 border-t border-white/5 shrink-0">
-          {user.role === 'manager' && (
+          {user.role !== 'employee' && (
             <motion.button
               type="button"
               onClick={() => requestNavigation('/choose-portal')}

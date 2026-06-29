@@ -19,6 +19,7 @@ export default function InviteSignupPage({ onLogin }: InviteSignupProps) {
   const roleParam = searchParams.get('role')?.trim().toLowerCase();
   const orgParam = searchParams.get('org')?.trim() ?? '';
   const isEmployeeInvite = roleParam === 'employee' && orgParam.length > 0;
+  const isAdminInvite = roleParam === 'admin';
   const isBlockedEmployeeSignup = roleParam === 'employee' && !orgParam;
 
   const [fullName, setFullName] = useState('');
@@ -74,7 +75,7 @@ export default function InviteSignupPage({ onLogin }: InviteSignupProps) {
           name: fullName.trim(),
           email: email.trim().toLowerCase(),
           password,
-          role: isEmployeeInvite ? 'employee' : 'manager',
+          role: isEmployeeInvite ? 'employee' : isAdminInvite ? 'admin' : 'manager',
           organization: organization.trim(),
           department: department.trim(),
         })
@@ -92,7 +93,7 @@ export default function InviteSignupPage({ onLogin }: InviteSignupProps) {
       const nextUser: AppAuthUser = {
         name: fullName.trim(),
         email: email.trim().toLowerCase(),
-        role: (isEmployeeInvite ? 'employee' : 'manager'),
+        role: (isEmployeeInvite ? 'employee' : isAdminInvite ? 'admin' : 'manager'),
         organization: organization.trim(),
         source: isEmployeeInvite ? 'invite' : 'normal',
       };
@@ -102,7 +103,13 @@ export default function InviteSignupPage({ onLogin }: InviteSignupProps) {
       }
 
       onLogin(nextUser);
-      navigate(nextUser.role === 'manager' ? '/choose-portal' : '/employee-portal', { replace: true });
+      if (nextUser.role === 'admin') {
+        navigate('/admin-portal', { replace: true });
+      } else if (nextUser.role === 'manager') {
+        navigate('/choose-portal', { replace: true });
+      } else {
+        navigate('/employee-portal', { replace: true });
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An unexpected error occurred');
     } finally {
@@ -141,18 +148,20 @@ export default function InviteSignupPage({ onLogin }: InviteSignupProps) {
             className="mx-auto mb-3 h-14 w-auto"
           />
           <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-[#5E7EA6]">BPER Platform</p>
-          <h1 className="mt-2 text-4xl font-bold tracking-tight text-[#102846]">{isEmployeeInvite ? 'Complete your employee signup' : 'Create your manager account'}</h1>
+          <h1 className="mt-2 text-4xl font-bold tracking-tight text-[#102846]">{isEmployeeInvite ? 'Complete your employee signup' : isAdminInvite ? 'Create your admin account' : 'Create your manager account'}</h1>
           <p className="mt-2 text-sm text-[#607A9A]">
             {isEmployeeInvite
               ? 'Your invite URL has prefilled your role and organization for secure onboarding.'
-              : 'Sign up to access manager workflows and portal navigation.'}
+              : isAdminInvite
+                ? 'Sign up to access full admin workflows and portal management.'
+                : 'Sign up to access manager workflows and portal navigation.'}
           </p>
         </div>
 
         <div className="rounded-3xl border border-[#D9E4F2] bg-white p-6 shadow-[0_8px_24px_rgba(16,42,80,0.08)]">
           <div className="mb-5 rounded-2xl border border-[#DCE6F3] bg-[#F6FAFF] p-4 text-sm text-[#4E6787]">
             <p className="font-semibold text-[#102846]">Account role</p>
-            <p className="mt-1 capitalize">{isEmployeeInvite ? 'employee' : 'manager'}</p>
+            <p className="mt-1 capitalize">{isEmployeeInvite ? 'employee' : isAdminInvite ? 'admin' : 'manager'}</p>
             <p className="mt-4 font-semibold text-[#102846]">Organization</p>
             <p className="mt-1">{organization || 'Set during signup'}</p>
             {isEmployeeInvite && (
@@ -245,7 +254,7 @@ export default function InviteSignupPage({ onLogin }: InviteSignupProps) {
               <Button type="submit" disabled={isLoading} className="bg-[#165BAA] hover:bg-[#124B8D]">
                 <>
                   {isLoading && <Loader2 className="mr-2 h-4 w-4 auth-spinner" />}
-                  {isEmployeeInvite ? 'Continue to Employee Portal' : 'Continue to Portal Selection'}
+                  {isEmployeeInvite ? 'Continue to Employee Portal' : isAdminInvite ? 'Continue to Admin Portal' : 'Continue to Portal Selection'}
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </>
               </Button>

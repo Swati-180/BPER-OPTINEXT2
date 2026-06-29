@@ -22,8 +22,22 @@ const users = [
     band: 'N/A',
     client: 'BPER',
     location: 'Corporate',
-    supervisorName: 'N/A',
     supervisorTitle: 'N/A',
+    isActive: true
+  },
+  {
+    name: 'QG Manager',
+    email: 'manager@bper.com',
+    password: 'Manager@123',
+    role: 'manager',
+    employeeId: 'BPER-999',
+    designation: 'Operations Manager',
+    department: 'Corporate',
+    band: 'M1',
+    client: 'BPER',
+    location: 'Corporate',
+    supervisorName: 'QG Admin',
+    supervisorTitle: 'Administrator',
     isActive: true
   },
   {

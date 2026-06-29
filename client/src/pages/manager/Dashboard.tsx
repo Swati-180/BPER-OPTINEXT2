@@ -15,6 +15,7 @@ import {
   getFteSummaryReport,
   getFitmentSummaryReport,
 } from '../../lib/api';
+import { loadAuthUser } from '../../lib/authStorage';
 import { useNavigate } from 'react-router-dom';
 import { formatDateISO } from '../employee/bperSubmissionStorage';
 import { DashboardSkeleton, InlineUpdatingBadge } from '../../components/PortalSkeletons';
@@ -107,6 +108,9 @@ function getStatusClass(status: 'Under Review' | 'Approved' | 'Changes Requested
 
 export default function Dashboard() {
   const navigate = useNavigate();
+  const user = loadAuthUser();
+  const isAdmin = user?.role === 'admin';
+  const roleLabel = isAdmin ? 'Admin' : 'Manager';
   const [dashboard, setDashboard] = useState<DashboardReport | null>(null);
   const [fteSummary, setFteSummary] = useState<FteSummaryReport | null>(null);
   const [fteConsolidation, setFteConsolidation] = useState<FteConsolidationReport | null>(null);
@@ -263,7 +267,7 @@ export default function Dashboard() {
       <section className="rounded-2xl border border-[#D9E4F2] bg-white p-4 shadow-[0_5px_14px_rgba(16,42,80,0.08)]">
         <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-[#0F2649]">Manager Dashboard</h1>
+            <h1 className="text-2xl font-bold text-[#0F2649]">{roleLabel} Dashboard</h1>
             <p className="mt-1 text-xs text-[#637F9F]">
               Live enterprise summary and analytics computed from submitted WDT records.
             </p>
@@ -291,7 +295,7 @@ export default function Dashboard() {
         <div className="mt-3 grid grid-cols-1 gap-2.5 sm:grid-cols-2 xl:grid-cols-5">
           <KpiCard icon={Users} label="Total Employees" value={String(safeNumber(summary.totalEmployees))} helper="Active employee accounts" />
           <KpiCard icon={FileCheck2} label="Forms Submitted" value={String(safeNumber(summary.totalSubmissions))} helper="Records in current report scope" />
-          <KpiCard icon={Clock3} label="Pending Review" value={String(safeNumber(summary.pendingReview))} helper={safeNumber(summary.pendingReview) > 0 ? 'Needs manager action' : 'No active queue'} />
+          <KpiCard icon={Clock3} label="Pending Review" value={String(safeNumber(summary.pendingReview))} helper={safeNumber(summary.pendingReview) > 0 ? `Needs ${roleLabel.toLowerCase()} action` : 'No active queue'} />
           <KpiCard icon={Check} label="Approved" value={String(safeNumber(summary.approved))} helper={safeNumber(summary.approved) > 0 ? 'Review completed' : 'Awaiting approvals'} />
           <KpiCard
             icon={TrendingUp}
@@ -485,7 +489,7 @@ export default function Dashboard() {
       <section className="rounded-2xl border border-[#D9E4F2] bg-white shadow-[0_5px_14px_rgba(16,42,80,0.06)] overflow-hidden">
         <div className="flex items-center justify-between border-b border-[#E3EBF6] px-4 py-3">
           <h3 className="text-lg font-bold text-[#102846]">Recent Form Reviews</h3>
-          <span className="text-xs font-semibold uppercase tracking-[0.12em] text-[#7B93AF]">Manager Queue</span>
+          <span className="text-xs font-semibold uppercase tracking-[0.12em] text-[#7B93AF]">{roleLabel} Queue</span>
         </div>
 
         <div className="overflow-x-auto">

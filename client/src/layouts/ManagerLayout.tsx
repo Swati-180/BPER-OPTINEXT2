@@ -1,20 +1,19 @@
 import { ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { 
-  LayoutDashboard,
   Users, 
   FileText, 
-  BarChart3, 
-  Grid3X3, 
   ArrowLeftRight,
   LogOut, 
   Menu, 
   Bell, 
   MessagesSquare,
   UserCircle,
-  Briefcase,
-  Zap,
-  Mail
+  Mail,
+  ShieldCheck,
+  BarChart,
+  Activity,
+  Layers
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { motion } from 'motion/react';
@@ -52,16 +51,25 @@ export default function ManagerLayout({ children, user, onLogout }: ManagerLayou
     return () => document.removeEventListener('mousedown', handleOutsideClick);
   }, []);
 
-  const navItems = [
-    { name: 'Dashboard', path: '/manager/dashboard', icon: LayoutDashboard },
-    { name: 'Users', path: '/manager/users', icon: Users },
-    { name: 'Forms', path: '/manager/forms', icon: FileText },
-    { name: 'WDT Analytics', path: '/manager/wdt-analytics', icon: BarChart3 },
-    { name: '6x6 Analysis', path: '/manager/6x6-analysis', icon: Grid3X3 },
-    { name: 'Deep Analysis', path: '/manager/deep-analysis', icon: Briefcase },
-    { name: 'Process Operations', path: '/manager/process-operations', icon: Zap },
-    { name: 'Employee Invites', path: '/manager/employee-invites', icon: Mail },
-  ];
+  const isAdmin = user.role === 'admin';
+  const basePath = isAdmin ? '/admin' : '/manager';
+
+  const navItems = isAdmin
+    ? [
+        { name: 'Dashboard', path: `${basePath}/dashboard`, icon: FileText },
+        { name: 'Forms', path: `${basePath}/forms`, icon: FileText },
+        { name: 'Users', path: `${basePath}/users`, icon: Users },
+        { name: 'Employee Invites', path: `${basePath}/employee-invites`, icon: Mail },
+        { name: 'Admin Invites', path: `${basePath}/admin-invites`, icon: ShieldCheck },
+        { name: 'WDT Analytics', path: `${basePath}/wdt-analytics`, icon: BarChart },
+        { name: 'Deep Analysis', path: `${basePath}/deep-analysis`, icon: Activity },
+        { name: 'Process Operations', path: `${basePath}/process-operations`, icon: Layers },
+      ]
+    : [
+        { name: 'Forms', path: `${basePath}/forms`, icon: FileText },
+        { name: 'Users', path: `${basePath}/users`, icon: Users },
+        { name: 'Employee Invites', path: `${basePath}/employee-invites`, icon: Mail },
+      ];
 
   const isSidebarExpanded = isSidebarOpen || isSidebarHovered;
 
@@ -69,8 +77,9 @@ export default function ManagerLayout({ children, user, onLogout }: ManagerLayou
     const activeItem = navItems.find((item) => item.path === location.pathname);
     if (activeItem) return activeItem.name;
 
-    if (location.pathname.startsWith('/manager/')) {
-      const slug = location.pathname.replace('/manager/', '');
+    const portalPrefix = isAdmin ? '/admin/' : '/manager/';
+    if (location.pathname.startsWith(portalPrefix)) {
+      const slug = location.pathname.replace(portalPrefix, '');
       if (!slug) return 'Dashboard';
       return slug
         .split('-')
@@ -121,8 +130,8 @@ export default function ManagerLayout({ children, user, onLogout }: ManagerLayou
 
         {/* User Profile Section */}
         <div 
-          className="p-4 border-b border-white/5 shrink-0 cursor-pointer hover:bg-white/5 transition-colors"
-          onClick={() => navigate('/manager/my-profile')}
+          className={`p-4 border-b border-white/5 shrink-0 transition-colors ${isAdmin ? 'cursor-pointer hover:bg-white/5' : ''}`}
+          onClick={() => isAdmin && navigate(`${basePath}/my-profile`)}
         >
           <div className="flex items-center gap-3">
             <motion.div
@@ -142,7 +151,7 @@ export default function ManagerLayout({ children, user, onLogout }: ManagerLayou
             >
               <p className="text-sm font-semibold truncate text-white/90">{user.name}</p>
               <p className="text-[10px] text-white/40 uppercase tracking-wider font-bold">
-                {user.role === 'admin' ? 'Administrator' : 'Manager'}
+                {isAdmin ? 'Administrator' : 'Manager'}
               </p>
             </motion.div>
           </div>
@@ -197,7 +206,7 @@ export default function ManagerLayout({ children, user, onLogout }: ManagerLayou
 
         {/* Sidebar Footer - Logout */}
         <div className="p-3 border-t border-white/5 shrink-0">
-          {user.role === 'manager' && (
+          {user.role !== 'employee' && (
             <motion.button
               type="button"
               onClick={() => navigate('/choose-portal')}
@@ -256,7 +265,7 @@ export default function ManagerLayout({ children, user, onLogout }: ManagerLayou
               <nav className="flex items-center text-xs font-medium text-gray-400 uppercase tracking-widest">
                 <span className="hover:text-[#165BAA] cursor-pointer transition-colors">BPER</span>
                 <span className="mx-2">/</span>
-                <span className="text-gray-900">Manager Portal</span>
+                <span className="text-gray-900">{isAdmin ? 'Admin Portal' : 'Manager Portal'}</span>
               </nav>
             </div>
           </div>
