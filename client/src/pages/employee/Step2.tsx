@@ -254,6 +254,8 @@ export function Step2({ employee, payload, onNext, onPrev, onPayloadChange, onAd
       const hasDescription = row.subProcess?.trim();
       
       if (row.activityCategory === 'support') {
+        const isStarted = row.subProcess?.trim() || Number(row.volumesMonthly) > 0 || Number(row.timePerTransactionMinutes) > 0;
+        if (!isStarted) return true;
         return hasTime && hasDescription;
       }
       
