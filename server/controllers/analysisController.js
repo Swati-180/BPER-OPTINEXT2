@@ -19,10 +19,27 @@ function normalizeAnalysisRecord(record) {
     ? record.score
     : computeScore(Array.isArray(record.criteria) ? record.criteria : []);
 
+  let consolidated = record.consolidated;
+  if (consolidated === undefined) {
+    let hasException = false;
+    const criteria = Array.isArray(record.criteria) ? record.criteria : [];
+    if (criteria.length >= 12) {
+      const proximity = criteria[9];
+      const sensitivity = criteria[6];
+      const controls = criteria[8];
+      const regulatory = criteria[10];
+      const skill = criteria[11];
+      if (proximity === 'H' && (sensitivity === 'H' || controls === 'H' || regulatory === 'H' || skill === 'H')) {
+        hasException = true;
+      }
+    }
+    consolidated = hasException ? false : (score >= 7);
+  }
+
   return {
     ...record,
     score,
-    consolidated: typeof record.consolidated === 'boolean' ? record.consolidated : score >= 7,
+    consolidated
   };
 }
 

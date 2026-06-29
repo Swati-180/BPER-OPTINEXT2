@@ -18,7 +18,7 @@ const processAnalysisSchema = new mongoose.Schema({
   type: { type: String, required: true },
   criteria: [{ type: String, enum: ['H', 'M', 'L', '-'] }],
   score: { type: Number },
-  consolidated: { type: Boolean, default: false },
+  consolidated: { type: Boolean },
   lastUpdatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
 }, { timestamps: true });
 
@@ -27,8 +27,32 @@ function applyComputedFields(record) {
   if (Array.isArray(record.criteria) && record.criteria.length > 0) {
     record.score = computeScore(record.criteria);
   }
-  // PRD: Score >= 7 is flagging as Consolidatable
-  record.consolidated = Number(record.score || 0) >= 7;
+
+  if (record.consolidated === null) {
+    return; // N/A, keep it as null
+  }
+
+  // Check exception rules (TC1-TC4)
+  // Index: 6:Sensitivity, 8:Controls, 9:Proximity, 10:Regulatory, 11:Skill
+  let hasException = false;
+  if (Array.isArray(record.criteria) && record.criteria.length >= 12) {
+    const proximity = record.criteria[9];
+    const sensitivity = record.criteria[6];
+    const controls = record.criteria[8];
+    const regulatory = record.criteria[10];
+    const skill = record.criteria[11];
+    
+    if (proximity === 'H' && (sensitivity === 'H' || controls === 'H' || regulatory === 'H' || skill === 'H')) {
+      hasException = true;
+    }
+  }
+
+  if (hasException) {
+    record.consolidated = false;
+  } else {
+    // PRD: Score >= 7 is flagging as Consolidatable
+    record.consolidated = Number(record.score || 0) >= 7;
+  }
 }
 
 // Auto-calculate score if missing
