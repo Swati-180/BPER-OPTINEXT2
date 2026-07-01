@@ -41,6 +41,29 @@ const getSubProcessesByProcess = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
+
+// GET /taxonomy/all-subprocesses-with-parents
+// Returns all subprocesses with their parent majorProcess and process for accurate hierarchy mapping
+const getAllSubProcessesWithParents = async (req, res) => {
+  try {
+    const all = await Taxonomy.find({ isActive: true }).lean();
+    const subprocessMap = [];
+    
+    all.forEach(item => {
+      (item.subProcesses || []).forEach(sub => {
+        subprocessMap.push({
+          subProcess: sub,
+          process: item.process,
+          majorProcess: item.majorProcess
+        });
+      });
+    });
+    
+    res.json(subprocessMap);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
 const HF_TOKEN = process.env.HF_TOKEN || null;
 // HuggingFace sentence-transformers endpoint (same model as local, zero RAM)
 const HF_MODEL_URL = 'https://api-inference.huggingface.co/pipeline/feature-extraction/sentence-transformers/all-MiniLM-L6-v2';
@@ -412,5 +435,5 @@ const deleteTaxonomy = async (req, res) => {
   }
 };
 
-module.exports = { mapActivity, createTaxonomy, updateTaxonomy, deleteTaxonomy, getMajorProcesses, getProcessesByMajor, getSubProcessesByProcess };
+module.exports = { mapActivity, createTaxonomy, updateTaxonomy, deleteTaxonomy, getMajorProcesses, getProcessesByMajor, getSubProcessesByProcess, getAllSubProcessesWithParents };
 

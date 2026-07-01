@@ -312,7 +312,12 @@ export default function BPERForm() {
               </div>
               <div className="p-5 sm:p-6">
                 <ProcessSelectionPanel
+                  existingSubProcesses={payload?.rows?.map((row) => row.subProcess).filter(Boolean) ?? []}
                   onSelectionComplete={(selection) => {
+                    // TEMP DEBUG LOGS: record incoming selection, payload before conversion, and generated rows
+                    console.debug("DEBUG: onSelectionComplete received:", selection);
+                    console.debug("DEBUG: payload before conversion:", payload);
+
                     const selections = Array.isArray(selection) ? selection : [selection];
                     const newRows = selections.map((item) => ({
                       activityCategory: item.isMiscellaneous ? 'support' : 'core',
@@ -326,6 +331,9 @@ export default function BPERForm() {
                       applicationsUsed: '',
                       comments: ''
                     }));
+
+                    console.debug("DEBUG: generated rows:", newRows);
+                    console.log("Generated rows:", newRows);
 
                     if (payload) {
                       setPayload({ ...payload, rows: [...payload.rows, ...newRows] });

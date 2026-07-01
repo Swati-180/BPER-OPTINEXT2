@@ -373,6 +373,7 @@ export function Step2({ employee, payload, onNext, onPrev, onPayloadChange, onAd
 
       <div className="p-4 sm:p-5 md:p-6 pb-24">
         <div className="w-full rounded-lg border border-slate-200 bg-white shadow-[0_8px_20px_-14px_rgba(15,23,42,0.35)] overflow-hidden">
+          {console.log("Rows passed to table:", rows)}
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse min-w-7xl">
               <thead>
@@ -442,8 +443,9 @@ export function Step2({ employee, payload, onNext, onPrev, onPayloadChange, onAd
                     <td className="py-3 px-2">
                       <div className="w-full min-h-11 rounded border border-slate-200 bg-blue-50/40 px-3 py-2 text-left text-sm">
                         <span className="block truncate text-sm font-medium text-blue-800">
-                          {row.majorProcess || <span className="text-slate-400 italic">—</span>}
+                          {(() => { console.log("Rendering row:", row); return row.majorProcess || <span className="text-slate-400 italic">—</span>; })()}
                         </span>
+
                       </div>
                     </td>
                     {/* Read-only Process column — set from Step 2 */}

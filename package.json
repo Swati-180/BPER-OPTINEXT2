@@ -7,6 +7,7 @@
     "server"
   ],
   "scripts": {
+    "dev": "npm run dev --workspaces",
     "build": "cd client && npm run build"
   }
 }
