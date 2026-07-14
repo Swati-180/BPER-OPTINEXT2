@@ -60,7 +60,6 @@ export default function ManagerLayout({ children, user, onLogout }: ManagerLayou
         { name: 'Forms', path: `${basePath}/forms`, icon: FileText },
         { name: 'Users', path: `${basePath}/users`, icon: Users },
         { name: 'Employee Invites', path: `${basePath}/employee-invites`, icon: Mail },
-        { name: 'Admin Invites', path: `${basePath}/admin-invites`, icon: ShieldCheck },
         { name: 'WDT Analytics', path: `${basePath}/wdt-analytics`, icon: BarChart },
         { name: 'Deep Analysis', path: `${basePath}/deep-analysis`, icon: Activity },
         { name: 'Process Operations', path: `${basePath}/process-operations`, icon: Layers },

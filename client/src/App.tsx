@@ -36,7 +36,6 @@ import ProcessOperationsHub from './pages/manager/ProcessOperationsHub';
 import PersonalProfile from './pages/manager/PersonalProfile';
 import APIDebug from './pages/manager/APIDebug';
 import EmployeeInvites from './pages/manager/EmployeeInvites';
-import AdminInvites from './pages/manager/AdminInvites';
 import InviteRegistration from './pages/InviteRegistration';
 
 import Unauthorized from './pages/Unauthorized';
@@ -365,7 +364,8 @@ export default function App() {
                   <Route path="users" element={<ManagerUsers />} />
                   <Route path="forms" element={<ManagerForms />} />
                   <Route path="employee-invites" element={<EmployeeInvites />} />
-                  <Route path="*" element={<Navigate to="forms" replace />} />
+                  <Route path="dashboard" element={<Navigate to="/manager/forms" replace />} />
+                  <Route path="*" element={<Navigate to="/manager/forms" replace />} />
                 </Routes>
               </ManagerLayout>
             </ProtectedRoute>
@@ -393,11 +393,10 @@ export default function App() {
                   <Route path="api-debug" element={<APIDebug />} />
                   <Route path="my-profile" element={<PersonalProfile />} />
                   <Route path="employee-invites" element={<EmployeeInvites />} />
-                  <Route path="admin-invites" element={<AdminInvites />} />
                   <Route path="fitment-scorer" element={<DeepAnalysis />} />
                   <Route path="process-analytics" element={<ProcessOperationsHub />} />
                   <Route path="employee-360" element={<PersonalProfile />} />
-                  <Route path="*" element={<Navigate to="dashboard" replace />} />
+                  <Route path="*" element={<Navigate to="/admin/dashboard" replace />} />
                 </Routes>
               </ManagerLayout>
             </ProtectedRoute>

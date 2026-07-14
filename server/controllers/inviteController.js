@@ -1,9 +1,8 @@
 const { v4: uuidv4 } = require('uuid');
 const EmployeeInvite = require('../models/EmployeeInvite');
-const AdminInvite = require('../models/AdminInvite');
 const User = require('../models/User');
 
-const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000';
+const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3001';
 
 // ─── Email helper (gracefully disabled if SMTP not configured) ─────────────────
 async function sendInviteEmail(invite) {
@@ -84,6 +83,7 @@ const uploadInviteList = async (req, res) => {
         invalid.push({ ...row, rowNum, error: `Invalid email format: ${email}` });
         continue;
       }
+
       valid.push({ name, email, rowNum });
     }
 
@@ -249,15 +249,20 @@ const getInviteStatus = async (req, res) => {
 // ─── GET /invite/register/:token (pre-check) ──────────────────────────────────
 const getInviteByToken = async (req, res) => {
   try {
-    const invite = await EmployeeInvite.findOne({ inviteToken: req.params.token });
+    let invite = await EmployeeInvite.findOne({ inviteToken: req.params.token });
+    let role = 'employee';
+    
     if (!invite) return res.status(404).json({ message: 'Invalid or expired invite link.' });
     if (invite.status === 'registered') {
       return res.status(400).json({ message: 'This invite has already been used. Please log in.' });
     }
+    if (invite.status === 'cancelled') {
+      return res.status(400).json({ message: 'This invite has been cancelled.' });
+    }
     if (invite.expiresAt && new Date() > invite.expiresAt) {
       return res.status(400).json({ message: 'This invite link has expired. Please contact your admin for a new one.' });
     }
-    return res.json({ name: invite.name, email: invite.email });
+    return res.json({ name: invite.name, email: invite.email, role });
   } catch (err) {
     return res.status(500).json({ message: err.message });
   }
@@ -271,10 +276,15 @@ const registerViaInvite = async (req, res) => {
       return res.status(400).json({ message: 'Password must be at least 6 characters.' });
     }
 
-    const invite = await EmployeeInvite.findOne({ inviteToken: req.params.token });
+    let invite = await EmployeeInvite.findOne({ inviteToken: req.params.token });
+    let role = 'employee';
+
     if (!invite) return res.status(404).json({ message: 'Invalid or expired invite link.' });
     if (invite.status === 'registered') {
       return res.status(400).json({ message: 'This invite has already been used.' });
+    }
+    if (invite.status === 'cancelled') {
+      return res.status(400).json({ message: 'This invite has been cancelled.' });
     }
     if (invite.expiresAt && new Date() > invite.expiresAt) {
       return res.status(400).json({ message: 'This invite link has expired. Please contact your admin.' });
@@ -286,21 +296,25 @@ const registerViaInvite = async (req, res) => {
       return res.status(409).json({ message: 'An account with this email already exists. Please log in.' });
     }
 
-    // Auto-generate employee ID
-    const allUsers = await User.find({ employeeId: { $regex: /^BPER-\d+$/ } }, 'employeeId').lean();
-    let max = 100;
-    allUsers.forEach(u => {
-      const num = Number(String(u.employeeId).split('-')[1]);
-      if (Number.isFinite(num) && num > max) max = num;
-    });
-    const employeeId = `BPER-${String(max + 1).padStart(3, '0')}`;
+    let employeeId = null;
+    if (role === 'employee') {
+      // Auto-generate employee ID
+      const allUsers = await User.find({ employeeId: { $regex: /^BPER-\d+$/ } }, 'employeeId').lean();
+      let max = 100;
+      allUsers.forEach(u => {
+        const num = Number(String(u.employeeId).split('-')[1]);
+        if (Number.isFinite(num) && num > max) max = num;
+      });
+      employeeId = `BPER-${String(max + 1).padStart(3, '0')}`;
+    }
 
     await User.create({
       name: invite.name,
       email: invite.email,
       password,
-      role: 'employee',
-      employeeId,
+      role: role,
+      organization: role === 'admin' ? 'BPER' : '',
+      employeeId: employeeId || undefined,
       isActive: true,
       formAccessGranted: false
     });
@@ -315,107 +329,6 @@ const registerViaInvite = async (req, res) => {
   }
 };
 
-const listAdminInvites = async (req, res) => {
-  try {
-    const invites = await AdminInvite.find({ status: { $ne: 'cancelled' } }).sort({ createdAt: -1 });
-    return res.json(invites);
-  } catch (err) {
-    return res.status(500).json({ message: err.message });
-  }
-};
-
-const createAdminInvite = async (req, res) => {
-  try {
-    const { name, email } = req.body;
-    if (!name || !email) {
-      return res.status(400).json({ message: 'Name and email are required.' });
-    }
-
-    const normalizedEmail = String(email).trim().toLowerCase();
-    const existingUser = await User.findOne({ email: normalizedEmail });
-    if (existingUser) {
-      return res.status(409).json({ message: 'An account with that email already exists.' });
-    }
-
-    const existingInvite = await AdminInvite.findOne({ email: normalizedEmail });
-    if (existingInvite && existingInvite.status !== 'cancelled') {
-      return res.status(409).json({ message: 'An admin invite already exists for that email.' });
-    }
-
-    const token = uuidv4();
-    const inviteLink = `${FRONTEND_URL}/auth/signup?role=admin&org=${encodeURIComponent('BPER')}`;
-
-    const invite = await AdminInvite.create({
-      name: String(name).trim(),
-      email: normalizedEmail,
-      role: 'admin',
-      status: 'pending',
-      inviteLink,
-      inviteToken: token,
-      uploadedBy: req.user?.userId || null,
-      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
-    });
-
-    const result = await sendInviteEmail(invite);
-    if (result.sent) {
-      invite.status = 'sent';
-      invite.sentAt = new Date();
-      invite.errorMessage = '';
-    } else {
-      invite.status = 'failed';
-      invite.errorMessage = result.reason || 'Unknown error';
-    }
-    await invite.save();
-
-    return res.json({ message: result.sent ? 'Admin invite created and email sent.' : 'Admin invite created but email failed to send.', invite });
-  } catch (err) {
-    return res.status(500).json({ message: err.message });
-  }
-};
-
-const resendAdminInvite = async (req, res) => {
-  try {
-    const invite = await AdminInvite.findById(req.params.id);
-    if (!invite) return res.status(404).json({ message: 'Invite not found' });
-    if (invite.status === 'registered' || invite.status === 'cancelled') {
-      return res.status(400).json({ message: 'This invite cannot be resent.' });
-    }
-
-    const token = uuidv4();
-    invite.inviteToken = token;
-    invite.inviteLink = `${FRONTEND_URL}/auth/signup?role=admin&org=${encodeURIComponent('BPER')}`;
-    invite.expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
-    invite.status = 'pending';
-    invite.errorMessage = '';
-    
-    const result = await sendInviteEmail(invite);
-    if (result.sent) {
-      invite.status = 'sent';
-      invite.sentAt = new Date();
-      invite.errorMessage = '';
-    } else {
-      invite.status = 'failed';
-      invite.errorMessage = result.reason || 'Unknown error';
-    }
-    await invite.save();
-
-    return res.json({ message: result.sent ? 'Admin invite resent successfully.' : 'Admin invite link refreshed but email failed to send.', invite });
-  } catch (err) {
-    return res.status(500).json({ message: err.message });
-  }
-};
-
-const cancelAdminInvite = async (req, res) => {
-  try {
-    const invite = await AdminInvite.findById(req.params.id);
-    if (!invite) return res.status(404).json({ message: 'Invite not found' });
-    invite.status = 'cancelled';
-    await invite.save();
-    return res.json({ message: 'Admin invite cancelled.' });
-  } catch (err) {
-    return res.status(500).json({ message: err.message });
-  }
-};
 
 module.exports = {
   uploadInviteList,
@@ -424,9 +337,5 @@ module.exports = {
   resendInvite,
   getInviteStatus,
   getInviteByToken,
-  registerViaInvite,
-  listAdminInvites,
-  createAdminInvite,
-  resendAdminInvite,
-  cancelAdminInvite
+  registerViaInvite
 };

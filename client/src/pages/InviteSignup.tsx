@@ -16,11 +16,8 @@ export default function InviteSignupPage({ onLogin }: InviteSignupProps) {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
 
+  // Normal signup flow - role is always manager on frontend (backend upgrades to admin if whitelisted)
   const roleParam = searchParams.get('role')?.trim().toLowerCase();
-  const orgParam = searchParams.get('org')?.trim() ?? '';
-  const isEmployeeInvite = roleParam === 'employee' && orgParam.length > 0;
-  const isAdminInvite = roleParam === 'admin';
-  const isBlockedEmployeeSignup = roleParam === 'employee' && !orgParam;
 
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
@@ -35,10 +32,6 @@ export default function InviteSignupPage({ onLogin }: InviteSignupProps) {
     event.preventDefault();
     setError('');
 
-    if (isBlockedEmployeeSignup) {
-      setError('Employee signup is allowed only via invite URL with organization details.');
-      return;
-    }
 
     if (!fullName.trim() || !email.trim()) {
       setError('Full name and email are required.');
@@ -75,7 +68,7 @@ export default function InviteSignupPage({ onLogin }: InviteSignupProps) {
           name: fullName.trim(),
           email: email.trim().toLowerCase(),
           password,
-          role: isEmployeeInvite ? 'employee' : isAdminInvite ? 'admin' : 'manager',
+          role: 'manager',
           organization: organization.trim(),
           department: department.trim(),
         })
@@ -93,9 +86,9 @@ export default function InviteSignupPage({ onLogin }: InviteSignupProps) {
       const nextUser: AppAuthUser = {
         name: fullName.trim(),
         email: email.trim().toLowerCase(),
-        role: (isEmployeeInvite ? 'employee' : isAdminInvite ? 'admin' : 'manager'),
+        role: 'manager',
         organization: organization.trim(),
-        source: isEmployeeInvite ? 'invite' : 'normal',
+        source: 'normal',
       };
 
       if (typeof window !== 'undefined') {
@@ -117,26 +110,6 @@ export default function InviteSignupPage({ onLogin }: InviteSignupProps) {
     }
   };
 
-  if (isBlockedEmployeeSignup) {
-    return (
-      <div className="min-h-screen bg-[#EAF2FB] px-4 py-10 flex items-center justify-center">
-        <div className="w-full max-w-xl rounded-3xl border border-[#D9E4F2] bg-white p-6 shadow-[0_8px_24px_rgba(16,42,80,0.08)]">
-          <div className="flex items-center gap-3 text-[#1E5EAB]">
-            <MailCheck className="h-5 w-5" />
-            <p className="text-sm font-bold uppercase tracking-[0.18em]">Sign Up</p>
-          </div>
-          <h1 className="mt-3 text-3xl font-bold text-[#102846]">Invite link required</h1>
-          <p className="mt-2 text-sm text-[#607A9A]">
-            Employee signup is available only through an invite URL that includes your organization.
-          </p>
-          <Button className="mt-5" onClick={() => navigate('/auth/login')}>
-            Back to login
-            <ArrowRight className="ml-2 h-4 w-4" />
-          </Button>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-[#EAF2FB] px-4 py-10 flex items-center justify-center">
@@ -148,27 +121,25 @@ export default function InviteSignupPage({ onLogin }: InviteSignupProps) {
             className="mx-auto mb-3 h-14 w-auto"
           />
           <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-[#5E7EA6]">BPER Platform</p>
-          <h1 className="mt-2 text-4xl font-bold tracking-tight text-[#102846]">{isEmployeeInvite ? 'Complete your employee signup' : isAdminInvite ? 'Create your admin account' : 'Create your manager account'}</h1>
+          <h1 className="mt-2 text-4xl font-bold tracking-tight text-[#102846]">Create your account</h1>
           <p className="mt-2 text-sm text-[#607A9A]">
-            {isEmployeeInvite
-              ? 'Your invite URL has prefilled your role and organization for secure onboarding.'
-              : isAdminInvite
-                ? 'Sign up to access full admin workflows and portal management.'
-                : 'Sign up to access manager workflows and portal navigation.'}
+            Sign up to access manager workflows and portal navigation.
           </p>
+          
+          <Alert className="mt-4 border-[#165BAA]/20 bg-[#165BAA]/5 text-[#102846] text-left">
+              <AlertCircle className="h-4 w-4 text-[#165BAA]" />
+              <AlertDescription className="text-xs ml-2">
+                <strong>Note:</strong> Employee accounts are created through invitations. If you're joining as an employee, please contact your administrator for an invite.
+              </AlertDescription>
+          </Alert>
         </div>
 
         <div className="rounded-3xl border border-[#D9E4F2] bg-white p-6 shadow-[0_8px_24px_rgba(16,42,80,0.08)]">
           <div className="mb-5 rounded-2xl border border-[#DCE6F3] bg-[#F6FAFF] p-4 text-sm text-[#4E6787]">
             <p className="font-semibold text-[#102846]">Account role</p>
-            <p className="mt-1 capitalize">{isEmployeeInvite ? 'employee' : isAdminInvite ? 'admin' : 'manager'}</p>
+            <p className="mt-1 capitalize">manager</p>
             <p className="mt-4 font-semibold text-[#102846]">Organization</p>
             <p className="mt-1">{organization || 'Set during signup'}</p>
-            {isEmployeeInvite && (
-              <p className="mt-4 rounded-xl bg-[#E8F0FF] p-3 text-xs text-[#3656A8]">
-                This is an invited employee signup link. Your account will be created as an employee user for {organization}.
-              </p>
-            )}
           </div>
 
           {error && (
@@ -254,7 +225,7 @@ export default function InviteSignupPage({ onLogin }: InviteSignupProps) {
               <Button type="submit" disabled={isLoading} className="bg-[#165BAA] hover:bg-[#124B8D]">
                 <>
                   {isLoading && <Loader2 className="mr-2 h-4 w-4 auth-spinner" />}
-                  {isEmployeeInvite ? 'Continue to Employee Portal' : isAdminInvite ? 'Continue to Admin Portal' : 'Continue to Portal Selection'}
+                  Create Account
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </>
               </Button>

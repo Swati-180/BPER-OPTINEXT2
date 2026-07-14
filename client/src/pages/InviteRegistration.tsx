@@ -12,6 +12,7 @@ export default function InviteRegistration() {
   const [stage, setStage] = useState<Stage>('loading');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
+  const [role, setRole] = useState('employee');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [showPass, setShowPass] = useState(false);
@@ -34,6 +35,7 @@ export default function InviteRegistration() {
         }
         setName(data.name || '');
         setEmail(data.email || '');
+        setRole(data.role || 'employee');
         setStage('ready');
       } catch (e) {
         setMessage('Unable to verify invite link. Please try again.');
@@ -90,7 +92,7 @@ export default function InviteRegistration() {
         <div className="rounded-2xl border border-slate-200 bg-white shadow-xl overflow-hidden">
           <div className="bg-gradient-to-r from-blue-700 to-blue-600 px-8 py-6">
             <h1 className="text-2xl font-bold text-white tracking-tight">Complete Registration</h1>
-            <p className="text-blue-200 text-sm mt-1">BPER Platform — Employee Account Setup</p>
+            <p className="text-blue-200 text-sm mt-1">BPER Platform — {role.charAt(0).toUpperCase() + role.slice(1)} Account Setup</p>
           </div>
 
           <div className="px-8 py-7 space-y-5">
