@@ -284,13 +284,21 @@ export default function DeepAnalysis() {
   // Load FTE
   useEffect(() => {
     async function loadFte() {
-      setFteLoading(true);
-      setFteError(null);
+      const isInitial = !fteReport;
+      if (isInitial) {
+        setFteLoading(true);
+        setFteError(null);
+      }
       try {
         const data = await getFteAnalysisReport(departmentFilter || undefined);
         setFteReport(data);
+        if (isInitial) setFteError(null);
       } catch (err) {
-        setFteError((err as any)?.message || 'Failed to load FTE analysis.');
+        if (isInitial) {
+          setFteError((err as any)?.message || 'Failed to load FTE analysis.');
+        } else {
+          console.warn('FTE background refresh failed (swallowed):', (err as any)?.message);
+        }
       } finally {
         setFteLoading(false);
       }
@@ -301,13 +309,21 @@ export default function DeepAnalysis() {
   // Load Consolidation
   useEffect(() => {
     async function loadConsolidation() {
-      setConsolidationLoading(true);
-      setConsolidationError(null);
+      const isInitial = !consolidationReport;
+      if (isInitial) {
+        setConsolidationLoading(true);
+        setConsolidationError(null);
+      }
       try {
         const data = await getConsolidationAnalysisReport(departmentFilter || undefined);
         setConsolidationReport(data);
+        if (isInitial) setConsolidationError(null);
       } catch (err) {
-        setConsolidationError((err as any)?.message || 'Failed to load consolidation analysis.');
+        if (isInitial) {
+          setConsolidationError((err as any)?.message || 'Failed to load consolidation analysis.');
+        } else {
+          console.warn('Consolidation background refresh failed (swallowed):', (err as any)?.message);
+        }
       } finally {
         setConsolidationLoading(false);
       }
@@ -318,13 +334,21 @@ export default function DeepAnalysis() {
   // Load Fitment
   useEffect(() => {
     async function loadFitment() {
-      setFitmentLoading(true);
-      setFitmentError(null);
+      const isInitial = !fitmentReport;
+      if (isInitial) {
+        setFitmentLoading(true);
+        setFitmentError(null);
+      }
       try {
         const data = await getFitmentAnalysisReport();
         setFitmentReport(data);
+        if (isInitial) setFitmentError(null);
       } catch (err) {
-        setFitmentError((err as any)?.message || 'Failed to load fitment analysis.');
+        if (isInitial) {
+          setFitmentError((err as any)?.message || 'Failed to load fitment analysis.');
+        } else {
+          console.warn('Fitment background refresh failed (swallowed):', (err as any)?.message);
+        }
       } finally {
         setFitmentLoading(false);
       }
@@ -335,13 +359,21 @@ export default function DeepAnalysis() {
   // Load Utilization
   useEffect(() => {
     async function loadUtilization() {
-      setUtilizationLoading(true);
-      setUtilizationError(null);
+      const isInitial = !utilizationReport;
+      if (isInitial) {
+        setUtilizationLoading(true);
+        setUtilizationError(null);
+      }
       try {
         const data = await getUtilizationAnalysisReport(departmentFilter || undefined);
         setUtilizationReport(data);
+        if (isInitial) setUtilizationError(null);
       } catch (err) {
-        setUtilizationError((err as any)?.message || 'Failed to load utilization analysis.');
+        if (isInitial) {
+          setUtilizationError((err as any)?.message || 'Failed to load utilization analysis.');
+        } else {
+          console.warn('Utilization background refresh failed (swallowed):', (err as any)?.message);
+        }
       } finally {
         setUtilizationLoading(false);
       }
@@ -373,7 +405,7 @@ export default function DeepAnalysis() {
     };
     const refreshInterval = window.setInterval(() => {
       refreshOnDataUpdate();
-    }, 30000);
+    }, 120_000);
     window.addEventListener('bper:data-updated', refreshOnDataUpdate);
     return () => {
       clearInterval(refreshInterval);

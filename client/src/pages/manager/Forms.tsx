@@ -47,7 +47,7 @@ export default function FormsPage() {
 	const [allSubmissions, setAllSubmissions] = useState<BperSubmissionRecord[]>([]);
 	const [isLoading, setIsLoading] = useState(true);
 	const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
-	const [reviewStatus, setReviewStatus] = useState<'Approved' | 'Changes Requested' | 'Grant Edit'>('Approved');
+	const [reviewStatus, setReviewStatus] = useState<'Approved' | 'Changes Requested' | 'Recall'>('Approved');
 	const [reviewComment, setReviewComment] = useState('');
 
 	const [isMutating, setIsMutating] = useState(false);
@@ -187,13 +187,13 @@ export default function FormsPage() {
 		}
 	}, [canReviewSelected]);
 
-	function openReviewModal(status: 'Approved' | 'Changes Requested' | 'Grant Edit') {
+	function openReviewModal(status: 'Approved' | 'Changes Requested' | 'Recall') {
 		setReviewStatus(status);
 		// Pre-fill with a summary of flags if any
 		if (status === 'Changes Requested' && flaggedCount > 0) {
 			const summary = selectedFlags.map(f => `Row ${f.rowIndex + 1}: ${f.note}`).join('\n');
 			setReviewComment(`Please address the following items:\n${summary}`);
-		} else if (status === 'Grant Edit') {
+		} else if (status === 'Recall') {
 			setReviewComment('Edit access is granted. Please finish updating your submission.');
 		} else {
 			setReviewComment('');
@@ -487,10 +487,10 @@ export default function FormsPage() {
 												<div className="flex flex-wrap items-center justify-end gap-2.5">
 													<button
 														type="button"
-														onClick={() => openReviewModal('Grant Edit')}
+														onClick={() => openReviewModal('Recall')}
 														className="rounded-xl border border-[#CFDBEB] bg-white px-4 py-2.5 text-sm font-semibold text-[#374F70] hover:bg-[#F7FAFF]"
 													>
-														Grant Edit
+														Recall
 													</button>
 													<button
 														type="button"
@@ -512,10 +512,10 @@ export default function FormsPage() {
 												<div className="flex flex-wrap items-center justify-end gap-2.5">
 													<button
 														type="button"
-														onClick={() => openReviewModal('Grant Edit')}
+														onClick={() => openReviewModal('Recall')}
 														className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-sm font-semibold text-amber-700 hover:bg-amber-100"
 													>
-														Unlock / Grant Edit
+														Unlock / Recall
 													</button>
 												</div>
 											) : null}
@@ -542,7 +542,7 @@ export default function FormsPage() {
 						</div>
 						<div className="p-6">
 							<p className="text-sm text-[#4D6380]">
-								You are about to {reviewStatus === 'Approved' ? 'approve' : reviewStatus === 'Changes Requested' ? 'request changes for' : 'grant edit access to'} <strong>{selectedRecord?.employee.name}'s</strong> submission.
+								You are about to {reviewStatus === 'Approved' ? 'approve' : reviewStatus === 'Changes Requested' ? 'request changes for' : 'Recall access to'} <strong>{selectedRecord?.employee.name}'s</strong> submission.
 							</p>
 							<div className="mt-4">
 								<label className="text-[11px] font-bold uppercase tracking-[0.14em] text-[#8FA4BE]">
@@ -567,7 +567,7 @@ export default function FormsPage() {
 									disabled={isMutating}
 									className={`flex-1 rounded-xl py-2.5 text-sm font-semibold text-white ${
 										isMutating ? 'opacity-70 cursor-not-allowed bg-slate-500 hover:bg-slate-500' :
-										reviewStatus === 'Approved' ? 'bg-[#031F45] hover:bg-[#062B5F]' : reviewStatus === 'Grant Edit' ? 'bg-[#D98326] hover:bg-[#C97218]' : 'bg-[#E92D2D] hover:bg-[#CF2424]'
+										reviewStatus === 'Approved' ? 'bg-[#031F45] hover:bg-[#062B5F]' : reviewStatus === 'Recall' ? 'bg-[#D98326] hover:bg-[#C97218]' : 'bg-[#E92D2D] hover:bg-[#CF2424]'
 									}`}
 								>
 									{`Confirm ${reviewStatus}`}

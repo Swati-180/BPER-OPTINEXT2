@@ -68,21 +68,27 @@ export default function FTEAnalysisPage() {
   const [isExporting, setIsExporting] = useState(false);
   const [selectedActivity, setSelectedActivity] = useState<any | null>(null);
 
-  async function loadReport(department: DepartmentFilter) {
-    setIsLoading(true);
-    setError(null);
+  async function loadReport(department: DepartmentFilter, blocking = false) {
+    if (blocking || !report) {
+      setIsLoading(true);
+    }
+    if (blocking) setError(null);
     try {
       const data = await getFteAnalysisReport(department);
       setReport(data);
     } catch (err: any) {
-      setError(err?.message || 'Failed to load FTE analysis.');
+      if (blocking || !report) {
+        setError(err?.message || 'Failed to load FTE analysis.');
+      } else {
+        console.warn('FTE background refresh failed (swallowed):', err?.message);
+      }
     } finally {
       setIsLoading(false);
     }
   }
 
   useEffect(() => {
-    loadReport(departmentFilter);
+    loadReport(departmentFilter, true);
   }, [departmentFilter]);
 
   useEffect(() => {
@@ -92,7 +98,7 @@ export default function FTEAnalysisPage() {
 
     const refreshInterval = window.setInterval(() => {
       loadReport(departmentFilter);
-    }, 30000);
+    }, 120_000);
 
     window.addEventListener('bper:data-updated', refreshOnDataUpdate as EventListener);
 

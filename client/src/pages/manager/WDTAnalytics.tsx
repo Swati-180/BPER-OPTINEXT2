@@ -61,21 +61,27 @@ export default function WDTAnalyticsPage() {
   const [error, setError] = useState<string | null>(null);
   const [isDownloading, setIsDownloading] = useState(false);
 
-  async function loadReport(department: DepartmentFilter) {
-    setIsLoading(true);
-    setError(null);
+  async function loadReport(department: DepartmentFilter, blocking = false) {
+    if (blocking || !report) {
+      setIsLoading(true);
+    }
+    if (blocking) setError(null);
     try {
       const data = await getUtilizationReport(department);
       setReport(data);
     } catch (err: any) {
-      setError(err?.message || 'Failed to load utilization report.');
+      if (blocking || !report) {
+        setError(err?.message || 'Failed to load utilization report.');
+      } else {
+        console.warn('WDT background refresh failed (swallowed):', err?.message);
+      }
     } finally {
       setIsLoading(false);
     }
   }
 
   useEffect(() => {
-    loadReport(departmentFilter);
+    loadReport(departmentFilter, true);
   }, [departmentFilter]);
 
   useEffect(() => {
@@ -85,7 +91,7 @@ export default function WDTAnalyticsPage() {
 
     const refreshInterval = window.setInterval(() => {
       loadReport(departmentFilter);
-    }, 30000);
+    }, 120_000);
 
     window.addEventListener('bper:data-updated', refreshOnDataUpdate as EventListener);
 

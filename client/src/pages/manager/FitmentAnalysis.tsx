@@ -70,21 +70,27 @@ export default function FitmentAnalysisPage() {
   const [error, setError] = useState<string | null>(null);
   const [isExporting, setIsExporting] = useState(false);
 
-  async function loadReport() {
-    setIsLoading(true);
-    setError(null);
+  async function loadReport(blocking = false) {
+    if (blocking || !report) {
+      setIsLoading(true);
+    }
+    if (blocking) setError(null);
     try {
       const data = await getFitmentAnalysisReport();
       setReport(data);
     } catch (err: any) {
-      setError(err?.message || 'Failed to load fitment analysis.');
+      if (blocking || !report) {
+        setError(err?.message || 'Failed to load fitment analysis.');
+      } else {
+        console.warn('Fitment background refresh failed (swallowed):', err?.message);
+      }
     } finally {
       setIsLoading(false);
     }
   }
 
   useEffect(() => {
-    loadReport();
+    loadReport(true);
   }, []);
 
   useEffect(() => {
@@ -94,7 +100,7 @@ export default function FitmentAnalysisPage() {
 
     const refreshInterval = window.setInterval(() => {
       loadReport();
-    }, 30000);
+    }, 120_000);
 
     window.addEventListener('bper:data-updated', refreshOnDataUpdate as EventListener);
 

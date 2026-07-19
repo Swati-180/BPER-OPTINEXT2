@@ -6,6 +6,22 @@
 const fs = require('fs');
 const path = require('path');
 
+function isNumericLabel(value) {
+  if (typeof value !== 'string') return false;
+  return /^\d+(\.\d+)*$/.test(value.trim());
+}
+
+function resolveLabel(item) {
+  const name = (item?.name || '').trim();
+  const id = (item?.id || '').trim();
+
+  if (name && !isNumericLabel(name)) return name;
+  if (id && !isNumericLabel(id)) return id;
+  if (name) return name;
+  if (id) return id;
+  return 'Unknown';
+}
+
 /**
  * Read a JSON file from the project root
  */
@@ -36,9 +52,9 @@ function buildTaxonomyFromSixBySix() {
     if (dept.processes && Array.isArray(dept.processes)) {
       dept.processes.forEach(process => {
         const record = {
-          majorProcess: process.name || process.id || 'Unknown',
-          process: process.name || 'Default',
-          subProcesses: (process.activities || []).map(activity => activity.name || activity.id || ''),
+          majorProcess: resolveLabel(process) || 'Unknown',
+          process: resolveLabel(process) || 'Default',
+          subProcesses: (process.activities || []).map(activity => resolveLabel(activity) || ''),
           department: deptId,
           tags: [],
           isActive: true,
@@ -179,11 +195,13 @@ function buildProcessAnalysisRecords() {
         dept.processes.forEach(process => {
           if (process.activities) {
             process.activities.forEach(activity => {
+              const resolvedActivityName = resolveLabel(activity);
+              const resolvedProcessName = resolveLabel(process);
               const record = {
-                processName: activity.name || 'Unknown',
-                activityName: activity.name || 'Unknown',
+                processName: resolvedActivityName,
+                activityName: resolvedActivityName,
                 department: dept.id || dept.name,
-                tower: process.name || 'Unknown',
+                tower: resolvedProcessName,
                 consolidate: activity.consolidate || false,
                 automationPotential: 'Not Assessed',
                 status: 'Active',

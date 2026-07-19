@@ -13,7 +13,8 @@ import {
   ShieldCheck,
   BarChart,
   Activity,
-  Layers
+  Layers,
+  Grid3X3
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { motion } from 'motion/react';
@@ -61,6 +62,7 @@ export default function ManagerLayout({ children, user, onLogout }: ManagerLayou
         { name: 'Users', path: `${basePath}/users`, icon: Users },
         { name: 'Employee Invites', path: `${basePath}/employee-invites`, icon: Mail },
         { name: 'WDT Analytics', path: `${basePath}/wdt-analytics`, icon: BarChart },
+        { name: '6x6 Analysis', path: `${basePath}/6x6-analysis`, icon: Grid3X3 },
         { name: 'Deep Analysis', path: `${basePath}/deep-analysis`, icon: Activity },
         { name: 'Process Operations', path: `${basePath}/process-operations`, icon: Layers },
       ]

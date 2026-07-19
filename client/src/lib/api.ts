@@ -5,8 +5,20 @@
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 import * as XLSX from 'xlsx';
+import { clearAuthUser } from './authStorage';
 
 const BASE_URL = `${API_BASE_URL}/api`;
+
+// Debounce guard: prevent multiple rapid auth clears from concurrent 401 responses
+let _lastAuthClearTime = 0;
+const AUTH_CLEAR_DEBOUNCE_MS = 3000;
+
+function debouncedClearAuth() {
+  const now = Date.now();
+  if (now - _lastAuthClearTime < AUTH_CLEAR_DEBOUNCE_MS) return;
+  _lastAuthClearTime = now;
+  clearAuthUser();
+}
 
 export async function apiFetch(endpoint: string, options: RequestInit = {}) {
   const token = localStorage.getItem('bper.auth.token');
@@ -20,20 +32,21 @@ export async function apiFetch(endpoint: string, options: RequestInit = {}) {
   try {
     const response = await fetch(`${BASE_URL}${endpoint}`, { ...options, headers });
     
-    // Global Security Audit: Handle Expired Tokens
-    if (response.status === 401) {
-      console.warn('Session expired or unauthorized. Clearing session and redirecting.');
-      localStorage.removeItem('bper.auth.token');
-      localStorage.removeItem('bper.auth.user');
-      
-      if (typeof window !== 'undefined') {
-        window.location.href = '/auth/login'; 
-      }
+    // Handle 401 only when the user had a token — prevents spurious logouts
+    // from background polling or race conditions during server restarts.
+    if (response.status === 401 && token) {
+      console.warn(`API 401 on ${endpoint}: Session expired or unauthorized.`);
+      debouncedClearAuth();
       throw new Error('Unauthorized');
     }
 
     return response;
-  } catch (error) {
+  } catch (error: any) {
+    // Network errors (ECONNREFUSED, timeouts) should NOT clear auth.
+    // Only re-throw so callers can handle them gracefully.
+    if (error?.message === 'Unauthorized') {
+      throw error;
+    }
     console.error(`API Fetch Error [${endpoint}]:`, error);
     throw error;
   }

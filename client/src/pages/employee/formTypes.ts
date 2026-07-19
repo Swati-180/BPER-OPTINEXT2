@@ -31,6 +31,7 @@ export interface WdtActivityRow {
   subProcess: string;
   frequency: string;
   volumesMonthly: number;
+  volumesPerFrequency?: number;  // UI-only field for per-frequency volume entry
   timePerTransactionMinutes: number;
   timeTakenHoursPerMonth: number;
   applicationsUsed: string;
