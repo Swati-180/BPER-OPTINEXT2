@@ -5,6 +5,7 @@ import * as XLSX from 'xlsx';
 import { apiFetch } from '../../lib/api';
 import { getInviteSignupLink, loadAuthUser } from '../../lib/authStorage';
 import { TableLoadingRow } from '../../components/PortalSkeletons';
+import { useNavigate } from 'react-router-dom';
 
 type UserRole = 'employee' | 'manager' | 'admin';
 type UserStatus = 'Active' | 'Inactive';
@@ -57,6 +58,7 @@ const initialCreateUserForm: CreateUserFormState = {
 };
 
 export default function UsersPage() {
+	const navigate = useNavigate();
 	const [userRows, setUserRows] = useState<UserRow[]>([]);
 	const [isLoading, setIsLoading] = useState(true);
 	const [query, setQuery] = useState('');
@@ -379,7 +381,7 @@ export default function UsersPage() {
 						</div>
 						<button
 							type="button"
-							onClick={openInviteModal}
+							onClick={() => navigate('../employee-invites')}
 							className="inline-flex items-center gap-2 rounded-lg border border-[#BFD3EA] bg-[#F4F8FF] px-3.5 py-2 text-xs font-semibold text-[#1E5EAB] transition-all hover:bg-[#EAF2FF]"
 						>
 							<MailPlus className="h-3.5 w-3.5" />
