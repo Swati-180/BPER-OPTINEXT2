@@ -17,7 +17,7 @@
 
 const nodemailer = require('nodemailer');
 
-const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
+const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3001';
 
 // ─── Transporter (created once, reused) ──────────────────────────────────────
 
@@ -34,11 +34,19 @@ function getTransporter() {
 
   if (!_transporter) {
     _transporter = nodemailer.createTransport({
-      service: 'gmail',          // nodemailer knows Gmail's SMTP settings automatically
-      auth: { user, pass },      // user = your Gmail, pass = App Password (NOT your Gmail password)
+      host: 'smtp.gmail.com',
+      port: 587,
+      secure: false,
+      auth: { user, pass },
     });
   }
   return _transporter;
+}
+
+function isEmailConfigured() {
+  const user = process.env.GMAIL_USER;
+  const pass = process.env.GMAIL_APP_PASSWORD?.replace(/\s/g, '');
+  return Boolean(user && pass);
 }
 
 // ─── Core send ────────────────────────────────────────────────────────────────
@@ -179,4 +187,40 @@ async function sendResubmissionEmail(employee, referenceId) {
   });
 }
 
-module.exports = { sendSubmissionConfirmationEmail, sendReviewNotificationEmail, sendResubmissionEmail };
+/**
+ * Sent when a manager invites a new employee to register.
+ */
+async function sendInviteEmail(invite) {
+  if (!invite?.email) return { sent: false, reason: 'Invite email is missing' };
+  if (!isEmailConfigured()) return { sent: false, reason: 'Email service not configured' };
+
+  try {
+    await sendEmail({
+      to: invite.email,
+      subject: 'You are invited to join BPER Platform',
+      html: baseTemplate(`
+        <p style="margin:0 0 4px;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.12em;">Employee Onboarding</p>
+        <h2 style="margin:0 0 16px;font-size:24px;font-weight:800;color:#0d2445;">Welcome to BPER Platform</h2>
+        <p style="font-size:15px;color:#374151;line-height:1.65;">Hi <strong>${invite.name || 'there'}</strong>,<br><br>
+          You've been invited to register on the BPER Platform by your administrator.</p>
+        <p style="font-size:14px;color:#4b5563;line-height:1.65;margin-bottom:24px;">
+          Click the button below to complete your registration. This link expires in <strong>7 days</strong>.
+        </p>
+        ${cta(invite.inviteLink, 'Complete Registration')}
+        <p style="font-size:12px;color:#94a3b8;margin-top:24px;">Or copy this link: <a href="${invite.inviteLink}" style="color:#1a56a4;">${invite.inviteLink}</a></p>
+        <p style="font-size:12px;color:#94a3b8;margin-top:12px;">If you did not expect this email, you can safely ignore it.</p>
+      `),
+    });
+    return { sent: true };
+  } catch (err) {
+    return { sent: false, reason: err.message };
+  }
+}
+
+module.exports = {
+  isEmailConfigured,
+  sendSubmissionConfirmationEmail,
+  sendReviewNotificationEmail,
+  sendResubmissionEmail,
+  sendInviteEmail,
+};

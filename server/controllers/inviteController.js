@@ -1,57 +1,9 @@
 const { v4: uuidv4 } = require('uuid');
 const EmployeeInvite = require('../models/EmployeeInvite');
 const User = require('../models/User');
+const { isEmailConfigured, sendInviteEmail } = require('../utils/emailService');
 
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3001';
-
-// ─── Email helper (gracefully disabled if SMTP not configured) ─────────────────
-async function sendInviteEmail(invite) {
-  const emailHost = process.env.EMAIL_HOST || process.env.SMTP_HOST;
-  const emailUser = process.env.EMAIL_USER || process.env.SMTP_USER;
-  const emailPass = process.env.EMAIL_PASS || process.env.SMTP_PASS;
-  const emailPort = process.env.EMAIL_PORT || process.env.SMTP_PORT || 587;
-
-  if (!emailHost || !emailUser || !emailPass) {
-    return { sent: false, reason: 'Email service not configured' };
-  }
-
-  try {
-    const nodemailer = require('nodemailer');
-    const transporter = nodemailer.createTransport({
-      host: emailHost,
-      port: Number(emailPort),
-      secure: false,
-      auth: { user: emailUser, pass: emailPass }
-    });
-
-    const emailFrom = process.env.EMAIL_FROM || `BPER Platform <${emailUser}>`;
-
-    await transporter.sendMail({
-      from: emailFrom,
-      to: invite.email,
-      subject: 'You are invited to join BPER Platform',
-      html: `
-        <div style="font-family:Arial,sans-serif;max-width:480px;margin:auto;padding:32px 24px;background:#f8fbff;border-radius:12px;border:1px solid #e2e8f0">
-          <h2 style="color:#1A5BA7;margin-bottom:8px">Welcome to BPER Platform</h2>
-          <p style="color:#334155;font-size:15px">Hi ${invite.name},</p>
-          <p style="color:#334155;font-size:15px">You've been invited to register on the BPER Platform by your administrator.</p>
-          <p style="color:#334155;font-size:15px">Click the button below to complete your registration. This link expires in <strong>7 days</strong>.</p>
-          <div style="text-align:center;margin:28px 0">
-            <a href="${invite.inviteLink}" style="background:#1A5BA7;color:#fff;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:bold;font-size:15px">
-              Complete Registration
-            </a>
-          </div>
-          <p style="color:#94a3b8;font-size:12px;margin-top:24px">Or copy this link: <a href="${invite.inviteLink}" style="color:#1A5BA7">${invite.inviteLink}</a></p>
-          <p style="color:#94a3b8;font-size:12px">If you did not expect this email, you can safely ignore it.</p>
-        </div>
-      `
-    });
-
-    return { sent: true };
-  } catch (err) {
-    return { sent: false, reason: err.message };
-  }
-}
 
 // ─── POST /invite/upload ───────────────────────────────────────────────────────
 // Validates a list of { name, email } rows and returns preview (valid/invalid)
@@ -161,7 +113,7 @@ const sendInvites = async (req, res) => {
 
     let sent = 0;
     let failed = 0;
-    const emailNotConfigured = !(process.env.EMAIL_HOST || process.env.SMTP_HOST) || !(process.env.EMAIL_USER || process.env.SMTP_USER);
+    const emailNotConfigured = !isEmailConfigured();
 
     for (const invite of pending) {
       const result = await sendInviteEmail(invite);
