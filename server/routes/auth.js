@@ -14,6 +14,7 @@ const {
 	uploadUsers,
 } = require('../controllers/authController');
 const verifyToken = require('../middleware/verifyToken');
+const requireRoles = require('../middleware/roleAccess');
 
 router.post('/signup', register);
 router.post('/register', register);
@@ -22,10 +23,10 @@ router.post('/login', login);
 router.get('/me', verifyToken, getMe);
 router.patch('/me', verifyToken, updateMe);
 router.post('/me/change-password', verifyToken, changeMyPassword);
-router.get('/users', verifyToken, getAllUsers);
-router.patch('/users/:id', verifyToken, updateUser);
-router.post('/users/:id/reset-password', verifyToken, resetUserPassword);
-router.patch('/users/bulk', verifyToken, bulkUpdateUsers);
-router.post('/users/upload', verifyToken, uploadUsers);
+router.get('/users', verifyToken, requireRoles(['manager', 'admin']), getAllUsers);
+router.patch('/users/bulk', verifyToken, requireRoles(['manager', 'admin']), bulkUpdateUsers);
+router.post('/users/upload', verifyToken, requireRoles(['manager', 'admin']), uploadUsers);
+router.patch('/users/:id', verifyToken, requireRoles(['manager', 'admin']), updateUser);
+router.post('/users/:id/reset-password', verifyToken, requireRoles(['manager', 'admin']), resetUserPassword);
 
 module.exports = router;

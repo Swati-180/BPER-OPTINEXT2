@@ -14,6 +14,7 @@ const reportRoutes = require('./routes/reports');
 const activitiesRoutes = require('./routes/activities');
 const exportRoutes = require('./routes/export');
 const inviteRoutes = require('./routes/invite');
+const adminWhitelistRoutes = require('./routes/adminWhitelist');
 
 const app = express();
 
@@ -46,6 +47,7 @@ app.use('/api/reports', reportRoutes);
 app.use('/api/activities', activitiesRoutes);
 app.use('/api/export', exportRoutes);
 app.use('/api/invite', inviteRoutes);
+app.use('/api/admin-whitelist', adminWhitelistRoutes);
 
 async function startServer() {
   let mongoUri = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/bper';

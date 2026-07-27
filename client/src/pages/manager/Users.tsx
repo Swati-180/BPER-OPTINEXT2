@@ -5,6 +5,7 @@ import * as XLSX from 'xlsx';
 import { apiFetch } from '../../lib/api';
 import { getInviteSignupLink, loadAuthUser } from '../../lib/authStorage';
 import { TableLoadingRow } from '../../components/PortalSkeletons';
+import { useNavigate } from 'react-router-dom';
 
 type UserRole = 'employee' | 'manager' | 'admin';
 type UserStatus = 'Active' | 'Inactive';
@@ -57,6 +58,7 @@ const initialCreateUserForm: CreateUserFormState = {
 };
 
 export default function UsersPage() {
+	const navigate = useNavigate();
 	const [userRows, setUserRows] = useState<UserRow[]>([]);
 	const [isLoading, setIsLoading] = useState(true);
 	const [query, setQuery] = useState('');
@@ -76,6 +78,7 @@ export default function UsersPage() {
 	const [isUploading, setIsUploading] = useState(false);
 	const [uploadResult, setUploadResult] = useState<{ added: number, updated: number, errors: string[] } | null>(null);
 	const modalRoot = typeof document !== 'undefined' ? document.body : null;
+	const currentUser = loadAuthUser();
 
 	const fetchUsers = async () => {
 		setIsLoading(true);
@@ -90,7 +93,7 @@ export default function UsersPage() {
 					department: u.department || 'Unassigned',
 					band: u.band || 'B1',
 					designation: u.designation || 'Employee',
-					role: (u.role.charAt(0).toUpperCase() + u.role.slice(1)) as UserRole,
+					role: (u.role || 'employee').toLowerCase() as UserRole,
 					status: u.isActive ? 'Active' : 'Inactive',
 					maxMonthlyHours: u.maxMonthlyHours ?? 160,
 					_id: u._id,
@@ -378,7 +381,7 @@ export default function UsersPage() {
 						</div>
 						<button
 							type="button"
-							onClick={openInviteModal}
+							onClick={() => navigate('../employee-invites')}
 							className="inline-flex items-center gap-2 rounded-lg border border-[#BFD3EA] bg-[#F4F8FF] px-3.5 py-2 text-xs font-semibold text-[#1E5EAB] transition-all hover:bg-[#EAF2FF]"
 						>
 							<MailPlus className="h-3.5 w-3.5" />
@@ -508,8 +511,8 @@ export default function UsersPage() {
 												</span>
 											</td>
 											<td className="px-4 py-3">
-												<span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold ${user.role === 'Manager' ? 'border-[#BCD3EF] bg-[#E8F1FF] text-[#235BA7]' : 'border-[#D6DEE9] bg-[#F4F7FB] text-[#5E718A]'}`}>
-													{user.role}
+												<span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold ${user.role === 'manager' ? 'border-[#BCD3EF] bg-[#E8F1FF] text-[#235BA7]' : 'border-[#D6DEE9] bg-[#F4F7FB] text-[#5E718A]'}`}>
+													{user.role.charAt(0).toUpperCase() + user.role.slice(1)}
 												</span>
 											</td>
 											<td className="px-5 py-3 text-sm text-[#6A82A0]">{user.status}</td>
@@ -810,7 +813,7 @@ export default function UsersPage() {
 
 									<label className="md:col-span-2 space-y-1.5">
 										<span className="text-[11px] font-bold uppercase tracking-[0.14em] text-[#6A809E]">Role</span>
-										<select value={editingUser.role} onChange={(e) => setEditingUser(prev => prev ? {...prev, role: e.target.value as UserRole} : null)} className="h-11 w-full rounded-xl border border-[#D8E2F0] bg-white px-4 text-sm text-[#243A59] outline-none focus:border-[#7BA0CF] focus:ring-2 focus:ring-[#D7E6F7]">
+										<select disabled={currentUser?.role !== 'admin'} value={editingUser.role} onChange={(e) => setEditingUser(prev => prev ? {...prev, role: e.target.value as UserRole} : null)} className={`h-11 w-full rounded-xl border border-[#D8E2F0] ${currentUser?.role !== 'admin' ? 'bg-[#F3F7FC] cursor-not-allowed opacity-70' : 'bg-white'} px-4 text-sm text-[#243A59] outline-none focus:border-[#7BA0CF] focus:ring-2 focus:ring-[#D7E6F7]`}>
 											<option value="employee">Employee</option>
 											<option value="manager">Manager</option>
 											<option value="admin">Admin</option>

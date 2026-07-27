@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
+const AdminWhitelist = require('../models/AdminWhitelist');
 const { logAction } = require('../utils/auditLogger');
 
 function isMissingValue(value) {
@@ -56,7 +57,6 @@ const register = async (req, res) => {
       name,
       email,
       password,
-      role = 'manager',
       organization = '',
       employeeId,
       designation,
@@ -71,6 +71,19 @@ const register = async (req, res) => {
     if (!name || !email || !password) {
       return res.status(400).json({ message: 'Name, email, and password are required' });
     }
+
+    // Check whitelist for admin role assignment
+    const whitelistedAdmin = await AdminWhitelist.findOne({ email: email.toLowerCase().trim() });
+    
+    // Employees are strictly invite-only
+    if (req.body.role === 'employee') {
+      return res.status(403).json({ message: 'Employee accounts are strictly created via email invitations.' });
+    }
+
+    // Assign role based on final requirements:
+    // Whitelisted -> admin. Non-whitelisted -> manager.
+    const role = whitelistedAdmin ? 'admin' : 'manager';
+    const formAccessGranted = true;
     
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
@@ -79,19 +92,6 @@ const register = async (req, res) => {
     
     if (password.length < 6) {
       return res.status(400).json({ message: 'Password must be at least 6 characters' });
-    }
-    
-    const validRoles = ['manager', 'employee', 'admin'];
-    if (!validRoles.includes(role)) {
-      return res.status(400).json({ message: `Invalid role. Choose from: ${validRoles.join(', ')}` });
-    }
-
-    if (role === 'employee' && !organization.trim()) {
-      return res.status(400).json({ message: 'Organization is required for employee signup.' });
-    }
-
-    if (role === 'admin' && !organization.trim()) {
-      organization = 'BPER';
     }
 
     const existing = await User.findOne({ email: email.toLowerCase().trim() });
@@ -123,7 +123,8 @@ const register = async (req, res) => {
       supervisorName: !isMissingValue(supervisorName) ? String(supervisorName).trim() : '',
       supervisorTitle: !isMissingValue(supervisorTitle) ? String(supervisorTitle).trim() : '',
       department: !isMissingValue(department) ? String(department).trim() : '',
-      isActive: true
+      isActive: true,
+      formAccessGranted
     });
     
     const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, { expiresIn: '30d' });
@@ -357,8 +358,21 @@ const getAllUsers = async (req, res) => {
 
 const updateUser = async (req, res) => {
   try {
-    const user = await User.findByIdAndUpdate(req.params.id, req.body, { new: true }).select('-password');
-    if (!user) return res.status(404).json({ message: 'User not found.' });
+    const existingUser = await User.findById(req.params.id);
+    if (!existingUser) return res.status(404).json({ message: 'User not found.' });
+
+    const updateData = { ...req.body };
+    
+    // Explicitly reject if a non-admin tries to alter the role
+    if (updateData.role && updateData.role !== existingUser.role && req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Only administrators can change user roles.' });
+    }
+
+    if (req.user.role !== 'admin') {
+      delete updateData.role;
+    }
+
+    const user = await User.findByIdAndUpdate(req.params.id, updateData, { new: true }).select('-password');
     return res.json({ message: 'User updated.', user });
   } catch (err) {
     return res.status(500).json({ message: err.message });
@@ -381,6 +395,11 @@ const resetUserPassword = async (req, res) => {
 const bulkUpdateUsers = async (req, res) => {
   try {
     const { userIds, action, role } = req.body;
+    
+    if (action === 'change_role' && req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Only administrators can change user roles.' });
+    }
+
     const query = { _id: { $in: userIds } };
     if (action === 'deactivate') {
       await User.updateMany(query, { $set: { isActive: false, status: 'deactivated' } });
