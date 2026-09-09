@@ -33,8 +33,10 @@ function MultiSelectPillGrid({
   isLoading: boolean;
   extraPill?: React.ReactNode;
 }) {
-  const filtered = items.filter((item) =>
-    item.toLowerCase().includes(searchQuery.toLowerCase())
+  const filtered = items.filter(
+    (item) =>
+      !/^[0-9.\s]+$/.test(String(item).trim()) &&
+      item.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   return (
@@ -142,7 +144,9 @@ export function ProcessSelectionPanel({
         const res = await apiFetch("/taxonomy/major-processes");
         if (res.ok) {
           const data = await res.json();
-          setMajorProcesses(data || []);
+          setMajorProcesses(
+            (data || []).filter((m: string) => !/^[0-9.\s]+$/.test(String(m).trim()))
+          );
         }
       } catch (e) {
         console.error("Failed to load major processes", e);
@@ -179,7 +183,10 @@ export function ProcessSelectionPanel({
         const merged: string[] = [];
         selectedMajors.forEach((maj, idx) => {
           const procs = lists[idx] || [];
-          procs.forEach((p) => merged.push(`${maj} / ${p}`));
+          procs.forEach((p) => {
+            if (/^[0-9.\s]+$/.test(String(p).trim())) return;
+            merged.push(`${maj} / ${p}`);
+          });
         });
 
         const uniq = Array.from(new Set(merged)).sort();
@@ -214,6 +221,7 @@ export function ProcessSelectionPanel({
         const items: string[] = [];
         lists.forEach((entry) => {
           (entry.subs || []).forEach((s: string) => {
+            if (/^[0-9.\s]+$/.test(String(s).trim())) return;
             if ((existingSubProcesses || []).includes(s)) return;
             const obj = { majorProcess: entry.major, process: entry.process, subProcess: s };
             items.push(JSON.stringify(obj));

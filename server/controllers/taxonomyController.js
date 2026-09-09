@@ -9,7 +9,9 @@ const IS_PRODUCTION = process.env.NODE_ENV === 'production';
 const getMajorProcesses = async (req, res) => {
   try {
     const all = await Taxonomy.find({ isActive: true }).lean();
-    const unique = [...new Set(all.map(t => t.majorProcess))].filter(Boolean).sort();
+    const unique = [...new Set(all.map(t => t.majorProcess))]
+      .filter((v) => String(v || '').trim() && !/^[0-9.\s]+$/.test(String(v).trim()))
+      .sort();
     res.json(unique);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -22,7 +24,9 @@ const getProcessesByMajor = async (req, res) => {
     const { major } = req.query;
     if (!major) return res.status(400).json({ message: 'major query param is required' });
     const all = await Taxonomy.find({ majorProcess: major, isActive: true }).lean();
-    const unique = [...new Set(all.map(t => t.process))].filter(Boolean).sort();
+    const unique = [...new Set(all.map(t => t.process))]
+      .filter((v) => String(v || '').trim() && !/^[0-9.\s]+$/.test(String(v).trim()))
+      .sort();
     res.json(unique);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -36,7 +40,7 @@ const getSubProcessesByProcess = async (req, res) => {
     if (!major || !proc) return res.status(400).json({ message: 'major and process query params are required' });
     const item = await Taxonomy.findOne({ majorProcess: major, process: proc, isActive: true }).lean();
     const subs = item?.subProcesses || [];
-    res.json([...subs].sort());
+    res.json([...subs].filter((v) => String(v || '').trim() && !/^[0-9.\s]+$/.test(String(v).trim())).sort());
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
