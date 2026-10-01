@@ -63,7 +63,7 @@ jobs:
                 "PORT=5000" \
                 "MONGODB_URI=${{ secrets.MONGODB_URI }}" \
                 "JWT_SECRET=${{ secrets.JWT_SECRET }}" \
-                "CORS_ORIGIN=${{ env.SWA_URL }}" \
+                "CORS_ORIGIN=${{ env.SWA_URL }},https://bper-optinext-2-client.vercel.app" \
                 "FRONTEND_URL=${{ env.SWA_URL }}" \
                 "GMAIL_USER=${{ secrets.GMAIL_USER }}" \
                 "GMAIL_APP_PASSWORD=${{ secrets.GMAIL_APP_PASSWORD }}"
@@ -84,7 +84,7 @@ jobs:
                 "PORT=5000" \
                 "MONGODB_URI=${{ secrets.MONGODB_URI }}" \
                 "JWT_SECRET=${{ secrets.JWT_SECRET }}" \
-                "CORS_ORIGIN=${{ env.SWA_URL }}" \
+                "CORS_ORIGIN=${{ env.SWA_URL }},https://bper-optinext-2-client.vercel.app" \
                 "FRONTEND_URL=${{ env.SWA_URL }}" \
                 "GMAIL_USER=${{ secrets.GMAIL_USER }}" \
                 "GMAIL_APP_PASSWORD=${{ secrets.GMAIL_APP_PASSWORD }}"
