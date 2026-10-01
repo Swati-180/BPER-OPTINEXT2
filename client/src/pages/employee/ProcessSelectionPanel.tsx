@@ -4,6 +4,7 @@ import { apiFetch } from "../../lib/api";
 import type { ProcessSelection } from "./formTypes";
 
 interface ProcessSelectionPanelProps {
+  department?: string;
   existingSubProcesses?: string[];
   onSelectionComplete: (selection: ProcessSelection[]) => void;
   initialSelection?: ProcessSelection | ProcessSelection[] | null;
@@ -112,6 +113,7 @@ function SelectionBadgeStrip({ label, items }: { label: string; items: string[] 
 }
 
 export function ProcessSelectionPanel({
+  department,
   existingSubProcesses = [],
   onSelectionComplete,
   initialSelection,
@@ -141,7 +143,8 @@ export function ProcessSelectionPanel({
     async function load() {
       setLoadingMajor(true);
       try {
-        const res = await apiFetch("/taxonomy/major-processes");
+        const queryParams = department ? `?department=${encodeURIComponent(department)}` : "";
+        const res = await apiFetch(`/taxonomy/major-processes${queryParams}`);
         if (res.ok) {
           const data = await res.json();
           setMajorProcesses(
@@ -155,7 +158,7 @@ export function ProcessSelectionPanel({
       }
     }
     load();
-  }, []);
+  }, [department]);
 
   useEffect(() => {
     if (!initialSelection) return;
@@ -172,9 +175,10 @@ export function ProcessSelectionPanel({
 
     async function load() {
       try {
+        const queryParams = department ? `&department=${encodeURIComponent(department)}` : "";
         const lists = await Promise.all(
           selectedMajors.map((maj) =>
-            apiFetch(`/taxonomy/processes-by-major?major=${encodeURIComponent(maj)}`).then((r) =>
+            apiFetch(`/taxonomy/processes-by-major?major=${encodeURIComponent(maj)}${queryParams}`).then((r) =>
               r.ok ? r.json().catch(() => []) : []
             )
           )
@@ -198,7 +202,7 @@ export function ProcessSelectionPanel({
       }
     }
     load();
-  }, [selectedMajors, stage]);
+  }, [selectedMajors, stage, department]);
 
   // Load sub-processes when a process is selected
   useEffect(() => {
@@ -209,10 +213,11 @@ export function ProcessSelectionPanel({
 
     async function load() {
       try {
+        const queryParams = department ? `&department=${encodeURIComponent(department)}` : "";
         const lists = await Promise.all(
           selectedProcesses.map((procStr) => {
             const [maj, proc] = procStr.split(" / ").map((s) => s.trim());
-            return apiFetch(`/taxonomy/subprocesses-by-process?major=${encodeURIComponent(maj)}&process=${encodeURIComponent(proc)}`)
+            return apiFetch(`/taxonomy/subprocesses-by-process?major=${encodeURIComponent(maj)}&process=${encodeURIComponent(proc)}${queryParams}`)
               .then((r) => (r.ok ? r.json().catch(() => []) : []))
               .then((subs) => ({ major: maj, process: proc, subs: subs || [] }));
           })
@@ -237,7 +242,7 @@ export function ProcessSelectionPanel({
       }
     }
     load();
-  }, [selectedProcesses, stage, existingSubProcesses]);
+  }, [selectedProcesses, stage, existingSubProcesses, department]);
 
   // subProcesses are stored as stable JSON strings: { majorProcess, process, subProcess }
   // We must not derive selection from UI label strings; that breaks parent mapping when duplicates exist.

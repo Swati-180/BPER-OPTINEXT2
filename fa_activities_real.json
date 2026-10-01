@@ -1,0 +1,3939 @@
+{
+  "towers": [
+    {
+      "name": "Accounts Payable",
+      "processes": [
+        {
+          "name": "Audit & Query Handling",
+          "subProcesses": [
+            {
+              "name": "All Import and other RBI related Query"
+            },
+            {
+              "name": "Audit Support- Reconcilation/Advance / MIS"
+            },
+            {
+              "name": "Co-ordination with Banks for clearing documents & query resolution"
+            },
+            {
+              "name": "Coordination with HR, GCC and payment working with state Govt"
+            },
+            {
+              "name": "Error resolution"
+            },
+            {
+              "name": "Forward vendor query to GCC"
+            },
+            {
+              "name": "Help in resolving contract issues"
+            },
+            {
+              "name": "Invoice Follow up with Commercial"
+            },
+            {
+              "name": "Liasing with departments like Legal, HR etc"
+            },
+            {
+              "name": "MSME Payment updation and Issue Resolution"
+            },
+            {
+              "name": "Other Payment related Query"
+            },
+            {
+              "name": "Resolution of Invoice errors"
+            },
+            {
+              "name": "Responding to vendor related query"
+            },
+            {
+              "name": "Sharing of required data to auditors and resolution of queries, if any"
+            },
+            {
+              "name": "Support to BU Department Users"
+            },
+            {
+              "name": "Vendor Payments Query"
+            },
+            {
+              "name": "AP Invoice Error Raised by GCC"
+            }
+          ]
+        },
+        {
+          "name": "Automation / Process Improvement",
+          "subProcesses": [
+            {
+              "name": "Follow-up with IT team for change/modification/development in the system"
+            },
+            {
+              "name": "Meetings with users for streamline of processes"
+            },
+            {
+              "name": "Preparation & Review of SLA & SOP"
+            }
+          ]
+        },
+        {
+          "name": "Employee T&E",
+          "subProcesses": [
+            {
+              "name": "Dealer expense claims (Meets / other activities)"
+            },
+            {
+              "name": "Employee Debit recovery working"
+            },
+            {
+              "name": "Employee travel claims processing"
+            },
+            {
+              "name": "Ensuring correct Mapping of Employees in ERP"
+            },
+            {
+              "name": "Expenses Claim by Employee checking the status of expenses booking & payment to them"
+            },
+            {
+              "name": "Financial Cap Requirement to be provided (List of Employees to whom Imprest to be paid & their limit to be provided in given format)"
+            },
+            {
+              "name": "Query resolution by respective employee raised by HDFC officials, if any"
+            },
+            {
+              "name": "Receipt and Distribution of HACC to Employees & Activation of Cards"
+            }
+          ]
+        },
+        {
+          "name": "Invoice Processing",
+          "subProcesses": [
+            {
+              "name": "ALL LOCATION VENDOR CREATION  REQUEST"
+            },
+            {
+              "name": "CFA Bill processing: Fixed amount"
+            },
+            {
+              "name": "CFA Bill processing: Other bills"
+            },
+            {
+              "name": "Checking Transportation Invoices"
+            },
+            {
+              "name": "Checking GST compliances of AIMSL vendors"
+            },
+            {
+              "name": "Checking of all commercial parameter"
+            },
+            {
+              "name": "Checking of PO terms Conditions"
+            },
+            {
+              "name": "Invoices Verification"
+            },
+            {
+              "name": "Collection charges Invoice process"
+            },
+            {
+              "name": "COST of Deployment Bill Scrutiny and raising Invoices with workings"
+            },
+            {
+              "name": "Custom duty Expense Booking"
+            },
+            {
+              "name": "Custom Duty Vendor & GL Clearing"
+            },
+            {
+              "name": "Demurrage Charge"
+            },
+            {
+              "name": "Distributor Sales Commission Bills"
+            },
+            {
+              "name": "Domestic   Transportation Charges Invoices Verification"
+            },
+            {
+              "name": "Employee (vendor) account clearing post payroll accounting"
+            },
+            {
+              "name": "Ensuring bills should process within 2 days from receipt to FP&A department"
+            },
+            {
+              "name": "Follow up with respective user to get the pending invoice booked timely"
+            },
+            {
+              "name": "Freight  bills (inward, out ward  and internal tankers)"
+            },
+            {
+              "name": "Freight Invoices (Including Sales Returns)"
+            },
+            {
+              "name": "Freight Inward Surface (Road/Air /Train Freight)"
+            },
+            {
+              "name": "Freight Outward Surface (Road/Air /Train Freight)"
+            },
+            {
+              "name": "Import Bills"
+            },
+            {
+              "name": "Intercompany water/MMG/Electricity processing"
+            },
+            {
+              "name": "Invoice Verification & Processing"
+            },
+            {
+              "name": "Labor cess working and booking"
+            },
+            {
+              "name": "Lease - Rent Bill Processing (PO Based)"
+            },
+            {
+              "name": "Maintenance Bills (Repairing Bills)"
+            },
+            {
+              "name": "Non PO expenses (employee Imprest / re-imbursement expenses)"
+            },
+            {
+              "name": "Non PO Invoice Processing NIS"
+            },
+            {
+              "name": "Process Non PO invoices through NIS"
+            },
+            {
+              "name": "Processing of DPR"
+            },
+            {
+              "name": "Professional Fees Invoice Processing"
+            },
+            {
+              "name": "Railway Freight Vendor open advance clearing"
+            },
+            {
+              "name": "Receive & Scan documents, indexing in ERP"
+            },
+            {
+              "name": "Review and control of Custom Duty & Freight Recoverable GL"
+            },
+            {
+              "name": "RPT Chargeback Invoice Processing"
+            },
+            {
+              "name": "Salesman Incentive Processing (Third Party)"
+            },
+            {
+              "name": "Scan copy for Record"
+            },
+            {
+              "name": "Scrap Invoice Processing"
+            },
+            {
+              "name": "Security Invoices Processing"
+            },
+            {
+              "name": "Service order Invoice"
+            },
+            {
+              "name": "Site expense provision booking"
+            },
+            {
+              "name": "SLA checking where order is based on SLA"
+            },
+            {
+              "name": "Statutory Bill Processing (PF / ESI)"
+            },
+            {
+              "name": "Storage of physical documents"
+            },
+            {
+              "name": "Trade Payables (New Vendor Creation, Knock-off Vendor Advances, Inter Company Recon, Balance Confirmation, MSMED process etc.)"
+            },
+            {
+              "name": "Utility Bills (Electricity Bills / Telephone Bills)"
+            },
+            {
+              "name": "Vehicle Hire Expense Invoices processing"
+            },
+            {
+              "name": "Vendor Invoice Processing"
+            },
+            {
+              "name": "Vendor Payments and Coordination for vendor payments"
+            },
+            {
+              "name": "Verification of all vendor bills with relate to LD calculation"
+            },
+            {
+              "name": "Verification of invoices and posting in ERP"
+            }
+          ]
+        },
+        {
+          "name": "Operational MIS",
+          "subProcesses": [
+            {
+              "name": "Conditional Vendors Report Quarterly"
+            },
+            {
+              "name": "MIS & Reporting"
+            },
+            {
+              "name": "MSME Payment tracking"
+            },
+            {
+              "name": "providing rent class"
+            },
+            {
+              "name": "Vendor Bill Tracking"
+            }
+          ]
+        },
+        {
+          "name": "Payment Approvals",
+          "subProcesses": [
+            {
+              "name": "Approval of vendor Payment on bank Portal"
+            },
+            {
+              "name": "Approval on Bank Site, Authorized Signatories"
+            },
+            {
+              "name": "Payment Proposal Validation"
+            },
+            {
+              "name": "Prioritizing vendor payments"
+            },
+            {
+              "name": "Scrutiny of Forex Documents & necessary compliance"
+            },
+            {
+              "name": "Scrutiny of Forex Documents & Submission with Bank"
+            }
+          ]
+        },
+        {
+          "name": "Payments",
+          "subProcesses": [
+            {
+              "name": "Advance payment to Vendor/ Employee"
+            },
+            {
+              "name": "Co-ordination with Bank for payments"
+            },
+            {
+              "name": "Foreign Payment documentation, coordinating for rate and timely outward inward remittance"
+            },
+            {
+              "name": "Forex payments processing"
+            },
+            {
+              "name": "Payment of Direct Taxes"
+            },
+            {
+              "name": "Payment of primary and secondary distributor claims"
+            },
+            {
+              "name": "Self-Assessment Tax Payment (Including Tax Audit and Accounting )"
+            },
+            {
+              "name": "To manage and review Forex Payments and ensure compliance"
+            },
+            {
+              "name": "Payment of PF"
+            }
+          ]
+        },
+        {
+          "name": "Petty Cash",
+          "subProcesses": [
+            {
+              "name": "Sign off certificate for Petty Cash in Hand at store level"
+            }
+          ]
+        },
+        {
+          "name": "PR / PO Process",
+          "subProcesses": [
+            {
+              "name": "Checklist Creation in System (NIS, Happay & PO/NON PO etc..)"
+            },
+            {
+              "name": "MASTER DATA CREATION"
+            },
+            {
+              "name": "PO Creation"
+            },
+            {
+              "name": "PO Review & Approval"
+            },
+            {
+              "name": "PR Preparation"
+            },
+            {
+              "name": "PR Review & Approval"
+            },
+            {
+              "name": "Support for GL code, Cost Centre"
+            },
+            {
+              "name": "Support to User for Creation of PR or SR related to other department"
+            }
+          ]
+        },
+        {
+          "name": "Review",
+          "subProcesses": [
+            {
+              "name": "Approvals for expenses (operating / capital)"
+            },
+            {
+              "name": "GR/IR Process"
+            },
+            {
+              "name": "Monitoring GR/IR"
+            },
+            {
+              "name": "Review"
+            },
+            {
+              "name": "Review of GR/IR/NIS/SES Creation & Payment with in 30 days of bill date"
+            },
+            {
+              "name": "Review of GRIR Report"
+            }
+          ]
+        },
+        {
+          "name": "Vendor BG Process",
+          "subProcesses": [
+            {
+              "name": "BG Acceptance/Authorization by Bank"
+            },
+            {
+              "name": "BG amendments from bank through vendors"
+            },
+            {
+              "name": "BG Audit"
+            },
+            {
+              "name": "BG Invocation process"
+            },
+            {
+              "name": "BG Submission and Review"
+            },
+            {
+              "name": "BG submission with User & GCC"
+            },
+            {
+              "name": "BG Verification end to end process including update in ERP"
+            },
+            {
+              "name": "Confirming BG in system after necessary approval from business users"
+            },
+            {
+              "name": "Coordination with Commercial and vendor for BG clauses"
+            },
+            {
+              "name": "Escalation to category lead & FC for non submission of original BG to GCC within 15 days of BG confirmation"
+            },
+            {
+              "name": "Follow up with BG initiator for submission of original BG to GCC"
+            },
+            {
+              "name": "Follow up-GCC & TCD"
+            },
+            {
+              "name": "Follow-up with Bank to get confirmation of BG  (Biz to extend Support if needed to get the confirmation)"
+            },
+            {
+              "name": "Original BG acceptance in ERP"
+            },
+            {
+              "name": "Review of Calculation of Bank Guarantee and ensuring timely renewal of BG by Vendor for taking up matter with the customers"
+            },
+            {
+              "name": "Storage of Original BG in fire proof cabinet"
+            },
+            {
+              "name": "Suggest necessary amendments required to GCC"
+            },
+            {
+              "name": "Upload amendment along with control number"
+            },
+            {
+              "name": "Verifying the amendment with original BG deviation"
+            }
+          ]
+        },
+        {
+          "name": "Vendor Reconciliation",
+          "subProcesses": [
+            {
+              "name": "Advance adjustment, deduction & recoveries"
+            },
+            {
+              "name": "Advance MIS"
+            },
+            {
+              "name": "Custom Advance Clearing"
+            },
+            {
+              "name": "Identify Open reconcilation Items & Follow up"
+            },
+            {
+              "name": "Inter Company Reconiliation"
+            },
+            {
+              "name": "Freight reconciliation"
+            },
+            {
+              "name": "Vendor advances / ageing reporting"
+            },
+            {
+              "name": "Vendor Balance Confirmation"
+            },
+            {
+              "name": "Vendor Ledger Scrutiny and follow up for Payment"
+            },
+            {
+              "name": "Vendor Reconciliation"
+            },
+            {
+              "name": "Vendor Retention, Advance Adjustment and Payment"
+            }
+          ]
+        },
+        {
+          "name": "Vendor Query Handling",
+          "subProcesses": [
+            {
+              "name": "Payment / Deduction related Querries from Vendors"
+            }
+          ]
+        },
+        {
+          "name": "Logistics Vendor Deposit analyis",
+          "subProcesses": [
+            {
+              "name": "Analysis of Vendor deposits and follow up with operations team for compliance with Company Policy"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Accounts Receivable",
+      "processes": [
+        {
+          "name": "Audit & Query Handling",
+          "subProcesses": [
+            {
+              "name": "Keep data ready as per regular audit requirements"
+            },
+            {
+              "name": "Attending Internal & External audit"
+            },
+            {
+              "name": "Auditor Certification for Regulatory Claim Submission"
+            },
+            {
+              "name": "Customer Dispute Resolution"
+            },
+            {
+              "name": "Discussion and meeting with CA Team"
+            },
+            {
+              "name": "Invoicing error resolution and GST related queries resolution"
+            },
+            {
+              "name": "Identifying Revenue Leakage with self audit practice"
+            },
+            {
+              "name": "Internal audit"
+            },
+            {
+              "name": "IT Related Issues Resolution"
+            },
+            {
+              "name": "Plant Visit with Auditors"
+            },
+            {
+              "name": "Resolving Internal and External queries"
+            },
+            {
+              "name": "Revenue Leakage Identification"
+            }
+          ]
+        },
+        {
+          "name": "Automation / Process Improvement",
+          "subProcesses": [
+            {
+              "name": "Analyze the existing process and system find out the improvement scopes to best implement across the business"
+            },
+            {
+              "name": "Automation & Development with UAT & implementation"
+            },
+            {
+              "name": "Automation and process improvement initiatives"
+            },
+            {
+              "name": "Implement New Process"
+            },
+            {
+              "name": "Verifying existing process and implementing new process for standardization and easy process"
+            },
+            {
+              "name": "Automation of generation of debit notes / credit notes"
+            },
+            {
+              "name": "Automation of Invoice generation with the help of BOT"
+            },
+            {
+              "name": "Billing UAT for new site"
+            },
+            {
+              "name": "GST TDS Entry to be done by GCC"
+            },
+            {
+              "name": "VIM exception follow up to be done by GCC team"
+            },
+            {
+              "name": "Drive Automation and Process Improvement Initiative with Digital Team"
+            },
+            {
+              "name": "Prepare and Review MIS for Security Deposits in line with Policy"
+            },
+            {
+              "name": "Manually trigger communication from system for balance confirmation to Customers with Zero Balances"
+            }
+          ]
+        },
+        {
+          "name": "Billing",
+          "subProcesses": [
+            {
+              "name": "Auction & Scrap Sales Billing"
+            },
+            {
+              "name": "Automation Invoicing & Interest"
+            },
+            {
+              "name": "Billing & Review & Follow Up for billing"
+            },
+            {
+              "name": "BIlling System setup"
+            },
+            {
+              "name": "Booking InterCompany Invoice"
+            },
+            {
+              "name": "Cargo Invoicing in Galaxy Application and Mapping to ERP"
+            },
+            {
+              "name": "Checking & Preparation the bill submit in Customer Office"
+            },
+            {
+              "name": "confirming ldo quantity purchase to planning for billing"
+            },
+            {
+              "name": "Ensure Invoices are submitted to the customers on or before due dates and resolve issues if any faced by team members"
+            },
+            {
+              "name": "Fixed billing and revenue share billing"
+            },
+            {
+              "name": "Generate Delivery Challan [DC], if applicable"
+            },
+            {
+              "name": "Generate Invoice and provide PDF invoice To Biz"
+            },
+            {
+              "name": "Guest House Collection & Generation of GST Invoice"
+            },
+            {
+              "name": "Interest billing & Review of interest billing"
+            },
+            {
+              "name": "Interest working and invoices to prepare at the end of every month"
+            },
+            {
+              "name": "Invoice Generation & Accounting  - (ERP SD Module)"
+            },
+            {
+              "name": "Invoice verification"
+            },
+            {
+              "name": "Liasioning with planning and zonal marketing team for reconcilition of daily booking and dispatched shown in the sold and unsold report for all ports"
+            },
+            {
+              "name": "Lost and found tracker and accounting of Indian rupees"
+            },
+            {
+              "name": "Manual invoicing"
+            },
+            {
+              "name": "Preparation Of Delayed Interest"
+            },
+            {
+              "name": "Preparing working for Invoice creation"
+            },
+            {
+              "name": "Provide signed invoice to BD Team"
+            },
+            {
+              "name": "Provisional to Final Settlement"
+            },
+            {
+              "name": "Provisioning of Quality Penalty SEB Customers"
+            },
+            {
+              "name": "Raise Intercompany Invoices"
+            },
+            {
+              "name": "Raising Invoice basis on Service Rendered"
+            },
+            {
+              "name": "Review of Invoices generated"
+            },
+            {
+              "name": "Sales return process and accounting"
+            },
+            {
+              "name": "Sales reversal working"
+            },
+            {
+              "name": "Scrap - sales accounting"
+            },
+            {
+              "name": "Scrap Invoice Generation"
+            },
+            {
+              "name": "Submission of Invoices on timely manner"
+            },
+            {
+              "name": "Submission of Invoices on timely manner to the customers for all the Mine Sites"
+            },
+            {
+              "name": "Support to Internal team for handhold activities"
+            },
+            {
+              "name": "Tax Code Creation Process"
+            },
+            {
+              "name": "Tax Invoice Generation & Accounting"
+            },
+            {
+              "name": "Utility Billing to Customer"
+            },
+            {
+              "name": "Weekly Scrutiny of Revenue Invoices for correct applicability of Direct & Indirect Taxation"
+            }
+          ]
+        },
+        {
+          "name": "Collection accounting",
+          "subProcesses": [
+            {
+              "name": "Accounting of Cash transactions once deposited in Bank basis on BRS with impact of Foreign gain/Loss"
+            },
+            {
+              "name": "Advance Receipt voucher control"
+            },
+            {
+              "name": "Advance working & treatment"
+            },
+            {
+              "name": "Agreement AEP for Collection Agents"
+            },
+            {
+              "name": "Cash collection and managing cash deposit prepare MIS and Accounting"
+            },
+            {
+              "name": "Cash Handling for cash collection"
+            },
+            {
+              "name": "Collection Accounting in ERP"
+            },
+            {
+              "name": "Coordination & Follow up for Other Location Cash Collection"
+            },
+            {
+              "name": "Daily Reconciliation of Cash Receipt vs Deposited in Bank through Control GL"
+            },
+            {
+              "name": "Duty Drawback / Export Benefits Accounting"
+            },
+            {
+              "name": "EDC Collection"
+            },
+            {
+              "name": "Ensuring daily collection FC & INR"
+            },
+            {
+              "name": "Export Collection Tracking"
+            },
+            {
+              "name": "Export Inward Disposal Instruction"
+            },
+            {
+              "name": "INWARD REMITTANCE ADJUSTMENT AND CLOSE"
+            },
+            {
+              "name": "Merchant Settlement"
+            },
+            {
+              "name": "New Set ups and Terminalisation"
+            },
+            {
+              "name": "Receipt of collection in Bank Account"
+            },
+            {
+              "name": "Scrap Payment Confirmation"
+            },
+            {
+              "name": "Setting up Billing and Collection Team and providing training to new recruits"
+            },
+            {
+              "name": "Subsequent Realisation of cards"
+            }
+          ]
+        },
+        {
+          "name": "Collection follow-up",
+          "subProcesses": [
+            {
+              "name": "Auto Reminder to Customers"
+            },
+            {
+              "name": "Coordination & Follow up for  Resolution of Errors"
+            },
+            {
+              "name": "Follow up for collection"
+            },
+            {
+              "name": "Follow up for LC Acceptance from Customer"
+            },
+            {
+              "name": "Follow up for Open Credit Customer"
+            },
+            {
+              "name": "Follow up with Customers for collection Amount"
+            },
+            {
+              "name": "Follow up with customers for collection for all the Mine Sites"
+            },
+            {
+              "name": "Follow up with Customers for deducting TDS as per Lower TDS Certificate"
+            }
+          ]
+        },
+        {
+          "name": "Customer Onboarding",
+          "subProcesses": [
+            {
+              "name": "Customer code vendor code GL Profit center and cost Center creation Extension with MDM team"
+            },
+            {
+              "name": "CUSTOMER CREATION"
+            },
+            {
+              "name": "Customer details updating (Bank, Address etc)"
+            },
+            {
+              "name": "Entry of Dealers / Customers in ERP"
+            },
+            {
+              "name": "Existing customer email updating"
+            },
+            {
+              "name": "On Boarding Customer"
+            },
+            {
+              "name": "Update Customer GSTIN master from GSTIN Portal month wise"
+            }
+          ]
+        },
+        {
+          "name": "Customer Reconciliation",
+          "subProcesses": [
+            {
+              "name": "CSR Debit Note summation with Customer & review as per approve budget"
+            },
+            {
+              "name": "Customer Advance vs GST Payable Reconciliation"
+            },
+            {
+              "name": "Customer Balance confirmation"
+            },
+            {
+              "name": "Customer Reconciliation"
+            },
+            {
+              "name": "Customer Reconciliation Review"
+            },
+            {
+              "name": "Customer Reconciliation, refund, write off/write back process"
+            },
+            {
+              "name": "Debit Note/Credit Note process"
+            },
+            {
+              "name": "DISCOM reconciliation and Tracking disputed receivables"
+            },
+            {
+              "name": "E-Way Bill Reconcilation"
+            },
+            {
+              "name": "E-Waybill creation and closer"
+            },
+            {
+              "name": "Follow up for reconciliation with 26AS"
+            },
+            {
+              "name": "Follow up with Customer for resolution of Reconciliation open items"
+            },
+            {
+              "name": "GL Account Clearing"
+            },
+            {
+              "name": "GST TDS & ITDS reconciliation & credit confirmation to GCC"
+            },
+            {
+              "name": "Income tax GL reconciliation and 26AS reconciliation of income"
+            },
+            {
+              "name": "Major Contributing Customers & working for Lower TDS Certificates"
+            },
+            {
+              "name": "Non Schedule amounting collection reconciliation and balance amount follow up"
+            },
+            {
+              "name": "Payment gateway Reconciliation"
+            },
+            {
+              "name": "Pre-order Reconciliation (Advance vs Un-delivered Item)"
+            },
+            {
+              "name": "Reconciliation of Debtors (Legacy System vs ERP)"
+            },
+            {
+              "name": "resolving E-Waybill related query from GCC and Tracking of Unrecon. EWB"
+            },
+            {
+              "name": "Review of balance as per Sales Register matching with ERP"
+            },
+            {
+              "name": "Sales Reconciliation (Legacy System vs ERP)"
+            },
+            {
+              "name": "Sales reconciliation with GL"
+            },
+            {
+              "name": "Sales to Collection to Bank Receipt Reconciliation"
+            },
+            {
+              "name": "Security Deposit - Reconciliation"
+            },
+            {
+              "name": "Send Ledger to Customer"
+            },
+            {
+              "name": "Sharing clearing details with GCC for customer Advance Clearing"
+            },
+            {
+              "name": "Sharing payment details with GCC for accounting"
+            },
+            {
+              "name": "Strategic partner Books of accounts"
+            },
+            {
+              "name": "TDS Receivable Reco Ensuring correct TDS booking as per ERP and 26AS"
+            },
+            {
+              "name": "TDS/ GST TDS reconciliation"
+            },
+            {
+              "name": "Working of Collection Charges expense provision at month"
+            }
+          ]
+        },
+        {
+          "name": "Customer refund",
+          "subProcesses": [
+            {
+              "name": "Customer Credit & Refund Confirmation"
+            },
+            {
+              "name": "Customer Refund"
+            }
+          ]
+        },
+        {
+          "name": "Export documentation",
+          "subProcesses": [
+            {
+              "name": "Advance License closure"
+            },
+            {
+              "name": "Advance License registration"
+            },
+            {
+              "name": "Agreement and amendments"
+            },
+            {
+              "name": "Arranging Vessel docs for SEB customers"
+            },
+            {
+              "name": "Export document submit in Bank"
+            },
+            {
+              "name": "Export Documentation Preparation"
+            },
+            {
+              "name": "Export Documentation Tracking"
+            },
+            {
+              "name": "Export Related Activities"
+            },
+            {
+              "name": "Getting Documents prepared from GCC"
+            },
+            {
+              "name": "High Seas Sales"
+            },
+            {
+              "name": "Norms Application"
+            },
+            {
+              "name": "Sharing Bank Charges details for Export Document Lodgement & EBRC Updation"
+            }
+          ]
+        },
+        {
+          "name": "Marketing & Promotion",
+          "subProcesses": [
+            {
+              "name": "Calculation share with BD Team for SO Preparation for Invoice"
+            },
+            {
+              "name": "Customer Support Scheme / Secondary Schemes"
+            },
+            {
+              "name": "Entry of Discount details into ERP (standard / discretionary)"
+            },
+            {
+              "name": "Instant Discount and revenue working from Bank"
+            },
+            {
+              "name": "Promotional /Marketing Scheme Planning & Approval"
+            },
+            {
+              "name": "Selling & Distribution Cost"
+            }
+          ]
+        },
+        {
+          "name": "Operational MIS",
+          "subProcesses": [
+            {
+              "name": "3 Month Cash Flow Preparation for Domestic & Export Expected Collection"
+            },
+            {
+              "name": "Ad hoc Management Report"
+            },
+            {
+              "name": "Adhoc Requirement"
+            },
+            {
+              "name": "Ageing Report for follow up with Customers"
+            },
+            {
+              "name": "Ageing Report for MIS & Working capital Purpose"
+            },
+            {
+              "name": "Analysis of key performance indicator for key customer"
+            },
+            {
+              "name": "AR related senior management reports / special reports"
+            },
+            {
+              "name": "BOE Collection Due Date Tracking & Collection Entry"
+            },
+            {
+              "name": "Cargo Reconcilation and reporting"
+            },
+            {
+              "name": "Collection report"
+            },
+            {
+              "name": "Daily Bill Submission Report"
+            },
+            {
+              "name": "Daily Billing status report"
+            },
+            {
+              "name": "Daily Report Review"
+            },
+            {
+              "name": "Daily Sales Report- Budget vs Actual"
+            },
+            {
+              "name": "Daily/Monthly Cash Flow"
+            },
+            {
+              "name": "Escrow/ Mine closer working & preparation"
+            },
+            {
+              "name": "Finalization of Revenue SOP"
+            },
+            {
+              "name": "Follow up for MIS"
+            },
+            {
+              "name": "MIS Report sales monitor tracking weekly reports and PPT"
+            },
+            {
+              "name": "MIS Report Sales report And Weekly Report PPT"
+            },
+            {
+              "name": "Monthly Flash Report"
+            },
+            {
+              "name": "Monthly report submitted"
+            },
+            {
+              "name": "Monthly Sales report"
+            },
+            {
+              "name": "Monthly Sales Vs Sales Register"
+            },
+            {
+              "name": "Net Sales Realization Report"
+            },
+            {
+              "name": "Operation MIS Preparation"
+            },
+            {
+              "name": "Preparation of advance related to HR claim & Operation"
+            },
+            {
+              "name": "Preparation of default exposure report"
+            },
+            {
+              "name": "Preparation of Slides of Finance deck with respect to Account receivables"
+            },
+            {
+              "name": "Preparation of various MIS for regulatory revenue"
+            },
+            {
+              "name": "Projection for Collection"
+            },
+            {
+              "name": "Receivable MIS preparation & review"
+            },
+            {
+              "name": "Revenue Projections for Budget Purpose"
+            },
+            {
+              "name": "Revenue Provision"
+            },
+            {
+              "name": "Revenue Provision- Unbilled/Accrual Revenue Working"
+            },
+            {
+              "name": "Revenue Reporting as per Business Place"
+            },
+            {
+              "name": "Revenue variance Analysis (Actual vs Budgeted)"
+            },
+            {
+              "name": "Sales Register"
+            },
+            {
+              "name": "Trade Receivable Reporting in Financials"
+            },
+            {
+              "name": "Updation of sales register"
+            },
+            {
+              "name": "Tracker of bill movement after scanning is required"
+            },
+            {
+              "name": "Provide Discount scheme wise narration and payout details to Sales Team"
+            },
+            {
+              "name": "Offer Tracking Report"
+            }
+          ]
+        },
+        {
+          "name": "Review",
+          "subProcesses": [
+            {
+              "name": "Analysis - Cost of Sales"
+            },
+            {
+              "name": "BI Dashboards Review and Reconciliation"
+            },
+            {
+              "name": "Hold & due File Review"
+            },
+            {
+              "name": "HR Review"
+            },
+            {
+              "name": "Monthly receivable MIS & review"
+            },
+            {
+              "name": "Prepare Self audit report by every month"
+            },
+            {
+              "name": "Price Deviation Cases"
+            },
+            {
+              "name": "Pricing Review"
+            },
+            {
+              "name": "Review and Analysis of originwise segmentwise etc sales"
+            },
+            {
+              "name": "Review and authentication of differential debit note / credit note calculations"
+            },
+            {
+              "name": "Review Debit note of Taxes reimbursement bill report of comp cess"
+            },
+            {
+              "name": "Review of Ageing report and Hygiene in AR Ageing tracking"
+            },
+            {
+              "name": "Review of Ageing reports Collection plans"
+            },
+            {
+              "name": "Review of Inter Company Reconciliations and resolution"
+            },
+            {
+              "name": "Review of NFA in Open Text or any other"
+            },
+            {
+              "name": "Review of PPA & Review of Receivable on Monthly basis and ensure the correct receivable provisioning"
+            },
+            {
+              "name": "Review of projected revenue loss"
+            },
+            {
+              "name": "Review of Regulatory MIS"
+            },
+            {
+              "name": "Review of AR MIS"
+            }
+          ]
+        },
+        {
+          "name": "Sales Order Process",
+          "subProcesses": [
+            {
+              "name": "Claim Preparation in Excel as per Contracts"
+            },
+            {
+              "name": "Create Sales Order Basis Agreement with Customer"
+            },
+            {
+              "name": "Delivery Order Approving"
+            },
+            {
+              "name": "Sales order approval  flow"
+            },
+            {
+              "name": "Sales Order Creation"
+            },
+            {
+              "name": "Sales order releasing"
+            },
+            {
+              "name": "Sales Price Validation as per SO"
+            },
+            {
+              "name": "Trading Contract Closure"
+            },
+            {
+              "name": "Trading Contract Release and Closure"
+            },
+            {
+              "name": "Trading Contract Review and Release"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Banking and Treasury",
+      "processes": [
+        {
+          "name": "Audit & Query Handling",
+          "subProcesses": [
+            {
+              "name": "Annual Stock Audit of Lenders"
+            },
+            {
+              "name": "Coordination with Internal Departments and Banks for clearing open items"
+            },
+            {
+              "name": "Handling Internal & External Audit"
+            },
+            {
+              "name": "Providing supporting document to GCC"
+            },
+            {
+              "name": "Query Resolutions with Auditors & Coordination with BU Fin if required."
+            },
+            {
+              "name": "Arranging all the balance confirmations from Banks, Mutual Funds, Financial Institutions and share with Auditors"
+            }
+          ]
+        },
+        {
+          "name": "Bank Guarantee Process",
+          "subProcesses": [
+            {
+              "name": "Open BG status and Issuance Planning"
+            },
+            {
+              "name": "Advance Bank Guarantee & Counter Guarantee for Export Advance"
+            },
+            {
+              "name": "BG Extension Process"
+            },
+            {
+              "name": "BG Issuance"
+            },
+            {
+              "name": "BG validation and budgeting"
+            },
+            {
+              "name": "BG Documentation & Working"
+            },
+            {
+              "name": "check BG Charges Deduction & E-Invoice of Customer"
+            },
+            {
+              "name": "Co-ordination with GCC & Scrutiny of Documents & Submission with Bank"
+            },
+            {
+              "name": "Coordination with Bank for issuance"
+            },
+            {
+              "name": "Ensure timely issuance of BGs and co-ordination with Internal Team & Banks"
+            },
+            {
+              "name": "Getting BG Issued from Bank"
+            },
+            {
+              "name": "Getting closed from Bank and release of limits"
+            },
+            {
+              "name": "Getting documents ready from GCC"
+            },
+            {
+              "name": "Procurement of E-stamp whenever required"
+            },
+            {
+              "name": "Sending workflow to business for necessary approval at different level"
+            },
+            {
+              "name": "Validating BG is in line with agreed terms"
+            }
+          ]
+        },
+        {
+          "name": "Bank Relationship",
+          "subProcesses": [
+            {
+              "name": "Account Opening/Closing Documentation"
+            },
+            {
+              "name": "Bank KYC and Updation"
+            },
+            {
+              "name": "Banker's meeting"
+            },
+            {
+              "name": "Borrowings – Long-term & Short-term (Including Documentation and ERP Process)"
+            },
+            {
+              "name": "Change in Bank activity Axis to ICICI Bank"
+            },
+            {
+              "name": "Clearance of BOEs from Bank"
+            },
+            {
+              "name": "Co ordinate with Banks for arranging details -Interest and bank charges & GST Invoice & debit advises required for BRS entries or other queries"
+            },
+            {
+              "name": "Collecting advices and documents from bank"
+            },
+            {
+              "name": "Consortium Meeting of Lenders"
+            },
+            {
+              "name": "Coordinating for Updation of Bank Signatories at the Time of Change, Board approvals and other compliances"
+            },
+            {
+              "name": "Co-ordination & Getting BR/Other documents from Secretarial team"
+            },
+            {
+              "name": "Co-ordination with Bank for resolving issues and reversals"
+            },
+            {
+              "name": "Coordination with Banks and Internal Stakeholders for issue resolution"
+            },
+            {
+              "name": "Coordination with Various Signatories to Approve the Transactions on Daily Basis"
+            },
+            {
+              "name": "DA BILL ACCEPTANCE AND PAYMENT"
+            },
+            {
+              "name": "Discussion for bank limits with Head Finance"
+            },
+            {
+              "name": "Filing of documents"
+            },
+            {
+              "name": "Financials & Other documents to be provided to Bank to Establish relationship"
+            },
+            {
+              "name": "Following up the bank for Debit advice"
+            },
+            {
+              "name": "Geting the transactions processed priority wise"
+            },
+            {
+              "name": "Getting The Document Signed & Payment letter"
+            },
+            {
+              "name": "Getting the documents scanned"
+            },
+            {
+              "name": "Handing over original document to concern"
+            },
+            {
+              "name": "Internal Follow-up for missing Documents with TC -Warehouse & Logistics"
+            },
+            {
+              "name": "Mails & Call conversation"
+            },
+            {
+              "name": "Maintaining Register of Documents Submission"
+            },
+            {
+              "name": "Mapped Lower Deduction Certi in Banks"
+            },
+            {
+              "name": "Merchant Banking compliances & new set ups"
+            },
+            {
+              "name": "NOC from Banks"
+            },
+            {
+              "name": "Providing details to bank when required like Quantitative-Financial data"
+            },
+            {
+              "name": "Regular coordination & meeting with bankers for smooth operations"
+            },
+            {
+              "name": "Segregating documents bank wise"
+            },
+            {
+              "name": "Site Visit of Lenders and Auditors"
+            },
+            {
+              "name": "Submission of Acceptance letter to Bank"
+            },
+            {
+              "name": "Submitting documents in bank"
+            },
+            {
+              "name": "Visiting of bank for submission of Documents"
+            },
+            {
+              "name": "Appraisal with Lenders for WC Lenders"
+            },
+            {
+              "name": "Balance Confirmation"
+            },
+            {
+              "name": "Bank Charges, Indenting Charges & its reversal and stamp duty provisioning,"
+            },
+            {
+              "name": "Prepare Letter for Balance Confirmation in the Auditors' Format"
+            },
+            {
+              "name": "Qtr. end Bank Confirmations Follow-ups"
+            },
+            {
+              "name": "Renewal of working capital limits"
+            },
+            {
+              "name": "WC Interest working and entries (like FDOD, CC)"
+            },
+            {
+              "name": "Preparation of Projection for Lenders and Credit Rating Agency"
+            },
+            {
+              "name": "Updating of Authorised Signatories in All bank accounts."
+            },
+            {
+              "name": "Process for additon of Authorised Signatory and coordination with secretarial for Board Resolutions"
+            },
+            {
+              "name": "Coordinate with Unit Finance Team for Unit Finance account Certification"
+            },
+            {
+              "name": "Submitting KYC document for all the companies to bank"
+            },
+            {
+              "name": "Submitting KYC document of all authorised signatory for all the companies to bank"
+            },
+            {
+              "name": "Coordinate with bank for GST credit and GST Invoices"
+            }
+          ]
+        },
+        {
+          "name": "Banking Documentation",
+          "subProcesses": [
+            {
+              "name": "Arrange & upload documents to GCC for acceptance"
+            },
+            {
+              "name": "CA Certificate"
+            },
+            {
+              "name": "Checking of Documents for FOC BOE clearance"
+            },
+            {
+              "name": "Compliance to Loan covenants, Liquidity management, Lendor support"
+            },
+            {
+              "name": "Compliances"
+            },
+            {
+              "name": "Co-ordinating with Treasury team back office for banking compliance"
+            },
+            {
+              "name": "Co-ordinating with Treasury team for foreign deal/Rate for making import payment"
+            },
+            {
+              "name": "Coordinating with counterparties- negotiation annual renewals and invoice processing"
+            },
+            {
+              "name": "Co-ordination with treasury team for taking Forex Rates for LC and Interest Payments"
+            },
+            {
+              "name": "Dispatch of confirmation request letter to bank through courier & mail"
+            },
+            {
+              "name": "Due Diligence Report"
+            },
+            {
+              "name": "End Use Certificate"
+            },
+            {
+              "name": "Information related to Rating - Internal & Group"
+            },
+            {
+              "name": "Provisional Stock Statement"
+            },
+            {
+              "name": "Send the letters to Biz for sign-off"
+            },
+            {
+              "name": "Settlement of deals created and execute posting"
+            },
+            {
+              "name": "Stock statement"
+            },
+            {
+              "name": "Submission with Bank after Checking"
+            },
+            {
+              "name": "Title Search Report"
+            },
+            {
+              "name": "Clearance of payment documents with Bank"
+            },
+            {
+              "name": "Interest & Loan repayment working & preparation of letters"
+            },
+            {
+              "name": "Payment letter send to Bank by email"
+            },
+            {
+              "name": "Preparing Fund Transfer/ Vendor / Statutory Payment Letters"
+            },
+            {
+              "name": "Signing of payment Letters & others"
+            }
+          ]
+        },
+        {
+          "name": "BRS",
+          "subProcesses": [
+            {
+              "name": "Clearing of BRS Open entries"
+            },
+            {
+              "name": "Coordination with GCC respective team B2P O2C DT IDT to get unidentified open BRS item closed"
+            },
+            {
+              "name": "On daily basis get closed BRS Open item from GCC BRS team"
+            },
+            {
+              "name": "Order to Cash clearing"
+            },
+            {
+              "name": "Review of Open BRS & Escalation to BU Fin for Closure."
+            }
+          ]
+        },
+        {
+          "name": "Business MIS",
+          "subProcesses": [
+            {
+              "name": "Daily Production MIS"
+            },
+            {
+              "name": "To review Debt Profile & Finance Tracker for FB/NFB limits pertaining to Opex & Capex"
+            },
+            {
+              "name": "Debt Profile Preparation for Business MIS"
+            }
+          ]
+        },
+        {
+          "name": "Cashflow Planning",
+          "subProcesses": [
+            {
+              "name": "Actual Cashflow / Budget Cash flow with variance analysis"
+            },
+            {
+              "name": "Any other urgent requirements like Group support Cash flow etc"
+            },
+            {
+              "name": "Available Balance report and Circulation"
+            },
+            {
+              "name": "Cancellation of payment proposals"
+            },
+            {
+              "name": "Capital Treasury Management"
+            },
+            {
+              "name": "Cash flow analysis"
+            },
+            {
+              "name": "Cash Flow Preparation"
+            },
+            {
+              "name": "Checking and Monitoring Bank Balance on daily basis"
+            },
+            {
+              "name": "Co-ordinating with internal departments BD and GCC provide Screen Shot and Payment Detail Collection detail"
+            },
+            {
+              "name": "Day to Day Cash Flow planning and Investments"
+            },
+            {
+              "name": "Follow up and arrange details for clearing BRS open Item"
+            },
+            {
+              "name": "Imports Payment / Fund planning"
+            },
+            {
+              "name": "Preparation of Annual CF in line with the Budget and Rolling Business Plan"
+            },
+            {
+              "name": "Preparation of Monthly Cash Flow Statement and Daily fund position, Weekly Cash-flow Statement"
+            },
+            {
+              "name": "Preparation of Three Months Rolling Cash Flow and submission with Central Treasury Team"
+            },
+            {
+              "name": "Preparation of Utilization Certificate for ADF Debt Payment"
+            },
+            {
+              "name": "Preparation of Weekly Cash Flow and submission with Central Treasury Team"
+            },
+            {
+              "name": "Preparing working for payment proposal and collecting related documents from respective department"
+            },
+            {
+              "name": "Review of Cashflow projection"
+            },
+            {
+              "name": "Submitting payment document with request letter to PMA approval and tracking of payment proposal"
+            },
+            {
+              "name": "Submitting Port and shipment wise expenses"
+            },
+            {
+              "name": "Submitting Revolving limit utilization reconciliation to PMA"
+            },
+            {
+              "name": "Taking direct approval of REC in case of firm due payment to Bank"
+            },
+            {
+              "name": "To manage Cash Flow and ensure smooth running of Business operations"
+            },
+            {
+              "name": "Cashflow & Working Capital Usage Reveiw and analysis"
+            },
+            {
+              "name": "Fund Transfer Management"
+            },
+            {
+              "name": "Limits Tracking Utilization"
+            },
+            {
+              "name": "Liquidity management at NR"
+            },
+            {
+              "name": "Planning for Fund Utilization"
+            },
+            {
+              "name": "Urgent payments process through revolving limit"
+            },
+            {
+              "name": "Debt Profile Preparation for Cashflow Planning"
+            }
+          ]
+        },
+        {
+          "name": "FX Hedging",
+          "subProcesses": [
+            {
+              "name": "Coordinate with Treasury team for forex Hedging."
+            },
+            {
+              "name": "Daily open Hedged Position & MTM valuation working"
+            },
+            {
+              "name": "Deriving Open Price Risk Exposure"
+            },
+            {
+              "name": "Ensure adequate hedging as per company policy and review of reports"
+            },
+            {
+              "name": "Execution of hedging transactions- paper deals"
+            },
+            {
+              "name": "Explore New Product for Hedging and Adding New counterparties for Hedging"
+            },
+            {
+              "name": "Hedge related Control"
+            },
+            {
+              "name": "Hedging Compliance certificate as per RBI guidelines & Annual renewal of hedging certificate with Authorise Dealer Bank for Bunkering"
+            },
+            {
+              "name": "Preparation Document for ECB Loan Interest Payment, Preparation of ECB Return, Preparation Document for Hedge Cost Payment"
+            },
+            {
+              "name": "Preparing daily open Hedged Position and valuation -MTM gain loss working"
+            },
+            {
+              "name": "Reports Related with Forex Hedging"
+            },
+            {
+              "name": "Working of FX Variation"
+            }
+          ]
+        },
+        {
+          "name": "Month end Activities",
+          "subProcesses": [
+            {
+              "name": "Collection Posting pertain to Treasury Transactions"
+            },
+            {
+              "name": "Data shared for Bank Entry"
+            },
+            {
+              "name": "Monthly Current Non-current Allocation"
+            },
+            {
+              "name": "Monthly Required Reports such as Loan Movements, Debt Profile, Maturity Profile, Interest Accrual Working, ICD Movement Working, etc."
+            }
+          ]
+        },
+        {
+          "name": "Operational MIS",
+          "subProcesses": [
+            {
+              "name": "Actual v/s Budget Finance cost Variance Analysis"
+            },
+            {
+              "name": "Debt Maturity MIS"
+            },
+            {
+              "name": "Details for Daily Tresury Report"
+            },
+            {
+              "name": "Finance Tracker"
+            },
+            {
+              "name": "Group Debt MIS"
+            },
+            {
+              "name": "Next Seven Days Firm dues report"
+            },
+            {
+              "name": "Preparing actual cashflow CEO cashflow and Daily Treasury MIS report"
+            },
+            {
+              "name": "Preparing and submitting complete payment wise break of balance utilization in month and other details"
+            },
+            {
+              "name": "Projected Finance cost"
+            },
+            {
+              "name": "Tracking of Banking Transactions on Daily Basis"
+            },
+            {
+              "name": "Tracking of Capex expenses spent Projected vs Actual"
+            },
+            {
+              "name": "Tracking status of certificates"
+            },
+            {
+              "name": "BG MIS & Other Reporting MIS"
+            },
+            {
+              "name": "Default Exposure"
+            },
+            {
+              "name": "FD MIS & Tracking"
+            },
+            {
+              "name": "Maintaining Mutual Fund MIS and Reconciliation with Banks"
+            },
+            {
+              "name": "Preparation of monthly FOREX exposure"
+            },
+            {
+              "name": "Preparing ICD transaction letter and reports"
+            },
+            {
+              "name": "Reporting & Accounting of Exchange Rate Difference Report"
+            },
+            {
+              "name": "Stock Reconciliation Report for Open Exposure for Forex"
+            },
+            {
+              "name": "Tracking of Inter-Company Deposits"
+            },
+            {
+              "name": "Tracking of LC and BG Commission and MIS"
+            }
+          ]
+        },
+        {
+          "name": "Review",
+          "subProcesses": [
+            {
+              "name": "Review of cash flow plan"
+            },
+            {
+              "name": "To review and ensure Nil pendency for Bank Open Items"
+            },
+            {
+              "name": "Bank O/D Book O/D Reclassification"
+            },
+            {
+              "name": "Circulation of RBI Rates Market Updates & Updation in Deal Portal System"
+            },
+            {
+              "name": "Corporate Card and Limit Renewal"
+            },
+            {
+              "name": "Review and approval of Bank Letters-Remittance LCs and banking others"
+            },
+            {
+              "name": "Review of Banking and Treasury MIS"
+            }
+          ]
+        },
+        {
+          "name": "Bill discounting",
+          "subProcesses": [
+            {
+              "name": "Bill discounting facility"
+            },
+            {
+              "name": "Bill Settlement"
+            },
+            {
+              "name": "Dealing with banker for factoring limit"
+            },
+            {
+              "name": "Documentation of Claims submitted under Bill of Exchange-BOE"
+            },
+            {
+              "name": "Efficient Working Capital Management through LC/BG"
+            },
+            {
+              "name": "Ensure compliance with internal & external regulatory requirements"
+            },
+            {
+              "name": "Factoring Tracker"
+            },
+            {
+              "name": "Factoring Tracker & timely utilisation in line with business requirements"
+            },
+            {
+              "name": "Factoring working"
+            },
+            {
+              "name": "Intimate the bank in case of duplication of charges"
+            },
+            {
+              "name": "Monthly Usance Interest Working for Local Bill Discounting"
+            },
+            {
+              "name": "New Bill Factoring"
+            },
+            {
+              "name": "Perform necessary changes, as requested ( Banker Perspective )"
+            },
+            {
+              "name": "Prepaid Factoring Interest & Debtors balances"
+            },
+            {
+              "name": "Review the DOC and get relevant signature per DOA"
+            },
+            {
+              "name": "Store relevant data / documents in DMS"
+            },
+            {
+              "name": "Verify underlying data & clarify from Commercial / Group Treasury"
+            }
+          ]
+        },
+        {
+          "name": "Investment",
+          "subProcesses": [
+            {
+              "name": "Activities of Investments (Including Accounting & Fund Transfer)"
+            },
+            {
+              "name": "Checking of Bank Transactions Letter/ Investment Transactions"
+            },
+            {
+              "name": "Fixed Deposit"
+            },
+            {
+              "name": "Follow up with Bankers for Various Transaction Processing - Mutual Fund Investment, Redemption, Interbank Transfer etc."
+            },
+            {
+              "name": "Investments (Including FDR, Mutual Funds, TDS Proves)"
+            }
+          ]
+        },
+        {
+          "name": "Letter of Credit",
+          "subProcesses": [
+            {
+              "name": "Arrange & prepare BRO against Letter of Credit from bank"
+            },
+            {
+              "name": "Budget Vs Actual LC working"
+            },
+            {
+              "name": "Check available LC (NFB) limits with Bank & Request Group Treasury in case of new limit"
+            },
+            {
+              "name": "Checking of Acceptance for Letter of Credit"
+            },
+            {
+              "name": "Co-ordination with Bank for issuance of LC amendment and Query Resolution"
+            },
+            {
+              "name": "Follow up for LC Payments letter"
+            },
+            {
+              "name": "Generate LC opening document & send to BU F & A for sign-off"
+            },
+            {
+              "name": "Get draft LC reviewed by vendor via BU Commercial"
+            },
+            {
+              "name": "LC Document Negotiation"
+            },
+            {
+              "name": "LC ISSUANCE"
+            },
+            {
+              "name": "LC Payments - Documentation and Arranging for payment"
+            },
+            {
+              "name": "LC Process - at time of shipment"
+            },
+            {
+              "name": "LC Register"
+            },
+            {
+              "name": "Letter of Credit"
+            },
+            {
+              "name": "Posting LC related Charges in GCC"
+            },
+            {
+              "name": "Preparation of LC Documents"
+            },
+            {
+              "name": "Preparation of Planning for LC requirement"
+            },
+            {
+              "name": "Release Documents from bank against Letter of Credit"
+            },
+            {
+              "name": "Review LC opening doc & get relevant signature per DoA"
+            },
+            {
+              "name": "Review of documents to be submitted under LC"
+            },
+            {
+              "name": "Review of LC amendments Documents and Submission with Bank"
+            },
+            {
+              "name": "Scrutiny of LC Acceptance Letter & Submission to Bank"
+            },
+            {
+              "name": "Send request to open LC"
+            },
+            {
+              "name": "Thorough examination of all supporting documents in line with LC terms"
+            }
+          ]
+        },
+        {
+          "name": "Accounting",
+          "subProcesses": [
+            {
+              "name": "Preparation of MIS of accrued Interest"
+            },
+            {
+              "name": "Monthly accruals and provisions"
+            },
+            {
+              "name": "Provide all the required supporting documents to GCC for pass the necessary entry"
+            },
+            {
+              "name": "Resolve all the queries raised by GCC while passing the entries"
+            },
+            {
+              "name": "Reconciliation of various GLs"
+            }
+          ]
+        },
+        {
+          "name": "Automation / Process Improvement",
+          "subProcesses": [
+            {
+              "name": "Addition and deletion of Authorised Signatories and various users for online transactions."
+            },
+            {
+              "name": "Banking and Treasury inhouse automation"
+            }
+          ]
+        },
+        {
+          "name": "Financing",
+          "subProcesses": [
+            {
+              "name": "Setup with bank for Dealer / Channel Financing Line"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Book closing & Audit",
+      "processes": [
+        {
+          "name": "Audit & Query Handling",
+          "subProcesses": [
+            {
+              "name": "Appearing before Audit team for data explanation at site"
+            },
+            {
+              "name": "Auditor data preparation"
+            },
+            {
+              "name": "Data submission and Audit Closure"
+            },
+            {
+              "name": "Discussion with GCC for Statutory audit and resolving open points"
+            }
+          ]
+        },
+        {
+          "name": "Certification",
+          "subProcesses": [
+            {
+              "name": "No default certificate"
+            }
+          ]
+        },
+        {
+          "name": "Cost Audit",
+          "subProcesses": [
+            {
+              "name": "Cost Audit working"
+            },
+            {
+              "name": "Cost Audit-Details"
+            },
+            {
+              "name": "Discussion with GCC for cost audit and resolving open points"
+            },
+            {
+              "name": "Overall controlling of Financials Review of Cost audit report"
+            }
+          ]
+        },
+        {
+          "name": "Monthly Close",
+          "subProcesses": [
+            {
+              "name": "Activities For Notes to Accounts"
+            },
+            {
+              "name": "Auditor certificates for regulatory claims purpose"
+            },
+            {
+              "name": "Bad-Debts Provision"
+            },
+            {
+              "name": "Current Non-current Reclassification"
+            },
+            {
+              "name": "Data submission Audit Closure and Obtaining Stat Auditor certificate for Regulatory claims and Bidding purpose"
+            },
+            {
+              "name": "Final Submission to CFO, Stamping by Auditor, Internal Audit Report to Auditor"
+            },
+            {
+              "name": "Finalising Accounts, Accounting closure and Audit"
+            },
+            {
+              "name": "Finance Costs (Bank Charges, Interest, Depreciation, Amortization Etc.)"
+            },
+            {
+              "name": "Flow Reconciliations"
+            },
+            {
+              "name": "GL, Profit, Cost Centers, Vendor Code, BPC Group GL"
+            },
+            {
+              "name": "GST-TDS-PF data verification and shared with Auditors"
+            },
+            {
+              "name": "Other Income (Interest Accrual on Bank Deposit, Liabilities Written Back)"
+            },
+            {
+              "name": "Other Long-term Liabilities (Provisions Made for Litigation)"
+            },
+            {
+              "name": "Other Non-current Assets (Cash & Bank)"
+            },
+            {
+              "name": "Accounting for doubtful debts, Bad debts"
+            },
+            {
+              "name": "Preparation of provision for RPT"
+            },
+            {
+              "name": "Prepare Write Back/Off NFA"
+            },
+            {
+              "name": "Prepare/ Update Publish Closing Calendar to Stakeholders"
+            },
+            {
+              "name": "Providing Expenses provision Data"
+            },
+            {
+              "name": "Provision for Bad debts / Write off / Sundry Balances"
+            },
+            {
+              "name": "Provision for Contract Labor, Rent, Power & Fuel, Professional Fee, Audit etc."
+            },
+            {
+              "name": "Provision for Tax"
+            },
+            {
+              "name": "Provision for various expenses"
+            },
+            {
+              "name": "PROVISIONAL ENTRIES PREPAID WORKING ENTRY"
+            },
+            {
+              "name": "Related Party working for submission to HO"
+            },
+            {
+              "name": "Review of data to be provided to auditor"
+            },
+            {
+              "name": "Review of Provisions of month end Revenue & Expenses relating to Revenue and others"
+            },
+            {
+              "name": "Reviewing & Clearing Custom Duty"
+            },
+            {
+              "name": "Risk register management"
+            },
+            {
+              "name": "Salary Capitalization"
+            },
+            {
+              "name": "Schedule of Misc. Exp, Commissions etc."
+            },
+            {
+              "name": "Short-term Borrowings (Balance Confirmation, Statement of Loan & Accrued Interest, Secured / Unsecured Borrowing etc.)"
+            },
+            {
+              "name": "Study of regulatory orders and petition preparation of MIS and analysis of Impact"
+            },
+            {
+              "name": "Tax Audit, Inputs for GST Audit, ROC Query, Audit walk"
+            },
+            {
+              "name": "Treasury Board pack"
+            },
+            {
+              "name": "Various month and quarter ending tasks related to plant FS review"
+            },
+            {
+              "name": "Contingent liability management"
+            },
+            {
+              "name": "Preparation of Long-term Borrowings"
+            },
+            {
+              "name": "Period Close of Payroll (Employee Imprest Confirmation, Postings, Provision of Bonus and Incentives)"
+            },
+            {
+              "name": "Provision for Employee Related Expenses (Joining, Training, Canteen, Medical etc.)"
+            },
+            {
+              "name": "Short-term Provisions (Leave Encashment, Gratuity, External Consultant)"
+            },
+            {
+              "name": "Statutory Liabilities (Accounting for Direct/Indirect Taxes, Excise etc.)"
+            },
+            {
+              "name": "Review Long-term Borrowings (Including Balance Confirmation, Statement of Loan, Interest and Withholding Tax Accounting)"
+            },
+            {
+              "name": "Provisional Entries Prepaid Working Entry and Allocation Entries"
+            }
+          ]
+        },
+        {
+          "name": "Other Regulatory compliance",
+          "subProcesses": [
+            {
+              "name": "External Stakeholder Management, relationship and Regulatory compliance"
+            }
+          ]
+        },
+        {
+          "name": "Quarter Close",
+          "subProcesses": [
+            {
+              "name": "Accompanying auditors for site visits and audit point resolutions"
+            },
+            {
+              "name": "Finalising NFAs as per Group SOP"
+            },
+            {
+              "name": "Other Non-current Assets (Cash & Bank), Bank Recon, FDR Schedule, Open Bank Entries"
+            },
+            {
+              "name": "Current - Non-current Reclassification of assets and liabilities"
+            }
+          ]
+        },
+        {
+          "name": "Review",
+          "subProcesses": [
+            {
+              "name": "Compliance with Group policies and SoPs"
+            },
+            {
+              "name": "Data scrutiny"
+            },
+            {
+              "name": "Draft Financial, Submission to Auditors, Review with Business Partner"
+            },
+            {
+              "name": "Finalising Accounts and Responsible for overall Accounting closure"
+            },
+            {
+              "name": "Financial Statements Review Group Companies"
+            },
+            {
+              "name": "Followup and coordination to clear the pending points in BU scorecard review"
+            },
+            {
+              "name": "Monthly TB review"
+            },
+            {
+              "name": "Prepare detailed explanations for Key matters for GC, Audit Committee and Board Meetings & Prepare FAQ for review meetings"
+            },
+            {
+              "name": "Prepare monthly Finance Deck"
+            },
+            {
+              "name": "Review of Disputed non disputed debtors and ageing"
+            },
+            {
+              "name": "Review of Finance Deck"
+            },
+            {
+              "name": "Review of Financial Statement"
+            },
+            {
+              "name": "Verification of Standalone Financials"
+            },
+            {
+              "name": "Review of accounts tax and BU Scorecard"
+            },
+            {
+              "name": "Review of Book Hygiene report"
+            },
+            {
+              "name": "Review of pendency of GRIR and open balances of MSME vendors on monthly basis and get it cleared in line with policy"
+            }
+          ]
+        },
+        {
+          "name": "Related Party Transactions",
+          "subProcesses": [
+            {
+              "name": "Arranging third party report quarterly for the related party transactions"
+            },
+            {
+              "name": "Related Party Approval Shareholders and Audit Committe and approval tracking"
+            },
+            {
+              "name": "Review of quarterly Related Party Transaction, Compiling related party transaction for audit committee approvals"
+            },
+            {
+              "name": "Review quarterly all related party transactions incurred"
+            },
+            {
+              "name": "Tracking of all the related party transactions against approval taken"
+            }
+          ]
+        },
+        {
+          "name": "Technical Advisory",
+          "subProcesses": [
+            {
+              "name": "Technical Advisory"
+            }
+          ]
+        },
+        {
+          "name": "Year end close activity",
+          "subProcesses": [
+            {
+              "name": "Adherence to Annual Audit plan in line with the group plan & Timely closure of accounts with board meeting"
+            },
+            {
+              "name": "Analysis of Industry best reporting practices with respect to quarterly and annual published results"
+            },
+            {
+              "name": "Annual Report Review and Co ordination"
+            },
+            {
+              "name": "Balance confirmation from customer/vendor for audit purpose"
+            },
+            {
+              "name": "Preparation of inputs for Annual reports"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Capex and Project Accounting",
+      "processes": [
+        {
+          "name": "Audit & Query Handling",
+          "subProcesses": [
+            {
+              "name": "Audit of FAR"
+            },
+            {
+              "name": "Co-ordination with Commercial / Vendor for Error Resolution"
+            },
+            {
+              "name": "Capex and Project Accounting Invoice Error Raised by GCC"
+            }
+          ]
+        },
+        {
+          "name": "Business MIS",
+          "subProcesses": [
+            {
+              "name": "Project Progress MIS Report"
+            },
+            {
+              "name": "Reporting of Capex Expenditure"
+            }
+          ]
+        },
+        {
+          "name": "Capitalization / De-capitalization",
+          "subProcesses": [
+            {
+              "name": "Assets Capitalization"
+            },
+            {
+              "name": "CWIP Capitalization"
+            },
+            {
+              "name": "De-capitalization of Asset"
+            },
+            {
+              "name": "Discussion with Project and Creation of Provision"
+            },
+            {
+              "name": "Follow-up for CWIP / Project Execution Progress"
+            },
+            {
+              "name": "Impairment assessment"
+            },
+            {
+              "name": "Interest of Advance Working for Capitalization"
+            },
+            {
+              "name": "Maintenance of Fixed Asset Register"
+            },
+            {
+              "name": "NFA sign off discard or loss of asset"
+            },
+            {
+              "name": "Project Cost Certification"
+            },
+            {
+              "name": "Work Completion Certificate / Final Closure of Project"
+            },
+            {
+              "name": "Zero Asset Based Write-off"
+            }
+          ]
+        },
+        {
+          "name": "Master Data Creation",
+          "subProcesses": [
+            {
+              "name": "Creation of Master data for New Projects"
+            },
+            {
+              "name": "Vendor Finalization & Vendor Code Creation"
+            }
+          ]
+        },
+        {
+          "name": "Operational MIS",
+          "subProcesses": [
+            {
+              "name": "BI Capex Report Development"
+            },
+            {
+              "name": "Comparison of Projection vs Actual Budget"
+            },
+            {
+              "name": "MIS & Dashboard"
+            }
+          ]
+        },
+        {
+          "name": "Physical asset verification",
+          "subProcesses": [
+            {
+              "name": "Accounting for Differences Between Far and Physical Inventory"
+            },
+            {
+              "name": "Asset Tagging"
+            },
+            {
+              "name": "Physical Asset Verification and Fixed Asset Reconciliation"
+            }
+          ]
+        },
+        {
+          "name": "PR / PO Process",
+          "subProcesses": [
+            {
+              "name": "Down Payment Request Against BG"
+            },
+            {
+              "name": "PO / SO Changed/Amendment"
+            },
+            {
+              "name": "PO Approval"
+            },
+            {
+              "name": "PO Creation and Approval"
+            }
+          ]
+        },
+        {
+          "name": "Project Planning & Budgeting",
+          "subProcesses": [
+            {
+              "name": "Assisting in Budget Preparation and Working"
+            },
+            {
+              "name": "Budget Preparation and Working"
+            },
+            {
+              "name": "Budget Upload in ERP"
+            },
+            {
+              "name": "Budget Utilization Status"
+            },
+            {
+              "name": "Co-Ordination with O&M & Other team for Budget"
+            },
+            {
+              "name": "Fund Planning"
+            },
+            {
+              "name": "Meeting with BU F&A and Budget Approvals"
+            },
+            {
+              "name": "Plant & Activity wise budget Preparation"
+            },
+            {
+              "name": "Project Planning & Budgeting"
+            }
+          ]
+        },
+        {
+          "name": "Review",
+          "subProcesses": [
+            {
+              "name": "Capital Work in Progress Review and Providing inputs for Capitalisation"
+            },
+            {
+              "name": "Group Guidelines"
+            },
+            {
+              "name": "M&A and new projects"
+            },
+            {
+              "name": "Project cost review & Means of Finance"
+            },
+            {
+              "name": "Project Progress Review"
+            },
+            {
+              "name": "Review of Monthly capitalisation status"
+            },
+            {
+              "name": "Review of O&M Opex Capex cost and CI wise cost analysis with actual cost incurred"
+            },
+            {
+              "name": "Review of Projected vs Actual Spent - Headwise"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Corporate Finance",
+      "processes": [
+        {
+          "name": "Audit & Query Handling",
+          "subProcesses": [
+            {
+              "name": "Query resolution of Lender"
+            }
+          ]
+        },
+        {
+          "name": "Capital Management Plan",
+          "subProcesses": [
+            {
+              "name": "Preparation of Capital management plan"
+            },
+            {
+              "name": "Project Financing requirement"
+            },
+            {
+              "name": "Review and assist in finalization of capital management plan"
+            }
+          ]
+        },
+        {
+          "name": "Compliance",
+          "subProcesses": [
+            {
+              "name": "Compliances with Bank for Credit facility"
+            },
+            {
+              "name": "Compliances with External Agencies"
+            },
+            {
+              "name": "KYC Compliance"
+            },
+            {
+              "name": "Loan covenant"
+            },
+            {
+              "name": "Net Worth Certificate"
+            }
+          ]
+        },
+        {
+          "name": "Credit rating",
+          "subProcesses": [
+            {
+              "name": "Credit Rating affirmations and renewal process"
+            },
+            {
+              "name": "Inputs for Rating compliance model"
+            },
+            {
+              "name": "Preparing Credit Memorandum Rating Presentation and Comprehensive Information Deck"
+            },
+            {
+              "name": "Rating and external stakeholders"
+            },
+            {
+              "name": "Review of overall credit Rating"
+            }
+          ]
+        },
+        {
+          "name": "Equity valuation",
+          "subProcesses": [
+            {
+              "name": "Actual Pledge"
+            },
+            {
+              "name": "Equity Valuation exercise"
+            },
+            {
+              "name": "Monitoring Pledge / Release of shares"
+            },
+            {
+              "name": "Removal of Share backed financing"
+            },
+            {
+              "name": "Valuation of assets underlying M&A transactions"
+            },
+            {
+              "name": "Valuation TSR etc"
+            }
+          ]
+        },
+        {
+          "name": "Financial modelling",
+          "subProcesses": [
+            {
+              "name": "Preparation of Financial Model"
+            },
+            {
+              "name": "Preparing and updating Financial Model for all plants and consolidated entity & including preparing models for funding of expansion projects"
+            },
+            {
+              "name": "Review of Financial Model"
+            },
+            {
+              "name": "Transaction Structuring"
+            }
+          ]
+        },
+        {
+          "name": "Fund Raising",
+          "subProcesses": [
+            {
+              "name": "Certificates from Consultants"
+            },
+            {
+              "name": "Fund raising"
+            },
+            {
+              "name": "JV financing"
+            },
+            {
+              "name": "Lenders' Loan Proposal"
+            },
+            {
+              "name": "Modification Proposals"
+            },
+            {
+              "name": "Preparing Information Memoranda / various presentations / various communications with stakeholders"
+            },
+            {
+              "name": "Proposals for Finance Cost Reduction and its implementation"
+            },
+            {
+              "name": "Raising of Strategic Debt at Hodco"
+            },
+            {
+              "name": "Regular Drawdown"
+            },
+            {
+              "name": "Review of Financing Documents"
+            },
+            {
+              "name": "Secuity Creation"
+            },
+            {
+              "name": "Share Capital"
+            },
+            {
+              "name": "Term sheet & Loan documents"
+            },
+            {
+              "name": "Tracking of Debt & Equity - Projected vs Actual"
+            }
+          ]
+        },
+        {
+          "name": "Investor identification",
+          "subProcesses": [
+            {
+              "name": "Identifying probable investors/debt funds having alignment with Group portfolio"
+            },
+            {
+              "name": "Managing stakeholder relationship with ECB lenders, PSU's and Private AMC's"
+            },
+            {
+              "name": "Providing remarks against Financial Scorecard"
+            }
+          ]
+        },
+        {
+          "name": "M&A Due Diligence",
+          "subProcesses": [
+            {
+              "name": "Carry out financial due diligence of M&A opportunities"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ESG",
+      "processes": [
+        {
+          "name": "Coordination",
+          "subProcesses": [
+            {
+              "name": "Coordinating and working with the HR teams and business leaders"
+            },
+            {
+              "name": "Coordinating the environment and social initiatives and the compliance to law and regulatory requirements"
+            },
+            {
+              "name": "Guidance to internal teams on sustainability programmes, risks, opportunities including ESG due diligence"
+            },
+            {
+              "name": "Support in driving the sustainability and ESG agenda, objectives, goals, and programmes by coordinating with different department"
+            }
+          ]
+        },
+        {
+          "name": "Policies and compliance",
+          "subProcesses": [
+            {
+              "name": "Ensure ESG implementation and compliance"
+            },
+            {
+              "name": "Monitor the effectiveness of implementation the appropriate ESMS (Policies, Process, Procedures and Guides)"
+            },
+            {
+              "name": "Review corporate activities and ensure compliance with E&S Policies, Management Plans and procedures"
+            }
+          ]
+        },
+        {
+          "name": "Reporting",
+          "subProcesses": [
+            {
+              "name": "ESG Dashboard preparation and comprehensive reporting on ESG / sustainability report annually"
+            },
+            {
+              "name": "Maintaining and updating an accidents/incidents register"
+            },
+            {
+              "name": "Prepare, develop and manage the production of the Annual and Sustainability report"
+            },
+            {
+              "name": "Support in organizing sustainability committee meetings and reporting progress"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "FP&A",
+      "processes": [
+        {
+          "name": "Budget Prep & Maintenance",
+          "subProcesses": [
+            {
+              "name": "Accounting of cost for budget controlling"
+            },
+            {
+              "name": "Accounting of project cost with budgetary controls"
+            },
+            {
+              "name": "Achieve Cashflow spend of the approved budget for on-going projects"
+            },
+            {
+              "name": "Budget variance breakup"
+            },
+            {
+              "name": "Month end budget related errors resolution"
+            },
+            {
+              "name": "alteration in Annual Budget and updating based on revised assumption"
+            },
+            {
+              "name": "Board Presentation Preparation on quarterly basis"
+            },
+            {
+              "name": "Budget discussion with various department"
+            },
+            {
+              "name": "Budgeting and Forecasting , Long term planning and modelling"
+            },
+            {
+              "name": "Business Structuring Decision Business Proposal Evaluation"
+            },
+            {
+              "name": "Capex Budget preparation, approval"
+            },
+            {
+              "name": "Capex Budget, Collation of Capex details from various department for budget"
+            },
+            {
+              "name": "Discussion for various financial and business assumptions"
+            },
+            {
+              "name": "Discussion with each zonal heads segment heads for volume margin and other assumptions"
+            },
+            {
+              "name": "DPR Preparation"
+            },
+            {
+              "name": "Estimation of Budget Chairman Review Consolidation"
+            },
+            {
+              "name": "Market share budgeting"
+            },
+            {
+              "name": "Opex Budget - Planning and Preparing budget"
+            },
+            {
+              "name": "Overhead Budget Consolidation at Department, Cost center wise"
+            },
+            {
+              "name": "Planning and Preparing - Revenue Budgeting"
+            },
+            {
+              "name": "Preparation of Budget Excel file"
+            },
+            {
+              "name": "Preparation of Budget presentation"
+            },
+            {
+              "name": "Preparation of Consolidated Budget Follow up with other departments for departmental PPT"
+            },
+            {
+              "name": "Projections (Rolling Projection Monthly Quarterly Annually)"
+            }
+          ]
+        },
+        {
+          "name": "Business MIS",
+          "subProcesses": [
+            {
+              "name": "Analysis of financial statement for management commentary and variance analysis"
+            },
+            {
+              "name": "Business Proposal evaluation from corporate"
+            },
+            {
+              "name": "Capital employed"
+            },
+            {
+              "name": "Certificates related to bidding for tender"
+            },
+            {
+              "name": "CIF Deals - MIS & Profitability"
+            },
+            {
+              "name": "Coordinate with site team for preparation of monthly MIS provide regular input and any working required for MIS purpose"
+            },
+            {
+              "name": "Daily EBITDA"
+            },
+            {
+              "name": "Daily profitability report for sold cargo"
+            },
+            {
+              "name": "Data Reveiw/Analysis/ Open Issues Resolution Plant Team"
+            },
+            {
+              "name": "Deep Dive / Data mining in specific areas of business, Gap analysis and remediation support"
+            },
+            {
+              "name": "Development of new power BI dashboard as per requirement of business"
+            },
+            {
+              "name": "Estimated Profitability report for all segments and rolling yearly profit estimate for all segment"
+            },
+            {
+              "name": "Evaluating business performance for key drivers and discussion with CEO for developing strategies"
+            },
+            {
+              "name": "Gross Margin Management support to Category Team"
+            },
+            {
+              "name": "Improvement of all Power BI Operational Dashboard"
+            },
+            {
+              "name": "Limit working"
+            },
+            {
+              "name": "Market share working"
+            },
+            {
+              "name": "MIS/Review/Business Analyst & Operation Support"
+            },
+            {
+              "name": "MIS-Balance Sheet Breakup & Cash Flow&Interest Finance cost Reco"
+            },
+            {
+              "name": "MIS-P&L-Balance sheet -EBITDA Variance-FS Reco"
+            },
+            {
+              "name": "Monthly Penalty analysis"
+            },
+            {
+              "name": "Penalty working"
+            },
+            {
+              "name": "Preparation of Consolidated EBIDTA Variance and analysis papers Waterfall"
+            },
+            {
+              "name": "Preparation of MIS for CEO desk"
+            },
+            {
+              "name": "Preparation of Monthly Chairman Deck"
+            },
+            {
+              "name": "Preparation of Quarterly Review PPT for CEO and Chairman's review"
+            },
+            {
+              "name": "Preparation of Segment wise Origin wise port wise profitability"
+            },
+            {
+              "name": "Preparation of Sensitivity analysis of EBIDTA and PBT based on various business assumptions"
+            },
+            {
+              "name": "Preparing management Dash board e.g. Chairman Dashboard"
+            },
+            {
+              "name": "Preperation of CEO dashboard"
+            },
+            {
+              "name": "Preperation of Consolidated MIS post receipt from overseas team"
+            },
+            {
+              "name": "Profitability for CIF deals of all origin"
+            },
+            {
+              "name": "Review of Reports/ Data Analysis/ resolving open issues with Plant teams"
+            },
+            {
+              "name": "Rolling Profitability"
+            },
+            {
+              "name": "Segmental Reporting"
+            },
+            {
+              "name": "Weekly Pending Report"
+            },
+            {
+              "name": "FP&A Offer Tracking Report"
+            }
+          ]
+        },
+        {
+          "name": "Cost Allocation",
+          "subProcesses": [
+            {
+              "name": "Batch wise expense allocation"
+            },
+            {
+              "name": "Inter Company Cost Allocation Invoices"
+            },
+            {
+              "name": "Monthly Corporate Allocation"
+            },
+            {
+              "name": "Review of Shared Expense Allocation to SPV"
+            }
+          ]
+        },
+        {
+          "name": "Cost Control",
+          "subProcesses": [
+            {
+              "name": "Activity rate run in ERP for conversion cost"
+            },
+            {
+              "name": "Cost run in ERP"
+            },
+            {
+              "name": "Costing / Records / Cost Sheets (Actual Costing)"
+            },
+            {
+              "name": "Identifying cost-saving opportunities"
+            },
+            {
+              "name": "Implementing cost control measures to optimize operational efficiency"
+            },
+            {
+              "name": "Monitoring and controlling costs across various departments and functions"
+            },
+            {
+              "name": "Preparation of Conversion Cost Statement"
+            },
+            {
+              "name": "Preparation of Cost Sheet"
+            }
+          ]
+        },
+        {
+          "name": "Operational MIS",
+          "subProcesses": [
+            {
+              "name": "Balance Sheet Analysis"
+            },
+            {
+              "name": "Budget V/s Actual variance analysis and Prepare Monthly MIS"
+            },
+            {
+              "name": "Conso Debtor summary"
+            },
+            {
+              "name": "Daily / Weekly /monthly financial forecasts, and variance analysis"
+            },
+            {
+              "name": "Daily sales register"
+            },
+            {
+              "name": "Follow up & Co-Ordination with all stake holders for O&M Admin & Salary"
+            },
+            {
+              "name": "Highlight major deviation in business assumption with actuals"
+            },
+            {
+              "name": "Intercompany working"
+            },
+            {
+              "name": "Logistics MIS"
+            },
+            {
+              "name": "Management Requirement"
+            },
+            {
+              "name": "MIS and presentation of cycle time -TAT"
+            },
+            {
+              "name": "MIS Consolidated O&M Admin & Manpower"
+            },
+            {
+              "name": "Monthly MIS Reporting and Controlling"
+            },
+            {
+              "name": "O&M Analysis & Presentation"
+            },
+            {
+              "name": "Performance Benchmarking"
+            },
+            {
+              "name": "Performance Review presentations"
+            },
+            {
+              "name": "Preparation of daily sales report- Budget vs Actual"
+            },
+            {
+              "name": "Preparation of Key Activity Dash board"
+            },
+            {
+              "name": "Preparation of monthly Flash report"
+            },
+            {
+              "name": "Preparation of Volume and Margin Excel and presentation"
+            },
+            {
+              "name": "Prepare and Review MIS"
+            },
+            {
+              "name": "Preparing & Compiling monthly O&M Admin & Salary"
+            },
+            {
+              "name": "Presentation for performance report for CFO review"
+            },
+            {
+              "name": "Profit Center & GL Scrutiny - Project"
+            },
+            {
+              "name": "Projected Finance cost - Flash Report"
+            },
+            {
+              "name": "Reconciliation of MIS profit with Flash Profit and Estimate Profit"
+            }
+          ]
+        },
+        {
+          "name": "Review",
+          "subProcesses": [
+            {
+              "name": "Reveiw of various dashboards including Private dashboard CEO dashboard and TC dashboard etc"
+            },
+            {
+              "name": "Review and Submission of Data for Corporate F&A Budget"
+            },
+            {
+              "name": "Review of Daily Mails check and respond identify actions and coordination with various dept"
+            },
+            {
+              "name": "Review of emails/ Discussion on various reports/Data Analysis"
+            },
+            {
+              "name": "Review of Financial planning budgets controls"
+            },
+            {
+              "name": "Review of various Dashboards like CEO dashboard Private Dashboard Default dashboard etc"
+            }
+          ]
+        },
+        {
+          "name": "Automation / Process Improvement",
+          "subProcesses": [
+            {
+              "name": "FP&A Inhouse Automation"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Insurance",
+      "processes": [
+        {
+          "name": "Insurance & Renewal",
+          "subProcesses": [
+            {
+              "name": "Getting the endorsement of Lender / Security Trustee on Insurance Policies"
+            },
+            {
+              "name": "Insurance / Renew of Insurance"
+            },
+            {
+              "name": "Insurance expense accrual"
+            },
+            {
+              "name": "Insurance of inventory"
+            },
+            {
+              "name": "Insurance valuation working"
+            },
+            {
+              "name": "Policy issuance and Maintaining Tracker"
+            },
+            {
+              "name": "Policy performance review"
+            },
+            {
+              "name": "Policy selection and negotiation"
+            },
+            {
+              "name": "Premium calculation and budgeting"
+            },
+            {
+              "name": "Premium payment and reconciliation"
+            },
+            {
+              "name": "Preparation and Review and data for submission to Insurance Team"
+            },
+            {
+              "name": "Taking Insurance Policy for new Asset"
+            },
+            {
+              "name": "Valuation of Assets"
+            },
+            {
+              "name": "Premium payment and reconciliation by accounts/ GCC"
+            }
+          ]
+        },
+        {
+          "name": "Insurance Claims",
+          "subProcesses": [
+            {
+              "name": "Claims negotiation and settlement"
+            },
+            {
+              "name": "Claims reporting and submission and status"
+            },
+            {
+              "name": "Getting the NOC of Lender / Security Trustee for getting the remittance of insurance claims the"
+            },
+            {
+              "name": "In transit Insurance claims"
+            },
+            {
+              "name": "Insurance - Claim Application and Follow-up"
+            },
+            {
+              "name": "Insurance Claim booking in ERP"
+            },
+            {
+              "name": "Insurance Documentation and Surveyor Visit"
+            },
+            {
+              "name": "Inventory write off against signed NFA of insurance loss inventory"
+            },
+            {
+              "name": "Loss recognition and adjustment"
+            },
+            {
+              "name": "Review of Insurance Claims & Settlement at business level"
+            },
+            {
+              "name": "Inventory write off against signed NFA of insurance loss inventory by business"
+            },
+            {
+              "name": "Getting the NOC of Lender / Security Trustee for getting the remittance of insurance claims by banking team/ business"
+            },
+            {
+              "name": "Prepare and Submit Insurance Claim Receipt entries to GCC for accounting"
+            }
+          ]
+        },
+        {
+          "name": "Risk Assessment",
+          "subProcesses": [
+            {
+              "name": "Risk Identification and Assessment"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Inventory Management",
+      "processes": [
+        {
+          "name": "Business MIS",
+          "subProcesses": [
+            {
+              "name": "Preperation of PPT on port wise and origin wise Total and unsold inventory and M2M on unsold"
+            },
+            {
+              "name": "Updation of Private business dashboard"
+            }
+          ]
+        },
+        {
+          "name": "Inventory control",
+          "subProcesses": [
+            {
+              "name": "Block Inventory Report"
+            },
+            {
+              "name": "Consumption booking analysis"
+            },
+            {
+              "name": "Control over provisioning and write off of old inventory as per approved NFA"
+            },
+            {
+              "name": "Excise Returns & Records"
+            },
+            {
+              "name": "Inventory/Stores Spares analysis"
+            },
+            {
+              "name": "Physical Inventory variations Adjustment"
+            },
+            {
+              "name": "Quality Assurance"
+            },
+            {
+              "name": "Review of Inventory & Control"
+            }
+          ]
+        },
+        {
+          "name": "Inventory Reconciliation",
+          "subProcesses": [
+            {
+              "name": "Arrangement of Physical Stock Verification report for various stake holders on quarterly basis"
+            },
+            {
+              "name": "Arrangement Physical verification and reconciliation with Books of accounts"
+            },
+            {
+              "name": "Compile the Daily dispatches done vessel wise for all A2 stock for all ports for incorporating in dispatch report"
+            },
+            {
+              "name": "Goods in Transit Working"
+            },
+            {
+              "name": "Reconciliation of Sold/Unsold position Planning Vs Finance data"
+            },
+            {
+              "name": "Review and checking of daily sold and unsold report including physical stock and vessel in pipeline"
+            },
+            {
+              "name": "Stock Reconciliation - Daily"
+            },
+            {
+              "name": "Stock Reconciliation - Monthly & Quarterly"
+            },
+            {
+              "name": "Stores Audit"
+            }
+          ]
+        },
+        {
+          "name": "Inventory Valuation",
+          "subProcesses": [
+            {
+              "name": "Inventory Valuations (FG, RM, WIP Valuation)"
+            },
+            {
+              "name": "Profitability on Inventory - Sold & Unsold"
+            },
+            {
+              "name": "Stock working"
+            }
+          ]
+        },
+        {
+          "name": "Operational MIS",
+          "subProcesses": [
+            {
+              "name": "MIS / Reporting"
+            },
+            {
+              "name": "Preparation of Purchase Register"
+            },
+            {
+              "name": "Preparation of TAT reports for Stock holding days"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Investor Relationship management",
+      "processes": [
+        {
+          "name": "Investor Meetings",
+          "subProcesses": [
+            {
+              "name": "CFO office Secretary"
+            },
+            {
+              "name": "Develop and execute key investor seminars, conferences and road shows"
+            },
+            {
+              "name": "Develop and maintain relationships with investors, analysts and corporate access teams"
+            },
+            {
+              "name": "Develop and review Investor Relations strategy"
+            },
+            {
+              "name": "Develop market outreach plan and annual calendar of activities"
+            },
+            {
+              "name": "Investor and analyst interaction"
+            },
+            {
+              "name": "Manage the investor relations calendar to include investor and analyst activities"
+            },
+            {
+              "name": "Stakeholder Management with various department"
+            }
+          ]
+        },
+        {
+          "name": "Investor query",
+          "subProcesses": [
+            {
+              "name": "Conduct analysis of usage of ratings by investors, regularly track the market to remain updated about the same"
+            },
+            {
+              "name": "Conduct research and analysis to identify opportunities for the team from discussions with investors and internal stakeholders"
+            },
+            {
+              "name": "To provide various information related to Financial statement on time to time received from Investor"
+            }
+          ]
+        },
+        {
+          "name": "Operational MIS",
+          "subProcesses": [
+            {
+              "name": "Build and maintain investor database for tracking and planning interactions"
+            },
+            {
+              "name": "Monitor and track investment flows in the debt market and stay updated with market trends and latest developments"
+            },
+            {
+              "name": "Monitor and track investment in the company's equity and stay updated with market trends and latest developments"
+            },
+            {
+              "name": "Monitor shareholder movement in Company's stock and update management about trends"
+            },
+            {
+              "name": "Manage data related to contacts, investor meetings to analyze trends for the team"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Others",
+      "processes": [
+        {
+          "name": "Adhoc",
+          "subProcesses": [
+            {
+              "name": "Meetings"
+            },
+            {
+              "name": "Trainings"
+            },
+            {
+              "name": "Special assignment"
+            }
+          ]
+        },
+        {
+          "name": "Coordination",
+          "subProcesses": [
+            {
+              "name": "Appointments"
+            },
+            {
+              "name": "Calendar"
+            },
+            {
+              "name": "Cancellation of Guest House or Hotel"
+            },
+            {
+              "name": "Cancellation of Local Conveyance"
+            },
+            {
+              "name": "CFO Office Support"
+            },
+            {
+              "name": "Claim Settlement of Travels Exp and Local Conveyance"
+            },
+            {
+              "name": "Conference Room Booking or arrangement"
+            },
+            {
+              "name": "Co-ordination and meeting schedule"
+            },
+            {
+              "name": "Dictation"
+            },
+            {
+              "name": "Distribution of Approval - Return to Sender or Next Signatory"
+            },
+            {
+              "name": "Guest House / Hotel arrangement"
+            },
+            {
+              "name": "Local Conveyance Arrangement"
+            },
+            {
+              "name": "Mic Admin and Secretarial Work"
+            },
+            {
+              "name": "Secretary To CFO"
+            },
+            {
+              "name": "To approve Leave Travel Requests NIS on behalf of CFO"
+            },
+            {
+              "name": "To attend Phone Calls and to respond"
+            },
+            {
+              "name": "To Obtain Approval of CFO"
+            },
+            {
+              "name": "Travel - Air and Railway Tickets Booking"
+            },
+            {
+              "name": "Travel - Tickets Cancellation"
+            }
+          ]
+        },
+        {
+          "name": "HR Trainings",
+          "subProcesses": [
+            {
+              "name": "Mandatory Training"
+            },
+            {
+              "name": "Others trainings"
+            }
+          ]
+        },
+        {
+          "name": "Cost audit",
+          "subProcesses": [
+            {
+              "name": "Data collation and Co-ordination with cost auditors for Cost Audit of all plants"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Secretarial",
+      "processes": [
+        {
+          "name": "Board Meetings",
+          "subProcesses": [
+            {
+              "name": "Attending Board Meeting"
+            },
+            {
+              "name": "Board meeting related documents preparations including analysis paper for supporting"
+            },
+            {
+              "name": "Board Resolution to get prepared from Secretarial team"
+            },
+            {
+              "name": "Committee Meetings"
+            },
+            {
+              "name": "Compliance of pre and post board meetings and general meetings"
+            },
+            {
+              "name": "Drafting minutes of the meetings"
+            },
+            {
+              "name": "Ensuring to prepare quarterly board pack which includes arrranging details from Site F&A Team GCC Team and MIS Team AND Providing justifications and reasons for variances and deviation from respective SOPs and Guidelines"
+            },
+            {
+              "name": "Minutes, Resolutions, ROC, Directors Report etc."
+            },
+            {
+              "name": "Organizing and coordinating board meetings"
+            },
+            {
+              "name": "Preparation of Board Presentation of Standalone, Consolidation and Special purpose as per Board meeting scheduled"
+            },
+            {
+              "name": "Prepare and review the detailed analysis of annual operational and financial performance of consolidated results and variances"
+            },
+            {
+              "name": "Prepare drafts of quarterly results statements, variance conference call scripts, Q&As, presentations and press releases"
+            },
+            {
+              "name": "Prepare, design and update presentations and communications materials for investor and analyst meetings, as well as for internal stakeholders"
+            },
+            {
+              "name": "Preparing Meeting Agendas, collating Board papers"
+            },
+            {
+              "name": "Preparing monthly bulletin for Directors providing business highlights in detail"
+            },
+            {
+              "name": "Regulatory Stakeholder management"
+            },
+            {
+              "name": "SPOC and liaison with regulatory authorities, government agencies, and other stakeholders on matters related to corporate secretarial"
+            },
+            {
+              "name": "Timely closure of accounts with board meeting"
+            }
+          ]
+        },
+        {
+          "name": "Due Diligence",
+          "subProcesses": [
+            {
+              "name": "Conducting Due Diligence for IL&FS and HNPCL"
+            },
+            {
+              "name": "Due diligence and audit process with various stakeholders, like Secretarial Auditors, Internal Auditors, Statutory Auditors, Legal Counsels, BCAS etc."
+            }
+          ]
+        },
+        {
+          "name": "Other Compliance",
+          "subProcesses": [
+            {
+              "name": "Handling routine legal matters / compliance"
+            },
+            {
+              "name": "Legal Agreement Execution"
+            },
+            {
+              "name": "Legal Agreement Scrutiny"
+            },
+            {
+              "name": "Legal Opinions"
+            },
+            {
+              "name": "Legal Support"
+            },
+            {
+              "name": "Litigation Management"
+            },
+            {
+              "name": "Obtaining necessary licenses, permits, and approvals, and submitting periodic reports as required"
+            }
+          ]
+        },
+        {
+          "name": "Review",
+          "subProcesses": [
+            {
+              "name": "Daily Review Meeting"
+            },
+            {
+              "name": "Ensuring adherence to corporate governance requirements"
+            },
+            {
+              "name": "Policy Review"
+            }
+          ]
+        },
+        {
+          "name": "ROC Compliance",
+          "subProcesses": [
+            {
+              "name": "Advise management on regulatory disclosures and formulate key messages"
+            },
+            {
+              "name": "Compliance and adherence of secretarial matters and concession agreement"
+            },
+            {
+              "name": "Ensuring compliance with the Companies Act, 2013 and other relevant corporate laws"
+            },
+            {
+              "name": "Maintaining and updating corporate records, including the company's memorandum and articles of association, board resolutions, shareholder agreements, and other legal documents"
+            },
+            {
+              "name": "Maintaining statutory registers, filing necessary forms and returns with the Registrar of Companies (RoC)"
+            },
+            {
+              "name": "Managing the timely filing of various statutory documents and disclosures with the RoC, stock exchanges, and other regulatory bodies"
+            },
+            {
+              "name": "Miscellaneous"
+            },
+            {
+              "name": "Related Party identification and ensure compliance"
+            },
+            {
+              "name": "Secretarial Support in Subsidiary companies"
+            },
+            {
+              "name": "Secretariat Compliances"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Taxation (DT & IDT)",
+      "processes": [
+        {
+          "name": "Audit & Query Handling",
+          "subProcesses": [
+            {
+              "name": "Annual Return & Audit (preparation, review, filing etc"
+            },
+            {
+              "name": "Attending queries from the Auditor and user department and providing resolution"
+            },
+            {
+              "name": "Deferred Tax (calculation etc)"
+            },
+            {
+              "name": "Deferred tax assets/liabilities accounting (computation, validation, approval, filing of response etc.)"
+            },
+            {
+              "name": "Departmental Audit & Assessment (including planning, collection of data, appearing before the audit team)"
+            },
+            {
+              "name": "Tax Reclassification"
+            },
+            {
+              "name": "Prepare tax MIS"
+            }
+          ]
+        },
+        {
+          "name": "Handling Notices / Appeals / Litigation",
+          "subProcesses": [
+            {
+              "name": "Appeal Before ITAT/High Court/Supreme Court (Including Data Compilation, Draft Reply and Filing of Appeals)"
+            },
+            {
+              "name": "Assessments & Appeals Process (Including Data Digging in ERP, Providing Details and Documents)"
+            },
+            {
+              "name": "Coordination for IDT matters"
+            },
+            {
+              "name": "Co-ordination with CATO for reply of Notices"
+            },
+            {
+              "name": "Departmental Enquiry, Investigation, Summons & other litigation (including planning and collection of data, receipt of orders)"
+            },
+            {
+              "name": "Ensuring timely review and finalisation of submission for indirect tax demand / refund litigations including notices / summons / orders / appeals / writ petitions"
+            },
+            {
+              "name": "Notice and inquire facts review for further submission and signing"
+            },
+            {
+              "name": "Reply of TDS Notices (Including Data Compilation and Final Submission)"
+            },
+            {
+              "name": "Review and coordination and arranging for submissions on various Tax notices in consultation with CATO and GCC and external consultants"
+            },
+            {
+              "name": "Reviewing and strategizing the reply or submission or Appeal documents against notice or letter received in relation to assessment / reassessment / appeals and refund matters before any income tax authority or courts in timely manner"
+            },
+            {
+              "name": "To Provide support to compliance team in relation to documentations"
+            }
+          ]
+        },
+        {
+          "name": "M&A Due Diligence",
+          "subProcesses": [
+            {
+              "name": "Due Diligence from Direct Tax perspective on any proposed acquisition"
+            }
+          ]
+        },
+        {
+          "name": "Operational MIS",
+          "subProcesses": [
+            {
+              "name": "Preparation of monthly Indirect Tax MIS providing overall update on pending indirect tax refunds / demand litigations / notices / assessments"
+            },
+            {
+              "name": "Storage of Documents (Original and PDF Copies)"
+            }
+          ]
+        },
+        {
+          "name": "Refund",
+          "subProcesses": [
+            {
+              "name": "Group level IDT MIS submission to CATO (refund status, audit & assessment, TDS Recon)"
+            },
+            {
+              "name": "GST TDS Refund Claim- Documentation"
+            },
+            {
+              "name": "Preparation of Documents for the refund in case of SEZ supply"
+            },
+            {
+              "name": "Refund claims (computation, submission, follow-up and governance)"
+            }
+          ]
+        },
+        {
+          "name": "Registration",
+          "subProcesses": [
+            {
+              "name": "GST Registration amendment intimation and document arrangement"
+            },
+            {
+              "name": "GST regulation cancellation intimation and approval of cancellation"
+            },
+            {
+              "name": "Registration process (including documents arrangement, on-line / manual application, Updating into Legatrix)"
+            }
+          ]
+        },
+        {
+          "name": "Return & Form Filing",
+          "subProcesses": [
+            {
+              "name": "Annual Income-Tax Return Process (Including 26 AS Reconciliation, Acknowledgement of Submission)"
+            },
+            {
+              "name": "Ensuring timely filing of Monthly GST return"
+            },
+            {
+              "name": "Filing of Statement of Financial Transactions (Including Filing of Preliminary Response)"
+            },
+            {
+              "name": "Issuance of statutory Forms C/F -Commercial Tax (form generation, opinion and validation, eway bill recon etc.)"
+            },
+            {
+              "name": "Jobwork Return"
+            },
+            {
+              "name": "Local Body and Professional Tax and Returns"
+            },
+            {
+              "name": "Lower TDS Certificate Process (Including Maintaining Lower TDS Limits Through ERP Report)"
+            },
+            {
+              "name": "Obtaining PAN/TAN process and updating into MDM"
+            },
+            {
+              "name": "Periodical returns (preparation, validation, filing)"
+            },
+            {
+              "name": "Tax Return Filing Process (Including TDS, TCS, Return Form 27 etc.)"
+            },
+            {
+              "name": "TDS & TCS Certificate Process (Including Issuance of Certificate to the Vendor on Email)"
+            },
+            {
+              "name": "TDS on Dividend Distribution Process"
+            },
+            {
+              "name": "TDS TCS calculation"
+            }
+          ]
+        },
+        {
+          "name": "Review",
+          "subProcesses": [
+            {
+              "name": "Ensuring timely review and finalisation of Monthly / Yearly GST returns"
+            },
+            {
+              "name": "Final verification"
+            },
+            {
+              "name": "Implementation of change in law (impact analysis, communication to stakeholders)"
+            },
+            {
+              "name": "Legacy Matter (Arrange Data and Resolution)"
+            },
+            {
+              "name": "Lower TDS limit monitoring"
+            },
+            {
+              "name": "Misc Work - Tax Transparency Report - Monthly compliance of F&A department provisions"
+            },
+            {
+              "name": "Review and Approval of ITR"
+            },
+            {
+              "name": "review and coordination for opinions on various tax position in consultation with CATO and external consultants"
+            },
+            {
+              "name": "Review of lower TDS working"
+            },
+            {
+              "name": "Review tax working prepared by GCC of current and deferred tax for the quarterly financial statements"
+            },
+            {
+              "name": "Taxation (DT & IDT) To analyse technical as well as financial performance by comparing results of current and previous quarter"
+            }
+          ]
+        },
+        {
+          "name": "Tax Payment Approval",
+          "subProcesses": [
+            {
+              "name": "Computation of Advance Tax (including annualized projections, approvals, fund request)"
+            },
+            {
+              "name": "Computation of Monthly TDS/TCS Liability (including intimation to GCC and required approvals)"
+            },
+            {
+              "name": "Computing Quarterly Advance tax on Revenue"
+            },
+            {
+              "name": "Fund arrangement and Approval of Tax Challans"
+            },
+            {
+              "name": "Tax Payment & updating into Legatrix"
+            },
+            {
+              "name": "TDS process & payment"
+            }
+          ]
+        },
+        {
+          "name": "Tax Planning",
+          "subProcesses": [
+            {
+              "name": "Tax Audit Process (Including Planning and Interpretation of Statutes)"
+            },
+            {
+              "name": "Tax Planning"
+            },
+            {
+              "name": "Tax Restructuring Decision Making Data Submission"
+            }
+          ]
+        },
+        {
+          "name": "Tax Reconciliation",
+          "subProcesses": [
+            {
+              "name": "Auto GST Reconciliation Project"
+            },
+            {
+              "name": "GST hold Release"
+            },
+            {
+              "name": "GST Reconciliation of Vendor Invoice with bookings"
+            },
+            {
+              "name": "GST TDS TCS Credit Reconciliation with Books"
+            },
+            {
+              "name": "Rectification Short excess posting as per GST reco"
+            },
+            {
+              "name": "Resolution of Unrecon. GST ITC receivable & follow-ups with various departments"
+            },
+            {
+              "name": "Resolution of Unrecon. GST TDS receivable and follow-ups with customers & Sales team"
+            },
+            {
+              "name": "Review and update GST master data"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

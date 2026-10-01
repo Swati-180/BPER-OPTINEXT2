@@ -138,6 +138,9 @@ MONGODB_URI=<your_mongodb_connection_string>
 JWT_SECRET=<your_strong_jwt_secret>
 PORT=5000
 NODE_ENV=development
+GMAIL_USER=<your_gmail@gmail.com>
+GMAIL_APP_PASSWORD=<your_gmail_app_password>
+FRONTEND_URL=http://localhost:3001
 ```
 
 ### 3) Configure frontend environment
@@ -172,6 +175,9 @@ Frontend default URL: `http://localhost:3000`
 - `JWT_SECRET`: Secret key used to sign JWT tokens.
 - `PORT`: API port (default: `5000`).
 - `NODE_ENV`: Runtime mode.
+- `GMAIL_USER`: Gmail address used to send platform emails (WDT notifications, employee invites).
+- `GMAIL_APP_PASSWORD`: Gmail App Password for SMTP (requires 2-Step Verification on the Google account).
+- `FRONTEND_URL`: Public frontend URL used in email links (default: `http://localhost:3001`).
 
 ### Client (`client/.env`)
 
@@ -216,11 +222,33 @@ Primary backend route groups:
 
 Recommended split deployment:
 
-- Frontend: Vercel (root: `client`)
-- Backend: Render (root: `server`)
+- Frontend: Vercel (root: `client`) or Azure Static Web Apps (see `.github/workflows/deploy-azure.yml`)
+- Backend: Render (root: `server`) or Azure Container Apps (Dockerfile: `server/Dockerfile`)
 
 Set production environment variables securely in hosting platforms.
 Do not commit credentials or secrets to source control.
+
+### Production environment variables
+
+**Backend** (Render / Azure Container Apps):
+
+| Variable | Required | Purpose |
+| --- | --- | --- |
+| `MONGODB_URI` | Yes | MongoDB connection |
+| `JWT_SECRET` | Yes | JWT signing |
+| `NODE_ENV` | Yes | Set to `production` |
+| `CORS_ORIGIN` | Yes | Deployed frontend URL (e.g. `https://your-app.vercel.app`) |
+| `FRONTEND_URL` | Yes | Same frontend URL — used in email links |
+| `GMAIL_USER` | For email | Gmail sender address |
+| `GMAIL_APP_PASSWORD` | For email | Gmail App Password |
+
+**Frontend** (Vercel / Azure Static Web Apps):
+
+| Variable | Required | Purpose |
+| --- | --- | --- |
+| `VITE_API_URL` | Yes | Deployed backend URL (e.g. `https://your-api.onrender.com`) |
+
+See `deployment_guide.md` for full Azure and Vercel/Render setup steps.
 
 ## Known Notes
 

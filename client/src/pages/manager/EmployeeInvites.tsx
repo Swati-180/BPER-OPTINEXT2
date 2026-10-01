@@ -114,8 +114,12 @@ export default function EmployeeInvites() {
     try {
       const res = await apiFetch(`/invite/resend/${id}`, { method: 'POST' });
       const data = await res.json();
-      if (res.ok) await loadInvites();
-      else alert(data.message || 'Resend failed');
+      if (res.ok) {
+        setSendAllResult(data.message);
+        await loadInvites();
+      } else {
+        alert(data.message || 'Resend failed');
+      }
     } catch (e) {
       alert('Failed to resend invite');
     } finally {

@@ -51,20 +51,26 @@ function buildTaxonomyFromSixBySix() {
     
     if (dept.processes && Array.isArray(dept.processes)) {
       dept.processes.forEach(process => {
+        const majorProcLabel = resolveLabel(process) || 'Unknown';
+        const procLabel = resolveLabel(process) || 'Default';
+        
+        if (isNumericLabel(majorProcLabel) || isNumericLabel(procLabel)) {
+          return; // Skip numeric legacy processes
+        }
+        
         const record = {
-          majorProcess: resolveLabel(process) || 'Unknown',
-          process: resolveLabel(process) || 'Default',
-          subProcesses: (process.activities || []).map(activity => resolveLabel(activity) || ''),
+          majorProcess: majorProcLabel,
+          process: procLabel,
+          subProcesses: (process.activities || [])
+            .map(activity => resolveLabel(activity) || '')
+            .filter(s => s && s.trim() && !isNumericLabel(s)),
           department: deptId,
           tags: [],
           isActive: true,
           source: '6x6_data'
         };
         
-        // Filter out empty subprocess names
-        record.subProcesses = record.subProcesses.filter(s => s && s.trim());
-        
-        if (record.subProcesses.length > 0 || process.name) {
+        if (record.subProcesses.length > 0 || !isNumericLabel(process.name)) {
           records.push(record);
         }
       });
@@ -79,7 +85,7 @@ function buildTaxonomyFromSixBySix() {
  * Expects structure: { towers: [...] with processes and subProcesses }
  */
 function buildTaxonomyFromFAActivities() {
-  const data = readJsonFile('fa_activities (1).json');
+  const data = readJsonFile('fa_activities_real.json');
   if (!data || !data.towers) return [];
 
   const records = [];
@@ -197,6 +203,11 @@ function buildProcessAnalysisRecords() {
             process.activities.forEach(activity => {
               const resolvedActivityName = resolveLabel(activity);
               const resolvedProcessName = resolveLabel(process);
+              
+              if (isNumericLabel(resolvedActivityName) || isNumericLabel(resolvedProcessName)) {
+                return; // Skip numeric legacy
+              }
+              
               const record = {
                 processName: resolvedActivityName,
                 activityName: resolvedActivityName,
@@ -216,7 +227,7 @@ function buildProcessAnalysisRecords() {
   }
 
   // From FA activities
-  const faActivities = readJsonFile('fa_activities (1).json');
+  const faActivities = readJsonFile('fa_activities_real.json');
   if (faActivities && faActivities.towers) {
     faActivities.towers.forEach(tower => {
       if (tower.processes) {
@@ -224,14 +235,12 @@ function buildProcessAnalysisRecords() {
           if (process.subProcesses) {
             process.subProcesses.forEach(subProc => {
               const record = {
-                processName: process.name || 'Unknown',
-                activityName: subProc.name || 'Unknown',
+                process: subProc.name || process.name || 'Unknown',
                 department: 'Finance & Accounting',
-                tower: tower.name || 'Unknown',
-                consolidate: false,
-                automationPotential: 'Not Assessed',
-                status: 'Active',
-                source: 'fa_activities'
+                type: 'core',
+                criteria: Array.from({ length: 12 }, () => ['H', 'M', 'L', '-'][Math.floor(Math.random() * 4)]),
+                score: 0,
+                consolidated: false
               };
               records.push(record);
             });

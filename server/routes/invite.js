@@ -9,11 +9,7 @@ const {
   resendInvite,
   getInviteStatus,
   getInviteByToken,
-  registerViaInvite,
-  createAdminInvite,
-  listAdminInvites,
-  resendAdminInvite,
-  cancelAdminInvite
+  registerViaInvite
 } = require('../controllers/inviteController');
 
 // Public routes (no auth needed)
@@ -27,10 +23,6 @@ router.post('/send', verifyToken, requireRoles(['manager','admin']), sendInvites
 router.post('/resend/:id', verifyToken, requireRoles(['manager','admin']), resendInvite);
 router.get('/status', verifyToken, requireRoles(['manager','admin']), getInviteStatus);
 
-// Admin-only invite management
-router.get('/admin-invites', verifyToken, requireRoles(['admin']), listAdminInvites);
-router.post('/admin-invites', verifyToken, requireRoles(['admin']), createAdminInvite);
-router.post('/admin-invites/:id/resend', verifyToken, requireRoles(['admin']), resendAdminInvite);
-router.delete('/admin-invites/:id', verifyToken, requireRoles(['admin']), cancelAdminInvite);
+// Admin-only invite management removed (obsolete)
 
 module.exports = router;

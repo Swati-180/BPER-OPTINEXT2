@@ -2,7 +2,7 @@ import { useMemo, useState, useEffect } from 'react';
 import { apiFetch, exportToExcelClient } from '../../lib/api';
 import { Download } from 'lucide-react';
 
-type Department = 'F&A' | 'HR' | 'Logistics' | 'SCM';
+type Department = 'Finance & Accounting' | 'HR' | 'Logistics' | 'SCM';
 type CriteriaValue = 'H' | 'M' | 'L';
 type AnalysisTab = 'overview' | 'matrix' | 'distribution';
 
@@ -123,7 +123,7 @@ export default function SixBySixAnalysisPage() {
 		fetchData();
 	}, [departmentFilter]);
 
-	const departments = useMemo(() => ['All Departments', 'F&A', 'HR', 'Logistics', 'SCM'] as const, []);
+	const departments = useMemo(() => ['All Departments', 'Finance & Accounting', 'HR', 'Logistics', 'SCM'] as const, []);
 
 	const uniqueTowers = useMemo(() => {
 		const towers = new Set<string>();
@@ -316,7 +316,7 @@ export default function SixBySixAnalysisPage() {
 			grouped.set(key, existing);
 		});
 
-		const order: Department[] = ['F&A', 'HR', 'Logistics', 'SCM'];
+		const order: Department[] = ['Finance & Accounting', 'HR', 'Logistics', 'SCM'];
 		return Array.from(grouped.values()).sort((a, b) => {
 			const deptDiff = order.indexOf(a.department) - order.indexOf(b.department);
 			if (deptDiff !== 0) return deptDiff;
