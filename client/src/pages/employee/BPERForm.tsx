@@ -43,13 +43,17 @@ export default function BPERForm() {
 
         const data = await res.json().catch(() => null);
         if (res.ok && data) {
-          // Map backend User fields to the EmployeeSnapshot format expected by Step1
+          let mappedDepartment = data?.department || data?.organization || "N/A";
+          if (data?.role === 'admin' || data?.role === 'manager') {
+            mappedDepartment = "Finance & Accounting";
+          }
+
           const mappedProfile = {
             ...data,
             title: data?.designation || "N/A",
-            department: data?.department || data?.organization || "N/A",
+            department: mappedDepartment,
             assignedClient: data?.client || "N/A",
-            primaryTower: data?.department || data?.organization || "N/A", // Fallback
+            primaryTower: mappedDepartment, // Fallback
             employeeType: "FTE", // Default
           };
           setProfile(mappedProfile);
