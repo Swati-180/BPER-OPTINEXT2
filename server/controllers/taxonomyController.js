@@ -15,13 +15,10 @@ const getMajorProcesses = async (req, res) => {
     }
 
     let all = await Taxonomy.find(query).lean();
-    
-    // Fallback: If no processes found for this specific department, return all active processes
-    if (department && department !== 'All Departments' && all.length === 0) {
-      all = await Taxonomy.find({ isActive: true }).lean();
-    }
 
-    const unique = [...new Set(all.map(t => t.majorProcess))].filter(Boolean).sort();
+    const unique = [...new Set(all.map(t => t.majorProcess))]
+      .filter((v) => String(v || '').trim() && !/^[0-9.\s]+$/.test(String(v).trim()))
+      .sort();
     res.json(unique);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -33,14 +30,15 @@ const getProcessesByMajor = async (req, res) => {
   try {
     const { major, department } = req.query;
     if (!major) return res.status(400).json({ message: 'major query param is required' });
-    
     let query = { majorProcess: major, isActive: true };
     if (department && department !== 'All Departments') {
       query.department = department;
     }
     
     const all = await Taxonomy.find(query).lean();
-    const unique = [...new Set(all.map(t => t.process))].filter(Boolean).sort();
+    const unique = [...new Set(all.map(t => t.process))]
+      .filter((v) => String(v || '').trim() && !/^[0-9.\s]+$/.test(String(v).trim()))
+      .sort();
     res.json(unique);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -60,7 +58,7 @@ const getSubProcessesByProcess = async (req, res) => {
 
     const item = await Taxonomy.findOne(query).lean();
     const subs = item?.subProcesses || [];
-    res.json([...subs].sort());
+    res.json([...subs].filter((v) => String(v || '').trim() && !/^[0-9.\s]+$/.test(String(v).trim())).sort());
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

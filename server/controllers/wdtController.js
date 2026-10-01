@@ -6,9 +6,9 @@ const submitWDT = async (req, res) => {
   try {
     const { employee, month, year, payload } = req.body;
     
-    // 1. Check Submission Window (20th to 31st)
-    const today = new Date().getDate();
-    const isOverride = process.env.FORCE_WINDOW_OPEN === 'true';
+    // TEMP-DISABLED (window-date limit): Check Submission Window (20th to 31st)
+    // const today = new Date().getDate();
+    // const isOverride = process.env.FORCE_WINDOW_OPEN === 'true';
 
     // 2. Validate hours against user's configured maximum
     const submittingUser = await User.findOne({
@@ -22,9 +22,10 @@ const submitWDT = async (req, res) => {
     // formAccessGranted=true means admin explicitly allowed this user to submit (even outside window)
     const hasFormAccess = submittingUser?.formAccessGranted === true;
 
-    if (today < 20 && !isOverride && !isAdmin && !hasFormAccess) {
-      return res.status(403).json({ message: 'Submission window is not yet open for this period.' });
-    }
+    // TEMP-DISABLED (window-date limit): form submission enabled for now
+    // if (today < 20 && !isOverride && !isAdmin && !hasFormAccess) {
+    //   return res.status(403).json({ message: 'Submission window is not yet open for this period.' });
+    // }
 
     const maxHours = submittingUser?.maxMonthlyHours || 160;
 
@@ -92,17 +93,22 @@ const submitWDT = async (req, res) => {
 const getSubmissionWindowStatus = async (req, res) => {
   try {
     const today = new Date();
-    const date = today.getDate();
-    const isOverride = process.env.FORCE_WINDOW_OPEN === 'true';
-    const isOpen = date >= 20 || isOverride;
-    const daysUntilNext = isOpen ? 0 : 20 - date;
+    // TEMP-DISABLED (window-date limit): submission enabled for now, always open
+    // const date = today.getDate();
+    // const isOverride = process.env.FORCE_WINDOW_OPEN === 'true';
+    // const isOpen = date >= 20 || isOverride;
+    // const daysUntilNext = isOpen ? 0 : 20 - date;
+    const isOpen = true;
+    const daysUntilNext = 0;
     
     res.json({
       isOpen,
       currentMonth: today.getMonth() + 1,
       currentYear: today.getFullYear(),
       daysUntilNext,
-      message: isOpen ? (isOverride ? 'Submission Window is Open (Admin Override)' : 'Submission Window is Open') : `Opens in ${daysUntilNext} days`
+      message: 'Submission Window is Open (Temp Enabled)'
+      // TEMP-DISABLED (window-date limit) original message:
+      // message: isOpen ? (isOverride ? 'Submission Window is Open (Admin Override)' : 'Submission Window is Open') : `Opens in ${daysUntilNext} days`
     });
   } catch (err) {
     res.status(500).json({ message: err.message });
