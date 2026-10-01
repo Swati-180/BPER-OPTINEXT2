@@ -5,10 +5,22 @@ const stringSimilarity = require('string-similarity');
 const IS_PRODUCTION = process.env.NODE_ENV === 'production';
 
 // ─── Hierarchical taxonomy query handlers ──────────────────────────────────────
-// GET /taxonomy/major-processes
 const getMajorProcesses = async (req, res) => {
   try {
-    const all = await Taxonomy.find({ isActive: true }).lean();
+    const { department } = req.query;
+    let query = { isActive: true };
+
+    if (department && department !== 'All Departments') {
+      query.department = department;
+    }
+
+    let all = await Taxonomy.find(query).lean();
+    
+    // Fallback: If no processes found for this specific department, return all active processes
+    if (department && department !== 'All Departments' && all.length === 0) {
+      all = await Taxonomy.find({ isActive: true }).lean();
+    }
+
     const unique = [...new Set(all.map(t => t.majorProcess))].filter(Boolean).sort();
     res.json(unique);
   } catch (err) {
@@ -16,12 +28,18 @@ const getMajorProcesses = async (req, res) => {
   }
 };
 
-// GET /taxonomy/processes-by-major?major=<name>
+// GET /taxonomy/processes-by-major?major=<name>&department=<dept>
 const getProcessesByMajor = async (req, res) => {
   try {
-    const { major } = req.query;
+    const { major, department } = req.query;
     if (!major) return res.status(400).json({ message: 'major query param is required' });
-    const all = await Taxonomy.find({ majorProcess: major, isActive: true }).lean();
+    
+    let query = { majorProcess: major, isActive: true };
+    if (department && department !== 'All Departments') {
+      query.department = department;
+    }
+    
+    const all = await Taxonomy.find(query).lean();
     const unique = [...new Set(all.map(t => t.process))].filter(Boolean).sort();
     res.json(unique);
   } catch (err) {
@@ -29,12 +47,18 @@ const getProcessesByMajor = async (req, res) => {
   }
 };
 
-// GET /taxonomy/subprocesses-by-process?major=<name>&process=<name>
+// GET /taxonomy/subprocesses-by-process?major=<name>&process=<name>&department=<dept>
 const getSubProcessesByProcess = async (req, res) => {
   try {
-    const { major, process: proc } = req.query;
+    const { major, process: proc, department } = req.query;
     if (!major || !proc) return res.status(400).json({ message: 'major and process query params are required' });
-    const item = await Taxonomy.findOne({ majorProcess: major, process: proc, isActive: true }).lean();
+    
+    let query = { majorProcess: major, process: proc, isActive: true };
+    if (department && department !== 'All Departments') {
+      query.department = department;
+    }
+
+    const item = await Taxonomy.findOne(query).lean();
     const subs = item?.subProcesses || [];
     res.json([...subs].sort());
   } catch (err) {
