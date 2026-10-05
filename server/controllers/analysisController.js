@@ -155,9 +155,23 @@ const getSixBySixData = async (req, res) => {
       const key = `${normalized.department}::${normalized.process}`;
       const fte = fteLookup[key] || 0;
 
+      let subProcessGroup = tax && tax.process ? tax.process : 'Unknown';
+      if (subProcessGroup.startsWith('Payroll - ')) {
+        subProcessGroup = subProcessGroup.replace('Payroll - ', '');
+      }
+
+      // Compute display activity name: strip subProcessGroup if process starts with it
+      let displayProcess = normalized.process;
+      const subPrefix = `${subProcessGroup} - `;
+      if (displayProcess.startsWith(subPrefix)) {
+        displayProcess = displayProcess.replace(subPrefix, '');
+      }
+
       return {
         ...normalized,
         tower: tax ? tax.majorProcess : 'Unknown',
+        subProcessGroup,
+        displayProcess,
         fte: Number(fte.toFixed(2))
       };
     });
