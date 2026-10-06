@@ -53,7 +53,13 @@ const getSixBySixData = async (req, res) => {
     console.log(`[6x6 Report] Fetching data for department: "${department}"`);
     
     // 1. Sync new processes from WDT submissions
-    const matchStage = department && department !== 'All Departments' ? { 'employee.department': department } : {};
+    // Explicitly restrict to valid departments to avoid recreating legacy mock records
+    let matchStage = {};
+    if (department && department !== 'All Departments') {
+       matchStage = { 'employee.department': department };
+    } else {
+       matchStage = { 'employee.department': 'Finance & Accounting' };
+    }
     
     const aggregatedProcesses = await WDTSubmission.aggregate([
        { $match: matchStage },
@@ -94,16 +100,14 @@ const getSixBySixData = async (req, res) => {
       });
       
       if (!exists) {
-        // Create with random criteria for now as requested
-        const randomCriteria = Array.from({ length: 12 }, () => 
-          criteriaOptions[Math.floor(Math.random() * criteriaOptions.length)]
-        );
+        // Create with unscored criteria ('-') instead of fabricated random scores
+        const unscoredCriteria = Array.from({ length: 12 }, () => '-');
         
         await ProcessAnalysis.create({
           process: processName,
           department: deptName,
           type: item._id.type || 'core',
-          criteria: randomCriteria,
+          criteria: unscoredCriteria,
           score: 0, // calc automatically by pre-save
           consolidated: false
         });
@@ -114,6 +118,9 @@ const getSixBySixData = async (req, res) => {
     let query = {};
     if (department && department !== 'All Departments') {
        query.department = department;
+    } else {
+       // Filter out legacy mock departments and enforce ONLY authoritative datasets
+       query.department = 'Finance & Accounting';
     }
     
     const data = await ProcessAnalysis.find(query).sort({ department: 1, type: 1 }).lean();
@@ -128,19 +135,43 @@ const getSixBySixData = async (req, res) => {
     
     const enrichedData = data.map(record => {
       const normalized = normalizeAnalysisRecord(record);
-      // Find tower
-      const tax = taxonomyData.find(t => 
-        (t.subProcesses && t.subProcesses.includes(normalized.process)) || 
+      // Find tower - prioritize matching department first
+      let tax = taxonomyData.find(t => 
+        t.department === normalized.department &&
+        ((t.subProcesses && t.subProcesses.includes(normalized.process)) || 
         t.process === normalized.process ||
-        t.majorProcess === normalized.process
+        t.majorProcess === normalized.process)
       );
+      
+      // Fallback if no exact department match
+      if (!tax) {
+        tax = taxonomyData.find(t => 
+          (t.subProcesses && t.subProcesses.includes(normalized.process)) || 
+          t.process === normalized.process ||
+          t.majorProcess === normalized.process
+        );
+      }
       
       const key = `${normalized.department}::${normalized.process}`;
       const fte = fteLookup[key] || 0;
 
+      let subProcessGroup = tax && tax.process ? tax.process : 'Unknown';
+      if (subProcessGroup.startsWith('Payroll - ')) {
+        subProcessGroup = subProcessGroup.replace('Payroll - ', '');
+      }
+
+      // Compute display activity name: strip subProcessGroup if process starts with it
+      let displayProcess = normalized.process;
+      const subPrefix = `${subProcessGroup} - `;
+      if (displayProcess.startsWith(subPrefix)) {
+        displayProcess = displayProcess.replace(subPrefix, '');
+      }
+
       return {
         ...normalized,
         tower: tax ? tax.majorProcess : 'Unknown',
+        subProcessGroup,
+        displayProcess,
         fte: Number(fte.toFixed(2))
       };
     });

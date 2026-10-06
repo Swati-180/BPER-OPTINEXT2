@@ -2,7 +2,7 @@ import { useMemo, useState, useEffect } from 'react';
 import { apiFetch, exportToExcelClient } from '../../lib/api';
 import { Download } from 'lucide-react';
 
-type Department = 'F&A' | 'HR' | 'Logistics' | 'SCM';
+type Department = 'Finance & Accounting' | 'HR' | 'Logistics' | 'SCM';
 type CriteriaValue = 'H' | 'M' | 'L';
 type AnalysisTab = 'overview' | 'matrix' | 'distribution';
 
@@ -16,6 +16,8 @@ type ProcessRow = {
 	score: number;
 	consolidated: boolean;
 	fte?: number;
+	subProcessGroup?: string;
+	displayProcess?: string;
 };
 
 const ACTIVITY_TYPES = ['All', 'Analytics', 'Transactional', 'Reporting', 'Functional'] as const;
@@ -59,6 +61,8 @@ function normalizeRow(raw: any): ProcessRow {
 		score,
 		consolidated: typeof raw?.consolidated === 'boolean' ? raw.consolidated : score >= 7,
 		fte: typeof raw?.fte === 'number' ? raw.fte : 0,
+		subProcessGroup: raw?.subProcessGroup,
+		displayProcess: raw?.displayProcess || String(raw?.process || 'Unnamed Process'),
 	};
 }
 
@@ -123,7 +127,7 @@ export default function SixBySixAnalysisPage() {
 		fetchData();
 	}, [departmentFilter]);
 
-	const departments = useMemo(() => ['All Departments', 'F&A', 'HR', 'Logistics', 'SCM'] as const, []);
+	const departments = useMemo(() => ['All Departments', 'Finance & Accounting', 'HR', 'Logistics', 'SCM'] as const, []);
 
 	const uniqueTowers = useMemo(() => {
 		const towers = new Set<string>();
@@ -244,7 +248,8 @@ export default function SixBySixAnalysisPage() {
 		try {
 			const data = filteredRows.map(row => {
 				const out: any = { 
-					Process: row.process, 
+					'Process / Activity': row.displayProcess, 
+					'Sub Process': row.subProcessGroup || '-',
 					Tower: row.tower || 'Unknown',
 					Department: row.department,
 					Type: row.type 
@@ -274,7 +279,8 @@ export default function SixBySixAnalysisPage() {
 
 	const exportConsolidatable = () => {
 		const data = filteredRows.filter(r => r.consolidated === true).map(row => ({
-			Process: row.process,
+			'Process / Activity': row.displayProcess,
+			'Sub Process': row.subProcessGroup || '-',
 			Tower: row.tower || 'Unknown',
 			Department: row.department,
 			Score: row.score,
@@ -285,7 +291,8 @@ export default function SixBySixAnalysisPage() {
 
 	const exportNonConsolidatable = () => {
 		const data = filteredRows.filter(r => r.consolidated === false).map(row => ({
-			Process: row.process,
+			'Process / Activity': row.displayProcess,
+			'Sub Process': row.subProcessGroup || '-',
 			Tower: row.tower || 'Unknown',
 			Department: row.department,
 			Score: row.score,
@@ -316,7 +323,7 @@ export default function SixBySixAnalysisPage() {
 			grouped.set(key, existing);
 		});
 
-		const order: Department[] = ['F&A', 'HR', 'Logistics', 'SCM'];
+		const order: Department[] = ['Finance & Accounting', 'HR', 'Logistics', 'SCM'];
 		return Array.from(grouped.values()).sort((a, b) => {
 			const deptDiff = order.indexOf(a.department) - order.indexOf(b.department);
 			if (deptDiff !== 0) return deptDiff;
@@ -560,7 +567,8 @@ export default function SixBySixAnalysisPage() {
 							<table className="w-full border-collapse text-left">
 								<thead className="sticky top-0 bg-[#F2FCF9] z-10">
 									<tr className="text-[10px] font-bold uppercase tracking-[0.13em] text-[#4A8E85] border-b border-[#CFE7E2]">
-										<th className="px-4 py-2.5">Process Name</th>
+										<th className="px-4 py-2.5">Process / Activity</th>
+										<th className="px-4 py-2.5">Sub Process</th>
 										<th className="px-4 py-2.5">Tower</th>
 										<th className="px-4 py-2.5">Department</th>
 										<th className="px-4 py-2.5 text-right">Score</th>
@@ -577,7 +585,8 @@ export default function SixBySixAnalysisPage() {
 									) : (
 										filteredRows.filter(r => r.consolidated === true).map((item) => (
 											<tr key={item._id || `${item.process}-${item.department}`} className="border-b border-[#E8EEF7] last:border-b-0 hover:bg-[#F9FBFD]">
-												<td className="px-4 py-3 text-xs font-semibold text-[#203A5D]">{item.process}</td>
+												<td className="px-4 py-3 text-xs font-semibold text-[#203A5D]">{item.displayProcess}</td>
+												<td className="px-4 py-3 text-xs text-[#314E72]">{item.subProcessGroup || '-'}</td>
 												<td className="px-4 py-3 text-xs text-[#314E72]">{item.tower && item.tower !== 'Unknown' ? item.tower : '-'}</td>
 												<td className="px-4 py-3 text-xs text-[#314E72]">{item.department}</td>
 												<td className="px-4 py-3 text-xs font-semibold text-[#20916E] text-right">{item.score}</td>
@@ -607,7 +616,8 @@ export default function SixBySixAnalysisPage() {
 							<table className="w-full border-collapse text-left">
 								<thead className="sticky top-0 bg-[#FFF6F7] z-10">
 									<tr className="text-[10px] font-bold uppercase tracking-[0.13em] text-[#BF4347] border-b border-[#F0D2D4]">
-										<th className="px-4 py-2.5">Process Name</th>
+										<th className="px-4 py-2.5">Process / Activity</th>
+										<th className="px-4 py-2.5">Sub Process</th>
 										<th className="px-4 py-2.5">Tower</th>
 										<th className="px-4 py-2.5">Department</th>
 										<th className="px-4 py-2.5 text-right">Score</th>
@@ -624,7 +634,8 @@ export default function SixBySixAnalysisPage() {
 									) : (
 										filteredRows.filter(r => r.consolidated === false).map((item) => (
 											<tr key={item._id || `${item.process}-${item.department}`} className="border-b border-[#E8EEF7] last:border-b-0 hover:bg-[#F9FBFD]">
-												<td className="px-4 py-3 text-xs font-semibold text-[#203A5D]">{item.process}</td>
+												<td className="px-4 py-3 text-xs font-semibold text-[#203A5D]">{item.displayProcess}</td>
+												<td className="px-4 py-3 text-xs text-[#314E72]">{item.subProcessGroup || '-'}</td>
 												<td className="px-4 py-3 text-xs text-[#314E72]">{item.tower && item.tower !== 'Unknown' ? item.tower : '-'}</td>
 												<td className="px-4 py-3 text-xs text-[#314E72]">{item.department}</td>
 												<td className="px-4 py-3 text-xs font-semibold text-[#D24545] text-right">{item.score}</td>
@@ -663,7 +674,8 @@ export default function SixBySixAnalysisPage() {
 						<table className="w-full border-collapse text-left min-w-max">
 							<thead>
 								<tr className="bg-[#F5F8FD] text-xs font-bold text-[#617289] border-b border-[#E3EAF4]">
-									<th className="px-3 py-2.5 sticky left-0 z-20 bg-[#F5F8FD] shadow-[1px_0_0_#E3EAF4]">Process</th>
+									<th className="px-3 py-2.5 sticky left-0 z-20 bg-[#F5F8FD] shadow-[1px_0_0_#E3EAF4] w-64 min-w-[16rem]">Process / Activity</th>
+									<th className="px-3 py-2.5 bg-[#F5F8FD] border-r border-[#E3EAF4]">Sub Process</th>
 									{Object.entries(PERFORMANCE_LABELS).map(([label, fullName]) => (
 										<th key={`p-${label}`} title={fullName} className="px-2 py-2.5 text-center text-[#2860D3] cursor-help border-x border-[#F0F4F9]">{label}</th>
 									))}
@@ -689,9 +701,12 @@ export default function SixBySixAnalysisPage() {
 										const rowBg = item.consolidated ? 'bg-emerald-50/30' : 'bg-red-50/20';
 										return (
 										<tr key={item._id || `${item.process}-${item.department}`} className={`border-b border-[#E8EEF7] last:border-b-0 ${rowBg}`}>
-											<td className="px-3 py-3 sticky left-0 z-10 bg-white shadow-[1px_0_0_#E3EAF4]">
-												<p className="max-w-82 truncate text-xs font-semibold text-[#1E304B]">{item.process}</p>
-												<p className="text-xs text-[#7086A1]">{item.tower && item.tower !== 'Unknown' ? `${item.department} • ${item.tower}` : item.department}</p>
+											<td className="px-3 py-3 sticky left-0 z-10 bg-white shadow-[1px_0_0_#E3EAF4] w-64 min-w-[16rem] whitespace-normal break-words">
+												<p className="text-xs font-semibold text-[#1E304B]">{item.displayProcess}</p>
+												<p className="text-[10px] text-[#7086A1] mt-0.5">{item.tower && item.tower !== 'Unknown' ? `${item.department} • ${item.tower}` : item.department}</p>
+											</td>
+											<td className="px-3 py-3 bg-white border-r border-[#E8EEF7] w-48 min-w-[12rem] whitespace-normal break-words">
+												<p className="text-xs font-medium text-[#4A6482]">{item.subProcessGroup || '-'}</p>
 											</td>
 
 											{item.criteria.map((value, index) => (
