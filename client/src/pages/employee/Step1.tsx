@@ -22,16 +22,17 @@ export function Step1({ employee, windowStatus, onNext, onPrev }: StepProps) {
             <h2 className="text-3xl sm:text-4xl font-semibold text-slate-900 tracking-tight">Employee Verification</h2>
           </div>
           <div className="max-w-md">
+            {/* TEMP-DISABLED (window-date limit): always show open state for now
             {windowStatus && !windowStatus.isOpen ? (
               <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-amber-800">
                 <p className="text-xs font-bold uppercase tracking-widest mb-1">Submission Window Closed</p>
                 <p className="text-sm font-medium">Submissions open on the 20th. {windowStatus.message}.</p>
               </div>
-            ) : (
+            ) : ( */}
               <p className="text-sm text-slate-600 leading-relaxed">
                 Review your read-only profile before entering process data. These fields are pulled from master records.
               </p>
-            )}
+            {/* )} */}
           </div>
         </div>
 
@@ -96,13 +97,16 @@ export function Step1({ employee, windowStatus, onNext, onPrev }: StepProps) {
           </button>
           <button
             type="button"
-            disabled={windowStatus && !windowStatus.isOpen}
+            // TEMP-DISABLED (window-date limit): enable submission for now
+            // disabled={windowStatus && !windowStatus.isOpen}
             onClick={onNext}
-            className={`font-semibold py-3 px-6 rounded-md transition-colors inline-flex items-center justify-center gap-2 shadow-sm ${
-              windowStatus && !windowStatus.isOpen
-                ? "bg-slate-200 text-slate-400 cursor-not-allowed"
-                : "bg-blue-700 hover:bg-blue-800 text-white"
-            }`}
+            className={`font-semibold py-3 px-6 rounded-md transition-colors inline-flex items-center justify-center gap-2 shadow-sm bg-blue-700 hover:bg-blue-800 text-white`}
+            // TEMP-DISABLED original conditional styling:
+            // className={`font-semibold py-3 px-6 rounded-md transition-colors inline-flex items-center justify-center gap-2 shadow-sm ${
+            //   windowStatus && !windowStatus.isOpen
+            //     ? "bg-slate-200 text-slate-400 cursor-not-allowed"
+            //     : "bg-blue-700 hover:bg-blue-800 text-white"
+            // }`}
           >
             Confirm & Continue <ArrowRight size={18} />
           </button>
