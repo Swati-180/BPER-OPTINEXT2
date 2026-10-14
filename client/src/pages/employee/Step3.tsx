@@ -18,18 +18,23 @@ export function Step3({ payload, onPrev, onSubmit, onSaveDraft, onEditSection, s
   const [isCertified, setIsCertified] = useState(false);
 
   const rows = payload?.rows || [];
-  const totalHours = useMemo(() => rows.reduce((sum, row) => sum + Number(row.timeTakenHoursPerMonth || 0), 0), [rows]);
+
+  // Workload rule: Exclude rejected custom activities from approved total hours and FTE
+  const totalHours = useMemo(
+    () => rows.filter((row) => row.approvalStatus !== 'Rejected').reduce((sum, row) => sum + Number(row.timeTakenHoursPerMonth || 0), 0),
+    [rows]
+  );
   const authUser = loadAuthUser();
   const maxHours = authUser?.maxMonthlyHours || 160;
   const totalFte = useMemo(() => totalHours / maxHours, [totalHours, maxHours]);
   const coreRows = useMemo(() => rows.filter((row) => row.activityCategory !== "support"), [rows]);
   const supportRows = useMemo(() => rows.filter((row) => row.activityCategory === "support"), [rows]);
   const coreHours = useMemo(
-    () => coreRows.reduce((sum, row) => sum + Number(row.timeTakenHoursPerMonth || 0), 0),
+    () => coreRows.filter((row) => row.approvalStatus !== 'Rejected').reduce((sum, row) => sum + Number(row.timeTakenHoursPerMonth || 0), 0),
     [coreRows]
   );
   const supportHours = useMemo(
-    () => supportRows.reduce((sum, row) => sum + Number(row.timeTakenHoursPerMonth || 0), 0),
+    () => supportRows.filter((row) => row.approvalStatus !== 'Rejected').reduce((sum, row) => sum + Number(row.timeTakenHoursPerMonth || 0), 0),
     [supportRows]
   );
   const draftLabel = useMemo(() => {

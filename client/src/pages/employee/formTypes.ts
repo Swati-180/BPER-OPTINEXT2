@@ -39,6 +39,9 @@ export interface WdtActivityRow {
   isAiMapped?: boolean;
   aiConfidence?: number;
   originalCustomInput?: string;
+  activityRequestId?: string;
+  approvalStatus?: 'Pending' | 'Approved' | 'Rejected';
+  rejectionReason?: string;
 }
 
 export interface WdtPayload {

@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
-import { ArrowLeft, ArrowRight, CircleHelp, Plus, Trash2, Sparkles, AlertCircle, Lock } from "lucide-react";
+import { ArrowLeft, ArrowRight, CircleHelp, Plus, Trash2, Sparkles, AlertCircle, Lock, GitPullRequest, CheckCircle2, Clock, XCircle } from "lucide-react";
 import type { WdtActivityRow, WdtPayload, EmployeeSnapshot } from "./formTypes";
-import { apiFetch } from "../../lib/api";
+import { apiFetch, getMyActivityRequests, type ActivityRequestItem } from "../../lib/api";
+import { RequestActivityModal } from "./MyActivityRequests";
 
 type EditorKind = "single" | "multi" | "number" | "select";
 
@@ -68,12 +69,104 @@ export function Step2({ employee, payload, onNext, onPrev, onPayloadChange, onAd
   const [taxonomy, setTaxonomy] = useState<TaxonomyItem[]>([]);
   const [mapSuggestion, setMapSuggestion] = useState<any>(null);
   const [isMapping, setIsMapping] = useState(false);
+  const [isRequestModalOpen, setIsRequestModalOpen] = useState(false);
+  const [requestPrefill, setRequestPrefill] = useState<{
+    majorProcess?: string;
+    process?: string;
+    activityName?: string;
+    justification?: string;
+  } | undefined>(undefined);
+  const [requestTargetRowIndex, setRequestTargetRowIndex] = useState<number | null>(null);
+  const [requestSuccessBanner, setRequestSuccessBanner] = useState<string | null>(null);
+
+  const handleKeepCustomRequest = () => {
+    const targetIdx = editor ? editor.rowIndex : null;
+    const currentRow = targetIdx !== null ? rows[targetIdx] : null;
+    const major = currentRow?.majorProcess && currentRow.majorProcess !== 'Additional Activities' ? currentRow.majorProcess : '';
+    const proc = currentRow?.process && currentRow.process !== 'Support Activity' ? currentRow.process : '';
+
+    setRequestTargetRowIndex(targetIdx);
+    setRequestPrefill({
+      majorProcess: major,
+      process: proc,
+      activityName: editorDraft.trim(),
+      justification: ''
+    });
+    setMapSuggestion(null);
+    setIsRequestModalOpen(true);
+  };
 
   useEffect(() => {
     if (payload?.rows?.length) {
       setRows(payload.rows);
     }
   }, [payload]);
+
+  // Synchronize rows with persisted ActivityRequest statuses (Approved/Rejected/Pending) from the server
+  useEffect(() => {
+    let isMounted = true;
+
+    async function syncActivityRequestStatuses() {
+      try {
+        const myRequests = await getMyActivityRequests();
+        if (!isMounted || !Array.isArray(myRequests) || myRequests.length === 0) return;
+
+        setRows((prevRows) => {
+          let hasChanges = false;
+          const nextRows = prevRows.map((row) => {
+            // 1. Primary match by persistent activityRequestId
+            let matchedRequest: ActivityRequestItem | undefined;
+            if (row.activityRequestId) {
+              matchedRequest = myRequests.find((r) => String(r._id) === String(row.activityRequestId));
+            }
+
+            // 2. Fallback secondary match for custom rows that have matching activity name & major/process
+            if (!matchedRequest && row.approvalStatus && row.subProcess) {
+              const cleanSub = row.subProcess.trim().toLowerCase();
+              matchedRequest = myRequests.find(
+                (r) =>
+                  r.activityName?.trim().toLowerCase() === cleanSub &&
+                  (!row.majorProcess || row.majorProcess === 'Additional Activities' || r.majorProcess === row.majorProcess)
+              );
+            }
+
+            if (matchedRequest) {
+              const currentStatus = row.approvalStatus;
+              const serverStatus = matchedRequest.status;
+              const serverReason = matchedRequest.rejectionReason || '';
+              const serverReqId = matchedRequest._id;
+
+              if (
+                currentStatus !== serverStatus ||
+                row.rejectionReason !== serverReason ||
+                row.activityRequestId !== serverReqId
+              ) {
+                hasChanges = true;
+                return {
+                  ...row,
+                  activityRequestId: serverReqId,
+                  approvalStatus: serverStatus,
+                  rejectionReason: serverReason,
+                };
+              }
+            }
+
+            return row;
+          });
+
+          return hasChanges ? nextRows : prevRows;
+        });
+      } catch (err) {
+        console.warn('[Step2] Could not sync activity request statuses:', err);
+      }
+    }
+
+    syncActivityRequestStatuses();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   useEffect(() => {
     async function fetchTaxonomy() {
@@ -97,7 +190,7 @@ export function Step2({ employee, payload, onNext, onPrev, onPayloadChange, onAd
   const allSubProcesses = useMemo(() => {
     console.log('[Step2] Recalculating allSubProcesses. taxonomy count:', taxonomy?.length);
     if (!taxonomy || !Array.isArray(taxonomy)) return [];
-    const result = taxonomy.flatMap(t => 
+    const result = taxonomy.flatMap(t =>
       (t.subProcesses || []).map(sp => ({
         subProcess: sp,
         process: t.process,
@@ -108,13 +201,13 @@ export function Step2({ employee, payload, onNext, onPrev, onPayloadChange, onAd
       const deptA = a.department || '';
       const deptB = b.department || '';
       const empDept = employee?.department || '';
-      
+
       const isAMatch = empDept && deptA.toLowerCase() === empDept.toLowerCase();
       const isBMatch = empDept && deptB.toLowerCase() === empDept.toLowerCase();
-      
+
       if (isAMatch && !isBMatch) return -1;
       if (!isAMatch && isBMatch) return 1;
-      
+
       if (deptA !== deptB) return deptA.localeCompare(deptB);
       if (a.majorProcess !== b.majorProcess) return a.majorProcess.localeCompare(b.majorProcess);
       if (a.process !== b.process) return a.process.localeCompare(b.process);
@@ -127,7 +220,7 @@ export function Step2({ employee, payload, onNext, onPrev, onPayloadChange, onAd
   const filteredSubProcesses = useMemo(() => {
     if (!searchQuery) return allSubProcesses;
     const lowerQuery = searchQuery.toLowerCase();
-    return allSubProcesses.filter(item => 
+    return allSubProcesses.filter(item =>
       item.subProcess.toLowerCase().includes(lowerQuery) ||
       item.process.toLowerCase().includes(lowerQuery) ||
       item.majorProcess.toLowerCase().includes(lowerQuery)
@@ -135,7 +228,7 @@ export function Step2({ employee, payload, onNext, onPrev, onPayloadChange, onAd
   }, [allSubProcesses, searchQuery]);
 
   const majorProcessSuggestions = useMemo(() => Array.from(new Set(taxonomy.map(t => t.majorProcess))), [taxonomy]);
-  
+
   const getProcessSuggestions = (rowIndex: number) => {
     const row = rows[rowIndex];
     if (!row?.majorProcess) return Array.from(new Set(taxonomy.map(t => t.process)));
@@ -152,14 +245,14 @@ export function Step2({ employee, payload, onNext, onPrev, onPayloadChange, onAd
     // Default suggestions: Use the sorted sub-processes from allSubProcesses (bubbles employee's department to the top)
     const uniqueSubs: string[] = [];
     const seen = new Set<string>();
-    
+
     for (const item of allSubProcesses) {
       if (!seen.has(item.subProcess)) {
         seen.add(item.subProcess);
         uniqueSubs.push(item.subProcess);
       }
     }
-    
+
     return uniqueSubs.slice(0, 8);
   };
 
@@ -229,13 +322,17 @@ export function Step2({ employee, payload, onNext, onPrev, onPayloadChange, onAd
     };
   }, [editor]);
 
-  const totalHours = useMemo(() => rows.reduce((sum, row) => sum + Number(row.timeTakenHoursPerMonth || 0), 0), [rows]);
+  // Workload calculations: Exclude rejected custom activity requests from approved workload calculations
+  const totalHours = useMemo(
+    () => rows.filter(r => r.approvalStatus !== 'Rejected').reduce((sum, row) => sum + Number(row.timeTakenHoursPerMonth || 0), 0),
+    [rows]
+  );
   const coreHours = useMemo(
-    () => coreEntries.reduce((sum, entry) => sum + Number(entry.row.timeTakenHoursPerMonth || 0), 0),
+    () => coreEntries.filter(e => e.row.approvalStatus !== 'Rejected').reduce((sum, entry) => sum + Number(entry.row.timeTakenHoursPerMonth || 0), 0),
     [coreEntries]
   );
   const supportHours = useMemo(
-    () => supportEntries.reduce((sum, entry) => sum + Number(entry.row.timeTakenHoursPerMonth || 0), 0),
+    () => supportEntries.filter(e => e.row.approvalStatus !== 'Rejected').reduce((sum, entry) => sum + Number(entry.row.timeTakenHoursPerMonth || 0), 0),
     [supportEntries]
   );
 
@@ -252,16 +349,16 @@ export function Step2({ employee, payload, onNext, onPrev, onPayloadChange, onAd
     return rows.every(row => {
       const hasTime = Number(row.volumesMonthly) > 0 && Number(row.timePerTransactionMinutes) > 0;
       const hasDescription = row.subProcess?.trim();
-      
+
       if (row.activityCategory === 'support') {
         const isStarted = row.subProcess?.trim() || Number(row.volumesMonthly) > 0 || Number(row.timePerTransactionMinutes) > 0;
         if (!isStarted) return true;
         return hasTime && hasDescription;
       }
-      
+
       // Core rows need all taxonomy fields (major and process are now hidden, so we just check what's visible)
       return (
-        hasTime && 
+        hasTime &&
         hasDescription &&
         row.frequency?.trim()
       );
@@ -282,28 +379,28 @@ export function Step2({ employee, payload, onNext, onPrev, onPayloadChange, onAd
       prev.map((row, rowIndex) => {
         if (rowIndex !== index) return row;
         const nextRow = { ...row, [field]: value };
-        
+
         // Handle volumesPerFrequency input (for Daily frequency)
         if (field === "volumesPerFrequency") {
           const vol = Number(value) || 0;
           nextRow.volumesPerFrequency = vol;
           nextRow.volumesMonthly = calculateVolumesMonthlyFromFrequency(vol, nextRow.frequency);
         }
-        
+
         // Auto-calculate hours if volume or time per trans changed
         if (field === "volumesMonthly" || field === "timePerTransactionMinutes") {
           const vol = Number(nextRow.volumesMonthly) || 0;
           const min = Number(nextRow.timePerTransactionMinutes) || 0;
           nextRow.timeTakenHoursPerMonth = ((vol * min) / 60) || 0;
         }
-        
+
         // When frequency changes, recalculate volumesPerFrequency
         if (field === "frequency") {
           const newFreq = String(value);
           const perFreq = calculateVolumesPerFrequency(nextRow.volumesMonthly, newFreq);
           nextRow.volumesPerFrequency = perFreq;
         }
-        
+
         return nextRow;
       })
     );
@@ -400,7 +497,7 @@ export function Step2({ employee, payload, onNext, onPrev, onPayloadChange, onAd
 
   const applyMapping = (specificSuggestion: any = null, specificConfidence: number | null = null) => {
     if (!editor || !mapSuggestion) return;
-    
+
     // Handle React event if called directly via onClick={applyMapping}
     const target = (specificSuggestion && !specificSuggestion.nativeEvent) ? specificSuggestion : mapSuggestion.suggestion;
     const targetConfidence = (specificConfidence !== null && typeof specificConfidence === 'number') ? specificConfidence : mapSuggestion.confidence;
@@ -412,10 +509,10 @@ export function Step2({ employee, payload, onNext, onPrev, onPayloadChange, onAd
     if (target.process) {
        updateRow(editor.rowIndex, "process", target.process);
     }
-    
+
     // Update the custom text to the mapped suggestion to keep it standardized
     setEditorDraft(target.subProcess);
-    
+
     // Set AI Mapping Flags (must update them sequentially via setRows manually to ensure we catch all at once)
     setRows(prev => prev.map((r, idx) => idx === editor.rowIndex ? {
         ...r,
@@ -432,6 +529,27 @@ export function Step2({ employee, payload, onNext, onPrev, onPayloadChange, onAd
       <div className="bg-linear-to-r from-blue-50 to-slate-50 px-5 py-4 border-b border-blue-100">
         <h2 className="text-[17px] font-bold text-slate-900">Please add details for selected processes</h2>
       </div>
+
+      {requestSuccessBanner && (
+        <div className="mx-4 sm:mx-6 mt-4 p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-sm flex items-start justify-between gap-3 shadow-xs">
+          <div className="flex items-start gap-2.5">
+            <CheckCircle2 size={18} className="text-emerald-600 shrink-0 mt-0.5" />
+            <div>
+              <p className="font-semibold text-emerald-950">{requestSuccessBanner}</p>
+              <p className="text-xs text-emerald-700 mt-0.5">
+                The activity row is marked <strong>Pending Approval</strong>. You can enter monthly volume, time per transaction, comments, and submit your form.
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setRequestSuccessBanner(null)}
+            className="text-emerald-700 hover:text-emerald-900 font-bold text-xs p-1"
+          >
+            ✕
+          </button>
+        </div>
+      )}
 
       <div className="p-4 sm:p-5 md:p-6 pb-24">
         <div className="w-full rounded-lg border border-slate-200 bg-white shadow-[0_8px_20px_-14px_rgba(15,23,42,0.35)] overflow-hidden">
@@ -526,12 +644,41 @@ export function Step2({ employee, payload, onNext, onPrev, onPayloadChange, onAd
                         </span>
                       </div>
                     </td>
-                    {/* Read-only Sub Process column — set from Step 2 */}
+                    {/* Sub Process column */}
                     <td className="py-3 px-2">
                       <div className="w-full min-h-11 rounded border border-slate-200 bg-blue-50/40 px-3 py-2 text-left text-sm">
                         <span className="block truncate text-sm font-medium text-blue-800">
                           {row.subProcess || <span className="text-slate-400 italic">—</span>}
                         </span>
+                        {row.approvalStatus === 'Pending' && (
+                          <div className="mt-1 flex items-center gap-1.5 text-[11px] font-semibold text-amber-700 bg-amber-50 border border-amber-200/80 rounded-md px-2 py-0.5 w-fit">
+                            <Clock size={12} className="text-amber-600 shrink-0" />
+                            <span>Pending Approval</span>
+                          </div>
+                        )}
+                        {row.approvalStatus === 'Approved' && (
+                          <div className="mt-1 flex items-center gap-1.5 text-[11px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200/80 rounded-md px-2 py-0.5 w-fit">
+                            <CheckCircle2 size={12} className="text-emerald-600 shrink-0" />
+                            <span>Approved</span>
+                          </div>
+                        )}
+                        {row.approvalStatus === 'Rejected' && (
+                          <div
+                            className="mt-1 flex flex-col gap-0.5 text-[11px] font-semibold text-red-700 bg-red-50 border border-red-200/80 rounded-md px-2 py-1 w-fit max-w-full"
+                            title={row.rejectionReason ? `Reason: ${row.rejectionReason}` : 'Rejected by reviewer'}
+                          >
+                            <div className="flex items-center gap-1.5">
+                              <XCircle size={12} className="text-red-600 shrink-0" />
+                              <span>Rejected</span>
+                              <span className="text-[10px] font-normal text-red-500">(Excluded)</span>
+                            </div>
+                            {row.rejectionReason && (
+                              <p className="text-[10px] font-normal text-red-600 pl-4 italic">
+                                Reason: {row.rejectionReason}
+                              </p>
+                            )}
+                          </div>
+                        )}
                       </div>
                     </td>
                     <td className="py-3 px-2">
@@ -710,21 +857,52 @@ export function Step2({ employee, payload, onNext, onPrev, onPayloadChange, onAd
                 {supportEntries.map(({ row, rowIndex }) => (
                   <tr key={`support-${rowIndex}-${row.subProcess || "activity"}`} className="border-b border-slate-100 last:border-0 align-top">
                     <td className="py-3 px-2">
-                      <CellPreview
-                        value={row.subProcess}
-                        placeholder="Enter additional activity description"
-                        onClick={() =>
-                          openEditor({
-                            rowIndex,
-                            field: "subProcess",
-                            label: "Activity Description",
-                            description: "Describe the support activity in detail.",
-                            kind: "multi",
-                            placeholder: "Enter additional activity description",
-                            suggestions: getSubProcessSuggestions(rowIndex),
-                          })
-                        }
-                      />
+                      <div className="space-y-1.5">
+                        <CellPreview
+                          value={row.subProcess}
+                          placeholder="Enter additional activity description"
+                          onClick={() =>
+                            openEditor({
+                              rowIndex,
+                              field: "subProcess",
+                              label: "Activity Description",
+                              description: "Describe the support activity in detail.",
+                              kind: "multi",
+                              placeholder: "Enter additional activity description",
+                              suggestions: getSubProcessSuggestions(rowIndex),
+                            })
+                          }
+                        />
+                        {row.approvalStatus === 'Pending' && (
+                          <div className="flex items-center gap-1.5 text-[11px] font-semibold text-amber-700 bg-amber-50 border border-amber-200/80 rounded-md px-2 py-0.5 w-fit">
+                            <Clock size={12} className="text-amber-600 shrink-0" />
+                            <span>Pending Approval</span>
+                          </div>
+                        )}
+                        {row.approvalStatus === 'Approved' && (
+                          <div className="flex items-center gap-1.5 text-[11px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200/80 rounded-md px-2 py-0.5 w-fit">
+                            <CheckCircle2 size={12} className="text-emerald-600 shrink-0" />
+                            <span>Approved</span>
+                          </div>
+                        )}
+                        {row.approvalStatus === 'Rejected' && (
+                          <div
+                            className="flex flex-col gap-0.5 text-[11px] font-semibold text-red-700 bg-red-50 border border-red-200/80 rounded-md px-2 py-1 w-fit max-w-full"
+                            title={row.rejectionReason ? `Reason: ${row.rejectionReason}` : 'Rejected by reviewer'}
+                          >
+                            <div className="flex items-center gap-1.5">
+                              <XCircle size={12} className="text-red-600 shrink-0" />
+                              <span>Rejected</span>
+                              <span className="text-[10px] font-normal text-red-500">(Excluded from approved workload)</span>
+                            </div>
+                            {row.rejectionReason && (
+                              <p className="text-[10px] font-normal text-red-600 pl-4 italic">
+                                Reason: {row.rejectionReason}
+                              </p>
+                            )}
+                          </div>
+                        )}
+                      </div>
                     </td>
                     <td className="py-3 px-2 text-center">
                       <CellPreview
@@ -850,12 +1028,12 @@ export function Step2({ employee, payload, onNext, onPrev, onPayloadChange, onAd
 
               {/* Progress Bar Strip */}
               <div className="h-2 w-full rounded-full bg-slate-100 overflow-hidden border border-slate-200/50">
-                <div 
+                <div
                   className={`h-full rounded-full transition-all duration-700 ease-out ${
-                    (totalHours / (employee.maxMonthlyHours || 160)) > 1 
-                      ? 'bg-red-500' 
-                      : (totalHours / (employee.maxMonthlyHours || 160)) > 0.8 
-                        ? 'bg-amber-500' 
+                    (totalHours / (employee.maxMonthlyHours || 160)) > 1
+                      ? 'bg-red-500'
+                      : (totalHours / (employee.maxMonthlyHours || 160)) > 0.8
+                        ? 'bg-amber-500'
                         : 'bg-emerald-500'
                   }`}
                   style={{ width: `${Math.min(100, (totalHours / (employee.maxMonthlyHours || 160)) * 100)}%` }}
@@ -876,7 +1054,7 @@ export function Step2({ employee, payload, onNext, onPrev, onPayloadChange, onAd
             disabled={!isStepValid || hoursExceeded}
             className={`font-bold py-3 px-8 rounded-xl shadow-lg transition-all inline-flex items-center gap-2 group ${
               isStepValid && !hoursExceeded
-                ? "bg-blue-700 hover:bg-blue-800 text-white hover:translate-y-[-1px] active:translate-y-[1px]" 
+                ? "bg-blue-700 hover:bg-blue-800 text-white hover:translate-y-[-1px] active:translate-y-[1px]"
                 : "bg-slate-200 text-slate-400 cursor-not-allowed"
             }`}
           >
@@ -941,7 +1119,7 @@ export function Step2({ employee, payload, onNext, onPrev, onPayloadChange, onAd
                                            Dismiss
                                          </button>
                                        </div>
-                                       
+
                                        {mapSuggestion.suggestion && (
                                          <div className="mt-2.5 pt-2.5 border-t border-amber-200/40">
                                            <span className="text-[9px] font-bold uppercase tracking-wider text-amber-800/80 block mb-1">Closest Suggestion:</span>
@@ -961,12 +1139,14 @@ export function Step2({ employee, payload, onNext, onPrev, onPayloadChange, onAd
                                                  Accept Suggestion
                                                </button>
                                                <button
-                                                 type="button"
-                                                 onClick={() => setMapSuggestion(null)}
-                                                 className="rounded bg-white border border-slate-200 hover:bg-slate-50 px-2.5 py-1 text-[10px] font-semibold text-slate-600 transition-colors"
-                                               >
-                                                 Keep Custom
-                                               </button>
+                                                  type="button"
+                                                  onClick={handleKeepCustomRequest}
+                                                  className="inline-flex items-center gap-1 rounded bg-white border border-slate-200 hover:bg-slate-50 px-2.5 py-1 text-[10px] font-semibold text-slate-700 transition-colors"
+                                                  title="Submit request to add this custom activity to the official taxonomy"
+                                                >
+                                                  <GitPullRequest size={11} className="text-blue-600" />
+                                                  Keep Custom & Request Approval
+                                                </button>
                                              </div>
                                            </div>
                                          </div>
@@ -980,14 +1160,14 @@ export function Step2({ employee, payload, onNext, onPrev, onPayloadChange, onAd
                                        <div className="flex justify-between items-start mb-2">
                                          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Top Suggested Match</span>
                                          <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${
-                                           mapSuggestion.confidence >= 70 
-                                             ? 'bg-emerald-100 text-emerald-700' 
-                                             : mapSuggestion.confidence >= 35 
-                                               ? 'bg-amber-100 text-amber-700' 
+                                           mapSuggestion.confidence >= 70
+                                             ? 'bg-emerald-100 text-emerald-700'
+                                             : mapSuggestion.confidence >= 35
+                                               ? 'bg-amber-100 text-amber-700'
                                                : 'bg-slate-100 text-slate-600'
                                          }`}>
-                                           {mapSuggestion.confidence >= 35 
-                                             ? `${mapSuggestion.confidence}% Confidence` 
+                                           {mapSuggestion.confidence >= 35
+                                             ? `${mapSuggestion.confidence}% Confidence`
                                              : `Closest Match (${mapSuggestion.confidence}%)`
                                            }
                                          </span>
@@ -1007,15 +1187,17 @@ export function Step2({ employee, payload, onNext, onPrev, onPayloadChange, onAd
                                            Accept Top Match
                                          </button>
                                          <button
-                                           type="button"
-                                           onClick={() => setMapSuggestion(null)}
-                                           className="flex-1 rounded border border-slate-200 bg-white py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition-colors"
-                                         >
-                                           Keep Custom Flow
-                                         </button>
+                                            type="button"
+                                            onClick={handleKeepCustomRequest}
+                                            className="flex-1 inline-flex items-center justify-center gap-1.5 rounded border border-blue-200 bg-white py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-50 transition-colors"
+                                            title="Submit request to add this custom activity to the official taxonomy"
+                                          >
+                                            <GitPullRequest size={13} className="text-blue-600" />
+                                            Keep Custom Flow
+                                          </button>
                                        </div>
                                      </div>
-                                     
+
                                      {mapSuggestion.alternatives && mapSuggestion.alternatives.length > 0 && (
                                        <div className="border-t border-blue-100 p-3 bg-slate-50/50">
                                          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-2 block">Other Possible Matches</span>
@@ -1028,10 +1210,10 @@ export function Step2({ employee, payload, onNext, onPrev, onPayloadChange, onAd
                                                </div>
                                                <div className="flex items-center gap-2">
                                                  <span className={`text-[9px] font-bold uppercase px-1.5 py-0.5 rounded-sm ${
-                                                   alt.confidence >= 70 
-                                                     ? 'bg-emerald-50 text-emerald-600' 
-                                                     : alt.confidence >= 35 
-                                                       ? 'bg-amber-50 text-amber-600' 
+                                                   alt.confidence >= 70
+                                                     ? 'bg-emerald-50 text-emerald-600'
+                                                     : alt.confidence >= 35
+                                                       ? 'bg-amber-50 text-amber-600'
                                                        : 'bg-slate-100 text-slate-500'
                                                  }`}>
                                                    {alt.confidence}%
@@ -1129,6 +1311,63 @@ export function Step2({ employee, payload, onNext, onPrev, onPayloadChange, onAd
           </div>,
           document.body
         )}
+      <RequestActivityModal
+        isOpen={isRequestModalOpen}
+        onClose={() => {
+          setIsRequestModalOpen(false);
+          setRequestTargetRowIndex(null);
+        }}
+        onSuccess={(createdRequest?: ActivityRequestItem) => {
+          setIsRequestModalOpen(false);
+          setEditor(null);
+
+          const requestedName = createdRequest?.activityName || requestPrefill?.activityName || editorDraft.trim();
+          const reqId = createdRequest?._id;
+          const targetIdx = requestTargetRowIndex;
+
+          if (targetIdx !== null && targetIdx >= 0 && targetIdx < rows.length) {
+            // Update existing row
+            setRows(prev => prev.map((r, idx) => {
+              if (idx !== targetIdx) return r;
+              return {
+                ...r,
+                subProcess: requestedName,
+                majorProcess: r.majorProcess || createdRequest?.majorProcess || 'Additional Activities',
+                process: r.process || createdRequest?.process || 'Support Activity',
+                activityRequestId: reqId,
+                approvalStatus: 'Pending',
+                originalCustomInput: requestedName
+              };
+            }));
+          } else {
+            // Add as a new Support Activity row in Additional Activities
+            setRows(prev => [
+              ...prev,
+              {
+                activityCategory: "support",
+                majorProcess: createdRequest?.majorProcess || "Additional Activities",
+                process: createdRequest?.process || "Support Activity",
+                subProcess: requestedName,
+                frequency: "Monthly",
+                volumesMonthly: 0,
+                timePerTransactionMinutes: 0,
+                timeTakenHoursPerMonth: 0,
+                applicationsUsed: "",
+                comments: "",
+                activityRequestId: reqId,
+                approvalStatus: 'Pending',
+                originalCustomInput: requestedName
+              }
+            ]);
+          }
+
+          setRequestTargetRowIndex(null);
+          setRequestSuccessBanner(`Custom activity "${requestedName}" submitted for approval! It has been linked to your Additional Activities row with Pending Approval status.`);
+        }}
+        department={employee?.department}
+        taxonomy={taxonomy}
+        initialValues={requestPrefill}
+      />
 
     </div>
   );

@@ -33,7 +33,10 @@ const wdtSubmissionSchema = new mongoose.Schema({
       comments: String,
       isAiMapped: Boolean,
       aiConfidence: Number,
-      originalCustomInput: String
+      originalCustomInput: String,
+      activityRequestId: String,
+      approvalStatus: { type: String, enum: ['Pending', 'Approved', 'Rejected'] },
+      rejectionReason: String
     }]
   },
   totalHours: { type: Number },
@@ -54,6 +57,7 @@ wdtSubmissionSchema.pre('save', function(next) {
   let totalHours = 0;
 
   // 1. Calculate Per-Row Metrics (Hours, FTE)
+  // Workload rule: Rejected custom activity requests are excluded from approved workload calculations
   this.payload.rows.forEach(row => {
     // Total Hours = (Monthly Volume * Time per Transaction) / 60
     if (row.volumesMonthly && row.timePerTransactionMinutes) {
@@ -62,7 +66,9 @@ wdtSubmissionSchema.pre('save', function(next) {
     
     // FTE = Activity Hours / Standard Hours
     row.fte = (row.timeTakenHoursPerMonth || 0) / STANDARD_HOURS;
-    totalHours += (row.timeTakenHoursPerMonth || 0);
+    if (row.approvalStatus !== 'Rejected') {
+      totalHours += (row.timeTakenHoursPerMonth || 0);
+    }
   });
 
   // 2. Calculate Aggregate Metrics (Total Hours, Utilization)
@@ -71,7 +77,9 @@ wdtSubmissionSchema.pre('save', function(next) {
 
   // 3. Calculate Process Share % = (Activity Hours / Total Logged Hours) * 100
   this.payload.rows.forEach(row => {
-    if (totalHours > 0) {
+    if (row.approvalStatus === 'Rejected') {
+      row.processShare = 0;
+    } else if (totalHours > 0) {
       row.processShare = ( (row.timeTakenHoursPerMonth || 0) / totalHours ) * 100;
     } else {
       row.processShare = 0;

@@ -41,7 +41,7 @@ export function ProcessListToggle({
   const autoCollapse = defaultCollapsed !== undefined ? defaultCollapsed : rows.length > 5;
   const [collapsed, setCollapsed] = useState(autoCollapse);
 
-  const totalHours = rows.reduce((sum, row) => sum + Number(row.timeTakenHoursPerMonth || 0), 0);
+  const totalHours = rows.filter(r => (r as any).approvalStatus !== 'Rejected').reduce((sum, row) => sum + Number(row.timeTakenHoursPerMonth || 0), 0);
   const totalFte = totalHours / 160;
 
   return (
@@ -130,13 +130,34 @@ export function ProcessListToggle({
                 return (
                   <tr key={`${row.subProcess}-${index}`} className="hover:bg-slate-50 transition-colors">
                     <td className="px-3 py-2.5">
-                      <p className="font-medium text-slate-700">{row.subProcess || row.process || '—'}</p>
+                      <div className="flex items-center gap-2">
+                        <p className="font-medium text-slate-700">{row.subProcess || row.process || '—'}</p>
+                        {(row as any).approvalStatus === 'Pending' && (
+                          <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-700 border border-amber-200">
+                            Pending Approval
+                          </span>
+                        )}
+                        {(row as any).approvalStatus === 'Approved' && (
+                          <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 border border-emerald-200">
+                            Approved
+                          </span>
+                        )}
+                        {(row as any).approvalStatus === 'Rejected' && (
+                          <span className="rounded-full bg-red-50 px-2 py-0.5 text-[10px] font-semibold text-red-700 border border-red-200" title={(row as any).rejectionReason ? `Reason: ${(row as any).rejectionReason}` : 'Rejected'}>
+                            Rejected
+                          </span>
+                        )}
+                      </div>
                       {row.process && row.subProcess && (
                         <p className="text-[11px] text-slate-400">{row.process}</p>
                       )}
                     </td>
                     <td className="px-3 py-2.5 text-right font-semibold text-slate-900 tabular-nums">
-                      {h.toFixed(1)}h
+                      {(row as any).approvalStatus === 'Rejected' ? (
+                        <span className="line-through text-slate-400">{h.toFixed(1)}h</span>
+                      ) : (
+                        `${h.toFixed(1)}h`
+                      )}
                     </td>
                     {showFTE && (
                       <td className={`px-3 py-2.5 text-right font-bold tabular-nums ${fteColor}`}>

@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { 
   Plus, 
   Search, 
@@ -20,23 +21,38 @@ import {
   type TaxonomyItem
 } from '../../lib/api';
 
-interface RequestModalProps {
+export interface RequestModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSuccess: () => void;
+  onSuccess: (createdRequest?: ActivityRequestItem) => void;
   department?: string;
   taxonomy: TaxonomyItem[];
+  initialValues?: {
+    majorProcess?: string;
+    process?: string;
+    activityName?: string;
+    justification?: string;
+  };
 }
 
-function RequestActivityModal({ isOpen, onClose, onSuccess, department, taxonomy }: RequestModalProps) {
-  const [majorProcess, setMajorProcess] = useState('');
+export function RequestActivityModal({ isOpen, onClose, onSuccess, department, taxonomy, initialValues }: RequestModalProps) {
+  const [majorProcess, setMajorProcess] = useState(initialValues?.majorProcess || '');
   const [customMajor, setCustomMajor] = useState('');
-  const [process, setProcess] = useState('');
+  const [process, setProcess] = useState(initialValues?.process || '');
   const [customProcess, setCustomProcess] = useState('');
-  const [activityName, setActivityName] = useState('');
-  const [justification, setJustification] = useState('');
+  const [activityName, setActivityName] = useState(initialValues?.activityName || '');
+  const [justification, setJustification] = useState(initialValues?.justification || '');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (initialValues) {
+      if (initialValues.majorProcess) setMajorProcess(initialValues.majorProcess);
+      if (initialValues.process) setProcess(initialValues.process);
+      if (initialValues.activityName) setActivityName(initialValues.activityName);
+      if (initialValues.justification) setJustification(initialValues.justification);
+    }
+  }, [initialValues, isOpen]);
 
   // Derive unique major processes
   const majorProcesses = useMemo(() => {
@@ -85,14 +101,14 @@ function RequestActivityModal({ isOpen, onClose, onSuccess, department, taxonomy
 
     setIsSubmitting(true);
     try {
-      await submitActivityRequest({
+      const result = await submitActivityRequest({
         majorProcess: finalMajor,
         process: finalProcess,
         activityName: finalActivity,
         justification: finalJustification,
         department: department || 'General'
       });
-      onSuccess();
+      onSuccess(result?.request);
       onClose();
     } catch (err: any) {
       setError(err?.message || 'Failed to submit activity request.');
@@ -101,8 +117,8 @@ function RequestActivityModal({ isOpen, onClose, onSuccess, department, taxonomy
     }
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-xs p-4">
+  const modalContent = (
+    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4">
       <div className="w-full max-w-xl rounded-2xl bg-white shadow-2xl border border-slate-200 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
         <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50/70 px-6 py-4">
           <div>
@@ -262,6 +278,8 @@ function RequestActivityModal({ isOpen, onClose, onSuccess, department, taxonomy
       </div>
     </div>
   );
+
+  return typeof document !== 'undefined' ? createPortal(modalContent, document.body) : modalContent;
 }
 
 export default function MyActivityRequests() {

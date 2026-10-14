@@ -89,12 +89,16 @@ exports.createRequest = async (req, res) => {
  */
 exports.getMyRequests = async (req, res) => {
   try {
-    const userEmail = req.user.email;
+    const userEmail = (req.user.email || '').trim();
     const userId = req.user.id || req.user._id;
+
+    const emailCondition = userEmail
+      ? [{ 'employee.email': { $regex: new RegExp(`^${userEmail.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') } }]
+      : [];
 
     const requests = await ActivityRequest.find({
       $or: [
-        { 'employee.email': userEmail },
+        ...emailCondition,
         ...(userId ? [{ 'employee.userId': userId }] : [])
       ]
     }).sort({ createdAt: -1 });

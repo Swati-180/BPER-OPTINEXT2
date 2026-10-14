@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import {
   Clock,
   CheckCircle2,
@@ -315,10 +316,18 @@ export default function AdminActivityRequests() {
         )}
       </div>
 
-      {/* Approve / Reject Modal */}
-      {activeAction && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-xs p-4">
-          <div className="w-full max-w-md rounded-2xl bg-white shadow-2xl border border-slate-200 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+      {/* Approve / Reject Modal rendered via Portal to document.body */}
+      {activeAction && typeof document !== 'undefined' && createPortal(
+        <div
+          className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4"
+          onClick={() => {
+            if (!isProcessing) setActiveAction(null);
+          }}
+        >
+          <div
+            className="w-full max-w-md rounded-2xl bg-white shadow-2xl border border-slate-200 overflow-hidden animate-in fade-in zoom-in-95 duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className={`flex items-center justify-between border-b px-5 py-3.5 ${
               activeAction.type === 'approve' ? 'bg-emerald-50/70 border-emerald-100' : 'bg-red-50/70 border-red-100'
             }`}>
@@ -329,8 +338,11 @@ export default function AdminActivityRequests() {
               </h3>
               <button
                 type="button"
-                onClick={() => setActiveAction(null)}
-                className="rounded-lg p-1 text-slate-400 hover:bg-slate-200 hover:text-slate-600"
+                onClick={() => {
+                  if (!isProcessing) setActiveAction(null);
+                }}
+                disabled={isProcessing}
+                className="rounded-lg p-1 text-slate-400 hover:bg-slate-200 hover:text-slate-600 disabled:opacity-50"
               >
                 ✕
               </button>
@@ -399,7 +411,7 @@ export default function AdminActivityRequests() {
                   type="button"
                   onClick={() => setActiveAction(null)}
                   disabled={isProcessing}
-                  className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                  className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50"
                 >
                   Cancel
                 </button>
@@ -407,7 +419,7 @@ export default function AdminActivityRequests() {
                   type="button"
                   onClick={handleActionConfirm}
                   disabled={isProcessing}
-                  className={`inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-semibold text-white shadow-xs transition ${
+                  className={`inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-semibold text-white shadow-xs transition disabled:opacity-50 ${
                     activeAction.type === 'approve'
                       ? 'bg-emerald-600 hover:bg-emerald-700'
                       : 'bg-red-600 hover:bg-red-700'
@@ -427,7 +439,8 @@ export default function AdminActivityRequests() {
               </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

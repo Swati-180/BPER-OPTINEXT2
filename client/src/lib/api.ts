@@ -387,6 +387,20 @@ export interface ActivityRequestItem {
   updatedAt: string;
 }
 
+async function parseApiResponse<T>(response: Response, defaultErrMsg: string): Promise<T> {
+  const contentType = response.headers.get('content-type') || '';
+  const isJson = contentType.includes('application/json');
+  const data = isJson ? await response.json().catch(() => null) : null;
+
+  if (!response.ok) {
+    const errorText = !isJson ? await response.text().catch(() => '') : '';
+    const message = data?.message || errorText || `${defaultErrMsg} (Status ${response.status})`;
+    throw new Error(message);
+  }
+
+  return (data || {}) as T;
+}
+
 export async function submitActivityRequest(data: {
   majorProcess: string;
   process: string;
@@ -398,11 +412,7 @@ export async function submitActivityRequest(data: {
     method: 'POST',
     body: JSON.stringify(data),
   });
-  const resData = await response.json();
-  if (!response.ok) {
-    throw new Error(resData?.message || 'Failed to submit activity request.');
-  }
-  return resData;
+  return parseApiResponse<{ message: string; request: ActivityRequestItem }>(response, 'Failed to submit activity request.');
 }
 
 export function getMyActivityRequests(): Promise<ActivityRequestItem[]> {
@@ -422,11 +432,7 @@ export async function approveActivityRequest(id: string, remarks?: string): Prom
     method: 'PATCH',
     body: JSON.stringify({ remarks }),
   });
-  const resData = await response.json();
-  if (!response.ok) {
-    throw new Error(resData?.message || 'Failed to approve activity request.');
-  }
-  return resData;
+  return parseApiResponse<{ message: string; request: ActivityRequestItem }>(response, 'Failed to approve activity request.');
 }
 
 export async function rejectActivityRequest(id: string, reason: string, remarks?: string): Promise<{ message: string; request: ActivityRequestItem }> {
@@ -434,9 +440,5 @@ export async function rejectActivityRequest(id: string, reason: string, remarks?
     method: 'PATCH',
     body: JSON.stringify({ reason, remarks }),
   });
-  const resData = await response.json();
-  if (!response.ok) {
-    throw new Error(resData?.message || 'Failed to reject activity request.');
-  }
-  return resData;
+  return parseApiResponse<{ message: string; request: ActivityRequestItem }>(response, 'Failed to reject activity request.');
 }
