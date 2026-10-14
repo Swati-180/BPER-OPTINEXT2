@@ -46,6 +46,7 @@ app.use('/api/fitment', fitmentRoutes);
 app.use('/api/taxonomy', taxonomyRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/activities', activitiesRoutes);
+app.use('/api/activity-requests', require('./routes/activityRequests'));
 app.use('/api/export', exportRoutes);
 app.use('/api/invite', inviteRoutes);
 app.use('/api/admin-whitelist', adminWhitelistRoutes);

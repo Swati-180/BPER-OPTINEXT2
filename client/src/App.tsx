@@ -25,6 +25,7 @@ import EmployeeDashboard from './pages/employee/Dashboard';
 import EmployeeProfile from './pages/employee/Profile';
 import BPERForm from './pages/employee/BPERForm';
 import FormStatus from './pages/employee/FormStatus';
+import MyActivityRequests from './pages/employee/MyActivityRequests';
 
 import ManagerDashboard from './pages/manager/Dashboard';
 import ManagerUsers from './pages/manager/Users';
@@ -355,6 +356,7 @@ export default function App() {
                   <Route path="form" element={<BPERForm />} />
                   <Route path="form/:refId" element={<BPERForm />} />
                   <Route path="status" element={<FormStatus />} />
+                  <Route path="activity-requests" element={<MyActivityRequests />} />
                   <Route path="*" element={<Navigate to="dashboard" replace />} />
                 </Routes>
               </EmployeeLayout>
@@ -395,6 +397,7 @@ export default function App() {
                   <Route path="6x6-analysis" element={<ManagerSixBySixAnalysis />} />
                   <Route path="deep-analysis" element={<DeepAnalysis />} />
                   <Route path="process-operations" element={<ProcessOperationsHub />} />
+                  <Route path="activity-requests" element={<Navigate to="/admin/process-operations?tab=requests" replace />} />
                   <Route path="process-management" element={<Navigate to="/admin/process-operations?tab=process" replace />} />
                   <Route path="taxonomy" element={<Navigate to="/admin/process-operations?tab=taxonomy" replace />} />
                   <Route path="audit-logs" element={<Navigate to="/admin/process-operations?tab=audit" replace />} />

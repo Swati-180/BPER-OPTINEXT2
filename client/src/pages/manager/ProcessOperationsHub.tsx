@@ -1,11 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Workflow, LayoutGrid, ShieldCheck } from 'lucide-react';
+import { Workflow, LayoutGrid, ShieldCheck, GitPullRequest } from 'lucide-react';
 import ProcessManagementPage from './ProcessManagementPage';
 import TaxonomyManagement from './TaxonomyManagement';
 import AuditLogs from './AuditLogs';
+import AdminActivityRequests from './AdminActivityRequests';
 
-type ProcessOpsTab = 'process' | 'taxonomy' | 'audit';
+type ProcessOpsTab = 'process' | 'taxonomy' | 'requests' | 'audit';
 
 const TABS: Array<{
   key: ProcessOpsTab;
@@ -26,6 +27,12 @@ const TABS: Array<{
     icon: LayoutGrid,
   },
   {
+    key: 'requests',
+    label: 'Activity Requests',
+    description: 'Review, approve, or reject custom activity submissions from employees.',
+    icon: GitPullRequest,
+  },
+  {
     key: 'audit',
     label: 'Audit Trail',
     description: 'Review historical records of platform actions and administrative changes.',
@@ -35,6 +42,7 @@ const TABS: Array<{
 
 function getValidTab(value: string | null): ProcessOpsTab {
   if (value === 'taxonomy') return 'taxonomy';
+  if (value === 'requests') return 'requests';
   if (value === 'audit') return 'audit';
   return 'process';
 }
@@ -45,6 +53,7 @@ export default function ProcessOperationsHub() {
   const [mountedTabs, setMountedTabs] = useState<Record<ProcessOpsTab, boolean>>({
     process: true,
     taxonomy: false,
+    requests: false,
     audit: false,
   });
 
@@ -105,6 +114,11 @@ export default function ProcessOperationsHub() {
       {mountedTabs.taxonomy && (
         <div className={`app-stable-panel ${activeTab === 'taxonomy' ? 'block' : 'hidden'}`}>
           <TaxonomyManagement />
+        </div>
+      )}
+      {mountedTabs.requests && (
+        <div className={`app-stable-panel ${activeTab === 'requests' ? 'block' : 'hidden'}`}>
+          <AdminActivityRequests />
         </div>
       )}
       {mountedTabs.audit && (

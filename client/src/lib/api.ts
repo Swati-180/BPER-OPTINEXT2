@@ -359,3 +359,84 @@ export async function downloadExcel(endpoint: string, filename: string, queryPar
   document.body.removeChild(link);
   URL.revokeObjectURL(objectUrl);
 }
+
+export interface ActivityRequestItem {
+  _id: string;
+  employee: {
+    userId?: string;
+    name: string;
+    email: string;
+    department?: string;
+    designation?: string;
+    tower?: string;
+  };
+  majorProcess: string;
+  process: string;
+  activityName: string;
+  justification: string;
+  status: 'Pending' | 'Approved' | 'Rejected';
+  reviewedBy?: {
+    userId?: string;
+    name?: string;
+    email?: string;
+  };
+  reviewedAt?: string;
+  adminRemarks?: string;
+  rejectionReason?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export async function submitActivityRequest(data: {
+  majorProcess: string;
+  process: string;
+  activityName: string;
+  justification: string;
+  department?: string;
+}): Promise<{ message: string; request: ActivityRequestItem }> {
+  const response = await apiFetch('/activity-requests', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+  const resData = await response.json();
+  if (!response.ok) {
+    throw new Error(resData?.message || 'Failed to submit activity request.');
+  }
+  return resData;
+}
+
+export function getMyActivityRequests(): Promise<ActivityRequestItem[]> {
+  return apiGetJson<ActivityRequestItem[]>('/activity-requests/my');
+}
+
+export function getAdminActivityRequests(status?: string, search?: string): Promise<ActivityRequestItem[]> {
+  const params = new URLSearchParams();
+  if (status && status !== 'All') params.append('status', status);
+  if (search && search.trim()) params.append('search', search.trim());
+  const qs = params.toString() ? `?${params.toString()}` : '';
+  return apiGetJson<ActivityRequestItem[]>(`/activity-requests/admin${qs}`);
+}
+
+export async function approveActivityRequest(id: string, remarks?: string): Promise<{ message: string; request: ActivityRequestItem }> {
+  const response = await apiFetch(`/activity-requests/${id}/approve`, {
+    method: 'PATCH',
+    body: JSON.stringify({ remarks }),
+  });
+  const resData = await response.json();
+  if (!response.ok) {
+    throw new Error(resData?.message || 'Failed to approve activity request.');
+  }
+  return resData;
+}
+
+export async function rejectActivityRequest(id: string, reason: string, remarks?: string): Promise<{ message: string; request: ActivityRequestItem }> {
+  const response = await apiFetch(`/activity-requests/${id}/reject`, {
+    method: 'PATCH',
+    body: JSON.stringify({ reason, remarks }),
+  });
+  const resData = await response.json();
+  if (!response.ok) {
+    throw new Error(resData?.message || 'Failed to reject activity request.');
+  }
+  return resData;
+}

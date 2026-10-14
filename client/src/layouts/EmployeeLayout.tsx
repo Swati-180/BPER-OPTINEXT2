@@ -10,7 +10,8 @@ import {
   LogOut, 
   Menu, 
   Bell, 
-  MessagesSquare
+  MessagesSquare,
+  GitPullRequest
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { motion } from 'motion/react';
@@ -59,6 +60,7 @@ export default function EmployeeLayout({ children, user, onLogout }: EmployeeLay
     { name: 'Dashboard', path: '/employee/dashboard', icon: LayoutDashboard },
     { name: 'Form', path: '/employee/form', icon: FileText },
     { name: 'Form Status', path: '/employee/status', icon: ClipboardCheck },
+    { name: 'Activity Requests', path: '/employee/activity-requests', icon: GitPullRequest },
     { name: 'My Profile', path: '/employee/profile', icon: UserCircle },
   ];
 
