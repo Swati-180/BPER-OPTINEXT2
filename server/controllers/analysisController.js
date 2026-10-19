@@ -15,14 +15,19 @@ function computeScore(criteria = []) {
 }
 
 function normalizeAnalysisRecord(record) {
+  const criteria = Array.isArray(record.criteria) ? record.criteria : [];
   const score = typeof record.score === 'number' && Number.isFinite(record.score)
     ? record.score
-    : computeScore(Array.isArray(record.criteria) ? record.criteria : []);
+    : computeScore(criteria);
 
+  // If all criteria are '-' or missing, it's Pending Assessment (null)
+  const isAllPending = criteria.length === 0 || criteria.every(c => c === '-');
   let consolidated = record.consolidated;
-  if (consolidated === undefined) {
+
+  if (isAllPending) {
+    consolidated = null;
+  } else if (consolidated === undefined || consolidated === null) {
     let hasException = false;
-    const criteria = Array.isArray(record.criteria) ? record.criteria : [];
     if (criteria.length >= 12) {
       const proximity = criteria[9];
       const sensitivity = criteria[6];
@@ -106,7 +111,7 @@ const getSixBySixData = async (req, res) => {
           type: item._id.type || 'core',
           criteria: Array.from({ length: 12 }, () => '-'),
           score: 0,
-          consolidated: false
+          consolidated: null
         });
         existingProcessSet.add(processName);
       }

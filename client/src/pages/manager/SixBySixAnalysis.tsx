@@ -14,7 +14,7 @@ type ProcessRow = {
 	type: string;
 	criteria: CriteriaValue[] | string[];
 	score: number;
-	consolidated: boolean;
+	consolidated: boolean | null;
 	fte?: number;
 	subProcessGroup?: string;
 	displayProcess?: string;
@@ -50,6 +50,22 @@ function computeScore(criteria: CriteriaValue[]) {
 function normalizeRow(raw: any): ProcessRow {
 	const criteria = normalizeCriteria(raw?.criteria);
 	const score = Number.isFinite(Number(raw?.score)) ? Number(raw.score) : computeScore(criteria);
+	const isAllPending = criteria.every((c) => c === '-');
+
+	let consolidated: boolean | null = null;
+	if (isAllPending) {
+		consolidated = null;
+	} else if (typeof raw?.consolidated === 'boolean') {
+		consolidated = raw.consolidated;
+	} else {
+		const proximity = criteria[9];
+		const sensitivity = criteria[6];
+		const controls = criteria[8];
+		const regulatory = criteria[10];
+		const skill = criteria[11];
+		const hasException = proximity === 'H' && (sensitivity === 'H' || controls === 'H' || regulatory === 'H' || skill === 'H');
+		consolidated = hasException ? false : score >= 7;
+	}
 
 	return {
 		_id: raw?._id,
@@ -59,7 +75,7 @@ function normalizeRow(raw: any): ProcessRow {
 		type: String(raw?.type || 'general'),
 		criteria,
 		score,
-		consolidated: typeof raw?.consolidated === 'boolean' ? raw.consolidated : score >= 7,
+		consolidated,
 		fte: typeof raw?.fte === 'number' ? raw.fte : 0,
 		subProcessGroup: raw?.subProcessGroup,
 		displayProcess: raw?.displayProcess || String(raw?.process || 'Unnamed Process'),
@@ -101,7 +117,7 @@ export default function SixBySixAnalysisPage() {
 	const [processFilter, setProcessFilter] = useState<string>('All');
 	const [typeFilter, setTypeFilter] = useState<string>('All');
 	const [scoreRangeFilter, setScoreRangeFilter] = useState<'All' | '0-4' | '5-6' | '7-8' | '9-12'>('All');
-	const [consolidationFilter, setConsolidationFilter] = useState<'All' | 'consolidate' | 'not'>('All');
+	const [consolidationFilter, setConsolidationFilter] = useState<'All' | 'consolidate' | 'not' | 'pending'>('All');
 	const [processData, setProcessData] = useState<ProcessRow[]>([]);
 	const [draftRows, setDraftRows] = useState<ProcessRow[]>([]);
 	const [isLoading, setIsLoading] = useState(true);
@@ -164,6 +180,7 @@ export default function SixBySixAnalysisPage() {
 		}
 		if (consolidationFilter === 'consolidate') rows = rows.filter(r => r.consolidated === true);
 		if (consolidationFilter === 'not') rows = rows.filter(r => r.consolidated === false);
+		if (consolidationFilter === 'pending') rows = rows.filter(r => r.consolidated === null);
 		return rows;
 	}, [draftRows, towerFilter, processFilter, typeFilter, scoreRangeFilter, consolidationFilter]);
 
@@ -180,8 +197,11 @@ export default function SixBySixAnalysisPage() {
 			const characteristicScore = newCriteria.slice(6, 12).filter(v => v === 'L').length;
 			const newScore = performanceScore + characteristicScore;
 			
-			let newConsolidated = row.consolidated;
-			if (newConsolidated !== null && newConsolidated !== undefined) {
+			const isAllPending = newCriteria.every(v => v === '-');
+			let newConsolidated: boolean | null = null;
+			if (isAllPending) {
+				newConsolidated = null;
+			} else {
 				const proximity = newCriteria[9];
 				const sensitivity = newCriteria[6];
 				const controls = newCriteria[8];
@@ -221,14 +241,16 @@ export default function SixBySixAnalysisPage() {
 	};
 
 	const departmentStats = useMemo(() => {
-		const map = new Map<Department, { consolidated: number; notConsolidated: number }>();
+		const map = new Map<Department, { consolidated: number; notConsolidated: number; pending: number }>();
 
 		filteredRows.forEach((item) => {
-			const existing = map.get(item.department) ?? { consolidated: 0, notConsolidated: 0 };
+			const existing = map.get(item.department) ?? { consolidated: 0, notConsolidated: 0, pending: 0 };
 			if (item.consolidated === true) {
 				existing.consolidated += 1;
 			} else if (item.consolidated === false) {
 				existing.notConsolidated += 1;
+			} else {
+				existing.pending += 1;
 			}
 			map.set(item.department, existing);
 		});
@@ -236,7 +258,7 @@ export default function SixBySixAnalysisPage() {
 		return Array.from(map.entries()).map(([department, values]) => ({
 			department,
 			...values,
-			total: values.consolidated + values.notConsolidated
+			total: values.consolidated + values.notConsolidated + values.pending
 		}));
 	}, [filteredRows]);
 
@@ -259,7 +281,7 @@ export default function SixBySixAnalysisPage() {
 				out['Score'] = row.score;
 				const fteVal = typeof (row as any).fte === 'number' ? (row as any).fte : 0;
 				out['FTE'] = fteVal;
-				out['Consolidated'] = row.consolidated === null || row.consolidated === undefined ? 'N/A' : (row.consolidated ? 'Yes' : 'No');
+				out['Consolidated'] = row.consolidated === null ? 'Pending Assessment' : (row.consolidated ? 'Yes' : 'No');
 				return out;
 			});
 			exportToExcelClient(data, '6x6-Matrix');
@@ -301,8 +323,20 @@ export default function SixBySixAnalysisPage() {
 		exportToExcelClient(data, 'NonConsolidatable-Processes');
 	};
 
+	const exportPending = () => {
+		const data = filteredRows.filter(r => r.consolidated === null).map(row => ({
+			'Process / Activity': row.displayProcess,
+			'Sub Process': row.subProcessGroup || '-',
+			Tower: row.tower || 'Unknown',
+			Department: row.department,
+			Score: row.score,
+			FTE: row.fte || 0
+		}));
+		exportToExcelClient(data, 'PendingAssessment-Processes');
+	};
+
 	const summaryRows = useMemo(() => {
-		const grouped = new Map<string, { department: Department; type: string; total: number; consolidated: number; notConsolidated: number }>();
+		const grouped = new Map<string, { department: Department; type: string; total: number; consolidated: number; notConsolidated: number; pending: number }>();
 
 		filteredRows.forEach((item) => {
 			const key = `${item.department}::${item.type}`;
@@ -312,6 +346,7 @@ export default function SixBySixAnalysisPage() {
 				total: 0,
 				consolidated: 0,
 				notConsolidated: 0,
+				pending: 0,
 			};
 
 			existing.total += 1;
@@ -319,6 +354,8 @@ export default function SixBySixAnalysisPage() {
 				existing.consolidated += 1;
 			} else if (item.consolidated === false) {
 				existing.notConsolidated += 1;
+			} else {
+				existing.pending += 1;
 			}
 			grouped.set(key, existing);
 		});
@@ -343,10 +380,13 @@ export default function SixBySixAnalysisPage() {
 	const total = filteredRows.length;
 	const consolidatedCount = filteredRows.filter((item) => item.consolidated === true).length;
 	const notConsolidatedCount = filteredRows.filter((item) => item.consolidated === false).length;
-	const consolidatedPct = total === 0 ? 0 : Math.round((consolidatedCount / total) * 100);
-	const notConsolidatedPct = Math.max(0, 100 - consolidatedPct);
+	const pendingCount = filteredRows.filter((item) => item.consolidated === null).length;
 
-	const maxDeptBar = Math.max(1, ...departmentStats.flatMap((item) => [item.consolidated, item.notConsolidated]));
+	const consolidatedPct = total === 0 ? 0 : Math.round((consolidatedCount / total) * 100);
+	const notConsolidatedPct = total === 0 ? 0 : Math.round((notConsolidatedCount / total) * 100);
+	const pendingPct = total === 0 ? 0 : Math.max(0, 100 - consolidatedPct - notConsolidatedPct);
+
+	const maxDeptBar = Math.max(1, ...departmentStats.flatMap((item) => [item.consolidated, item.notConsolidated, item.pending]));
 	const maxScoreBucket = Math.max(1, ...scoreDistribution.map((item) => item.count));
 
 	return (
@@ -412,9 +452,10 @@ export default function SixBySixAnalysisPage() {
 						</select>
 
 						<select value={consolidationFilter} onChange={e => setConsolidationFilter(e.target.value as typeof consolidationFilter)} className="h-9 w-full min-w-0 rounded-xl border border-[#C8D7EC] bg-white px-3 text-xs font-semibold text-[#2B4467] outline-none focus:border-[#6E97CB]">
-							<option value="All">All</option>
+							<option value="All">All Consolidation</option>
 							<option value="consolidate">Consolidatable</option>
 							<option value="not">Not Consolidatable</option>
+							<option value="pending">Pending Assessment</option>
 						</select>
 					</div>
 					<div className="flex items-center gap-3">
@@ -444,17 +485,22 @@ export default function SixBySixAnalysisPage() {
 									<div className="h-full overflow-x-auto overflow-y-hidden pb-1">
 										<div className="flex h-full min-w-max items-end gap-3 px-1">
 										{departmentStats.map((item) => (
-											<div key={item.department} className="flex w-24 flex-shrink-0 flex-col items-center gap-2">
-												<div className="flex h-[260px] w-full items-end justify-center gap-2 rounded-lg bg-white/40 px-1 py-2">
+											<div key={item.department} className="flex w-28 flex-shrink-0 flex-col items-center gap-2">
+												<div className="flex h-[260px] w-full items-end justify-center gap-1.5 rounded-lg bg-white/40 px-1 py-2">
 													<div
-														className="w-8 rounded-t-md bg-[#2FA497] shadow-[0_1px_0_rgba(0,0,0,0.03)]"
+														className="w-6 rounded-t-md bg-[#2FA497] shadow-[0_1px_0_rgba(0,0,0,0.03)]"
 														style={{ height: `${Math.max(6, (item.consolidated / maxDeptBar) * 100)}%` }}
 														title={`Consolidated: ${item.consolidated}`}
 													/>
 													<div
-														className="w-8 rounded-t-md bg-[#E72A2A] shadow-[0_1px_0_rgba(0,0,0,0.03)]"
+														className="w-6 rounded-t-md bg-[#E72A2A] shadow-[0_1px_0_rgba(0,0,0,0.03)]"
 														style={{ height: `${Math.max(6, (item.notConsolidated / maxDeptBar) * 100)}%` }}
 														title={`Not Consolidated: ${item.notConsolidated}`}
+													/>
+													<div
+														className="w-6 rounded-t-md bg-[#94A3B8] shadow-[0_1px_0_rgba(0,0,0,0.03)]"
+														style={{ height: `${Math.max(6, (item.pending / maxDeptBar) * 100)}%` }}
+														title={`Pending Assessment: ${item.pending}`}
 													/>
 												</div>
 												<p className="min-h-8 px-1 text-center text-[11px] font-semibold leading-tight text-[#5D7696]">
@@ -469,6 +515,7 @@ export default function SixBySixAnalysisPage() {
 							<div className="mt-2.5 flex items-center gap-3 text-xs font-medium">
 								<Legend colorClass="bg-[#2FA497]" label="Consolidate" />
 								<Legend colorClass="bg-[#E72A2A]" label="Not Consolidate" />
+								<Legend colorClass="bg-[#94A3B8]" label="Pending Assessment" />
 							</div>
 						</article>
 
@@ -477,7 +524,13 @@ export default function SixBySixAnalysisPage() {
 							<div className="mt-4 flex flex-col items-center gap-2.5">
 								<div
 									className="relative h-48 w-48 rounded-full"
-									style={{ background: `conic-gradient(#2FA497 ${consolidatedPct}%, #E72A2A ${consolidatedPct}% 100%)` }}
+									style={{
+										background: `conic-gradient(
+											#2FA497 0% ${consolidatedPct}%,
+											#E72A2A ${consolidatedPct}% ${consolidatedPct + notConsolidatedPct}%,
+											#94A3B8 ${consolidatedPct + notConsolidatedPct}% 100%
+										)`
+									}}
 								>
 									<div className="absolute inset-10 rounded-full border border-[#E3EBF7] bg-white" />
 									<div className="absolute inset-0 flex flex-col items-center justify-center">
@@ -486,16 +539,21 @@ export default function SixBySixAnalysisPage() {
 									</div>
 								</div>
 
-								<div className="grid w-full grid-cols-2 gap-2.5">
-									<div className="rounded-xl border border-[#CFE7E2] bg-[#F2FCF9] p-2.5 text-center">
-										<p className="text-xs font-bold uppercase tracking-[0.12em] text-[#4A8E85]">Consolidate</p>
-										<p className="mt-1 text-xl font-bold text-[#208777]">{consolidatedPct}%</p>
-										<p className="text-xs text-[#5B7A9B]">{consolidatedCount} processes</p>
+								<div className="grid w-full grid-cols-3 gap-2">
+									<div className="rounded-xl border border-[#CFE7E2] bg-[#F2FCF9] p-2 text-center">
+										<p className="text-[10px] font-bold uppercase tracking-[0.1em] text-[#4A8E85]">Consolidate</p>
+										<p className="mt-1 text-lg font-bold text-[#208777]">{consolidatedPct}%</p>
+										<p className="text-[11px] text-[#5B7A9B]">{consolidatedCount} procs</p>
 									</div>
-									<div className="rounded-xl border border-[#F0D2D4] bg-[#FFF6F7] p-2.5 text-center">
-										<p className="text-xs font-bold uppercase tracking-[0.12em] text-[#BF4347]">Not Consolidate</p>
-										<p className="mt-1 text-xl font-bold text-[#CB3136]">{notConsolidatedPct}%</p>
-										<p className="text-xs text-[#5B7A9B]">{notConsolidatedCount} processes</p>
+									<div className="rounded-xl border border-[#F0D2D4] bg-[#FFF6F7] p-2 text-center">
+										<p className="text-[10px] font-bold uppercase tracking-[0.1em] text-[#BF4347]">Not Consolidate</p>
+										<p className="mt-1 text-lg font-bold text-[#CB3136]">{notConsolidatedPct}%</p>
+										<p className="text-[11px] text-[#5B7A9B]">{notConsolidatedCount} procs</p>
+									</div>
+									<div className="rounded-xl border border-[#CBD5E1] bg-[#F8FAFC] p-2 text-center">
+										<p className="text-[10px] font-bold uppercase tracking-[0.1em] text-[#64748B]">Pending</p>
+										<p className="mt-1 text-lg font-bold text-[#475569]">{pendingPct}%</p>
+										<p className="text-[11px] text-[#5B7A9B]">{pendingCount} procs</p>
 									</div>
 								</div>
 
@@ -525,12 +583,13 @@ export default function SixBySixAnalysisPage() {
 										<th className="px-4 py-2.5">Total</th>
 										<th className="px-4 py-2.5">Consolidate</th>
 										<th className="px-4 py-2.5">Not Consolidate</th>
+										<th className="px-4 py-2.5">Pending Assessment</th>
 									</tr>
 								</thead>
 								<tbody>
 									{summaryRows.length === 0 ? (
 										<tr>
-											<td colSpan={5} className="px-4 py-7 text-center text-xs text-[#7086A1]">
+											<td colSpan={6} className="px-4 py-7 text-center text-xs text-[#7086A1]">
 												No summary rows for this filter.
 											</td>
 										</tr>
@@ -542,6 +601,7 @@ export default function SixBySixAnalysisPage() {
 												<td className="px-4 py-3 text-xs text-[#314E72]">{item.total}</td>
 												<td className="px-4 py-3 text-xs font-semibold text-[#20916E]">{item.consolidated}</td>
 												<td className="px-4 py-3 text-xs font-semibold text-[#D24545]">{item.notConsolidated}</td>
+												<td className="px-4 py-3 text-xs font-semibold text-[#64748B]">{item.pending}</td>
 											</tr>
 										))
 									)}
@@ -578,7 +638,7 @@ export default function SixBySixAnalysisPage() {
 								<tbody>
 									{filteredRows.filter(r => r.consolidated === true).length === 0 ? (
 										<tr>
-											<td colSpan={5} className="px-4 py-7 text-center text-xs text-[#7086A1]">
+											<td colSpan={6} className="px-4 py-7 text-center text-xs text-[#7086A1]">
 												No consolidatable processes found.
 											</td>
 										</tr>
@@ -602,7 +662,7 @@ export default function SixBySixAnalysisPage() {
 					{/* Non-Consolidatable Processes Panel */}
 					<section className="rounded-2xl border border-[#D9E4F2] bg-white shadow-[0_5px_14px_rgba(16,42,80,0.05)] overflow-hidden">
 						<div className="border-b border-[#E4ECF7] px-4 py-3 flex items-center justify-between">
-							<h3 className="text-lg font-bold text-[#CB3136]">Non-Consolidatable / Other — {notConsolidatedCount} processes</h3>
+							<h3 className="text-lg font-bold text-[#CB3136]">Non-Consolidatable — {notConsolidatedCount} processes</h3>
 							<button
 								type="button"
 								onClick={exportNonConsolidatable}
@@ -627,7 +687,7 @@ export default function SixBySixAnalysisPage() {
 								<tbody>
 									{filteredRows.filter(r => r.consolidated === false).length === 0 ? (
 										<tr>
-											<td colSpan={5} className="px-4 py-7 text-center text-xs text-[#7086A1]">
+											<td colSpan={6} className="px-4 py-7 text-center text-xs text-[#7086A1]">
 												No non-consolidatable processes found.
 											</td>
 										</tr>
@@ -639,6 +699,55 @@ export default function SixBySixAnalysisPage() {
 												<td className="px-4 py-3 text-xs text-[#314E72]">{item.tower && item.tower !== 'Unknown' ? item.tower : '-'}</td>
 												<td className="px-4 py-3 text-xs text-[#314E72]">{item.department}</td>
 												<td className="px-4 py-3 text-xs font-semibold text-[#D24545] text-right">{item.score}</td>
+												<td className="px-4 py-3 text-xs text-[#314E72] text-right">{typeof item.fte === 'number' ? item.fte.toFixed(2) : '0.00'}</td>
+											</tr>
+										))
+									)}
+								</tbody>
+							</table>
+						</div>
+					</section>
+
+					{/* Pending Assessment Processes Panel */}
+					<section className="rounded-2xl border border-[#D9E4F2] bg-white shadow-[0_5px_14px_rgba(16,42,80,0.05)] overflow-hidden">
+						<div className="border-b border-[#E4ECF7] px-4 py-3 flex items-center justify-between">
+							<h3 className="text-lg font-bold text-[#475569]">Pending Assessment — {pendingCount} processes</h3>
+							<button
+								type="button"
+								onClick={exportPending}
+								className="inline-flex items-center gap-2 h-9 rounded-xl border border-[#D6E2F0] bg-white px-3 text-xs font-semibold text-[#243A59] hover:bg-[#F4F8FF] transition-colors"
+							>
+								<Download className="h-3 w-3" />
+								Excel
+							</button>
+						</div>
+						<div className="overflow-x-auto max-h-96">
+							<table className="w-full border-collapse text-left">
+								<thead className="sticky top-0 bg-[#F8FAFC] z-10">
+									<tr className="text-[10px] font-bold uppercase tracking-[0.13em] text-[#64748B] border-b border-[#CBD5E1]">
+										<th className="px-4 py-2.5">Process / Activity</th>
+										<th className="px-4 py-2.5">Sub Process</th>
+										<th className="px-4 py-2.5">Tower</th>
+										<th className="px-4 py-2.5">Department</th>
+										<th className="px-4 py-2.5 text-right">Score</th>
+										<th className="px-4 py-2.5 text-right">FTE</th>
+									</tr>
+								</thead>
+								<tbody>
+									{filteredRows.filter(r => r.consolidated === null).length === 0 ? (
+										<tr>
+											<td colSpan={6} className="px-4 py-7 text-center text-xs text-[#7086A1]">
+												No processes pending assessment.
+											</td>
+										</tr>
+									) : (
+										filteredRows.filter(r => r.consolidated === null).map((item) => (
+											<tr key={item._id || `${item.process}-${item.department}`} className="border-b border-[#E8EEF7] last:border-b-0 hover:bg-[#F9FBFD]">
+												<td className="px-4 py-3 text-xs font-semibold text-[#203A5D]">{item.displayProcess}</td>
+												<td className="px-4 py-3 text-xs text-[#314E72]">{item.subProcessGroup || '-'}</td>
+												<td className="px-4 py-3 text-xs text-[#314E72]">{item.tower && item.tower !== 'Unknown' ? item.tower : '-'}</td>
+												<td className="px-4 py-3 text-xs text-[#314E72]">{item.department}</td>
+												<td className="px-4 py-3 text-xs font-semibold text-[#64748B] text-right">{item.score}</td>
 												<td className="px-4 py-3 text-xs text-[#314E72] text-right">{typeof item.fte === 'number' ? item.fte.toFixed(2) : '0.00'}</td>
 											</tr>
 										))
@@ -698,7 +807,11 @@ export default function SixBySixAnalysisPage() {
 									filteredRows.map((item) => {
 										const fte = typeof (item as any).fte === 'number' ? (item as any).fte as number : 0;
 										const fteColor = fte >= 1.0 ? 'text-red-600' : fte >= 0.75 ? 'text-amber-600' : fte > 0 ? 'text-emerald-700' : 'text-slate-400';
-										const rowBg = item.consolidated ? 'bg-emerald-50/30' : 'bg-red-50/20';
+										const rowBg = item.consolidated === true 
+											? 'bg-emerald-50/30' 
+											: item.consolidated === false 
+												? 'bg-red-50/20' 
+												: 'bg-white hover:bg-slate-50/50';
 										return (
 										<tr key={item._id || `${item.process}-${item.department}`} className={`border-b border-[#E8EEF7] last:border-b-0 ${rowBg}`}>
 											<td className="px-3 py-3 sticky left-0 z-10 bg-white shadow-[1px_0_0_#E3EAF4] w-64 min-w-[16rem] whitespace-normal break-words">
@@ -734,10 +847,14 @@ export default function SixBySixAnalysisPage() {
 											<td className="px-3 py-2.5 text-center">
 												<span
 													className={`inline-flex min-w-10 items-center justify-center rounded-full px-2.5 py-0.5 text-xs font-bold ${
-														item.consolidated ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'
+														item.consolidated === true
+															? 'bg-emerald-100 text-emerald-700'
+															: item.consolidated === false
+																? 'bg-red-100 text-red-700'
+																: 'bg-slate-100 text-slate-500'
 													}`}
 												>
-													{item.consolidated ? 'Y' : 'N'}
+													{item.consolidated === true ? 'Y' : item.consolidated === false ? 'N' : '-'}
 												</span>
 											</td>
 										</tr>
