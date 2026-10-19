@@ -22,6 +22,9 @@ const processAnalysisSchema = new mongoose.Schema({
   lastUpdatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
 }, { timestamps: true });
 
+// Prevent duplicate process entries per department
+processAnalysisSchema.index({ process: 1, department: 1 }, { unique: true });
+
 function applyComputedFields(record) {
   if (!record) return;
   if (Array.isArray(record.criteria) && record.criteria.length > 0) {

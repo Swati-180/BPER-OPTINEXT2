@@ -53,12 +53,12 @@ const getSixBySixData = async (req, res) => {
     console.log(`[6x6 Report] Fetching data for department: "${department}"`);
     
     // 1. Sync new processes from WDT submissions
-    // Explicitly restrict to valid departments to avoid recreating legacy mock records
+    const VALID_DEPARTMENTS = ['Finance & Accounting', 'HR', 'Logistics', 'SCM'];
     let matchStage = {};
     if (department && department !== 'All Departments') {
        matchStage = { 'employee.department': department };
     } else {
-       matchStage = { 'employee.department': 'Finance & Accounting' };
+       matchStage = { 'employee.department': { $in: VALID_DEPARTMENTS } };
     }
     
     const aggregatedProcesses = await WDTSubmission.aggregate([
@@ -84,74 +84,90 @@ const getSixBySixData = async (req, res) => {
        }
     ]);
     
-    // 2. Insert stubs with random values for testing if not exists
-    const criteriaOptions = ['H', 'M', 'L', '-'];
+    // 2. Synchronize newly aggregated processes into ProcessAnalysis using batching (O(1) lookups)
+    const existingProcesses = await ProcessAnalysis.find({
+      department: matchStage['employee.department']
+    }).select('process').lean();
     
+    const existingProcessSet = new Set(existingProcesses.map(p => p.process));
+    const newProcessDocs = [];
+
     for (const item of aggregatedProcesses) {
-      const processName = item._id.process;
-      const deptName = item._id.department || 'General';
-      
-      if (!processName) continue;
+      const processName = item._id?.process;
+      const deptName = item._id?.department || 'Finance & Accounting';
+
+      if (!processName || !processName.trim()) continue;
       if (isMockStandardOperatingProcedure(processName)) continue;
-      
-      const exists = await ProcessAnalysis.findOne({
-        process: processName,
-        department: deptName
-      });
-      
-      if (!exists) {
-        // Create with unscored criteria ('-') instead of fabricated random scores
-        const unscoredCriteria = Array.from({ length: 12 }, () => '-');
-        
-        await ProcessAnalysis.create({
+
+      if (!existingProcessSet.has(processName)) {
+        newProcessDocs.push({
           process: processName,
           department: deptName,
           type: item._id.type || 'core',
-          criteria: unscoredCriteria,
-          score: 0, // calc automatically by pre-save
+          criteria: Array.from({ length: 12 }, () => '-'),
+          score: 0,
           consolidated: false
         });
+        existingProcessSet.add(processName);
       }
     }
-    
+
+    if (newProcessDocs.length > 0) {
+      console.log(`[6x6 Report] Inserting ${newProcessDocs.length} new processes into ProcessAnalysis via insertMany...`);
+      await ProcessAnalysis.insertMany(newProcessDocs, { ordered: false }).catch(err => {
+        // Ignore duplicate key races if any
+        if (err.code !== 11000) console.warn('[6x6 Report] insertMany warning:', err.message);
+      });
+    }
+
     // 3. Query with strict matching
     let query = {};
     if (department && department !== 'All Departments') {
        query.department = department;
     } else {
-       // Filter out legacy mock departments and enforce ONLY authoritative datasets
-       query.department = 'Finance & Accounting';
+       // Return all authoritative departments
+       query.department = { $in: VALID_DEPARTMENTS };
     }
-    
+
     const data = await ProcessAnalysis.find(query).sort({ department: 1, type: 1 }).lean();
     const taxonomyData = await Taxonomy.find({}).lean();
-    
+
+    // Build O(1) index for Taxonomy lookup
+    const subProcessToTax = new Map();
+    const processToTax = new Map();
+    const majorToTax = new Map();
+
+    for (const t of taxonomyData) {
+      if (Array.isArray(t.subProcesses)) {
+        for (const sp of t.subProcesses) {
+          if (!subProcessToTax.has(sp) || t.department === query.department) {
+            subProcessToTax.set(sp, t);
+          }
+        }
+      }
+      if (!processToTax.has(t.process) || t.department === query.department) {
+        processToTax.set(t.process, t);
+      }
+      if (!majorToTax.has(t.majorProcess) || t.department === query.department) {
+        majorToTax.set(t.majorProcess, t);
+      }
+    }
+
     // Map aggregated processes for FTE lookup
     const fteLookup = {};
     aggregatedProcesses.forEach(item => {
       const key = `${item._id.department || 'General'}::${item._id.process}`;
       fteLookup[key] = (item.totalHours || 0) / 160;
     });
-    
+
     const enrichedData = data.map(record => {
       const normalized = normalizeAnalysisRecord(record);
-      // Find tower - prioritize matching department first
-      let tax = taxonomyData.find(t => 
-        t.department === normalized.department &&
-        ((t.subProcesses && t.subProcesses.includes(normalized.process)) || 
-        t.process === normalized.process ||
-        t.majorProcess === normalized.process)
-      );
       
-      // Fallback if no exact department match
-      if (!tax) {
-        tax = taxonomyData.find(t => 
-          (t.subProcesses && t.subProcesses.includes(normalized.process)) || 
-          t.process === normalized.process ||
-          t.majorProcess === normalized.process
-        );
-      }
-      
+      // O(1) taxonomy resolution
+      const tax = subProcessToTax.get(normalized.process) ||
+                  processToTax.get(normalized.process) ||
+                  majorToTax.get(normalized.process);
+
       const key = `${normalized.department}::${normalized.process}`;
       const fte = fteLookup[key] || 0;
 
@@ -176,6 +192,7 @@ const getSixBySixData = async (req, res) => {
       };
     });
 
+    console.log(`[6x6 Report] Successfully enriched and returning ${enrichedData.length} records.`);
     res.json(enrichedData);
   } catch (err) {
     res.status(500).json({ message: err.message });
