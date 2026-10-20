@@ -368,13 +368,18 @@ export default function SixBySixAnalysisPage() {
 		});
 	}, [filteredRows]);
 
+	const assessedRows = useMemo(
+		() => filteredRows.filter((item) => item.consolidated !== null),
+		[filteredRows]
+	);
+
 	const scoreDistribution = useMemo(
 		() =>
 			SCORE_BUCKETS.map((bucket) => ({
 				...bucket,
-				count: filteredRows.filter((item) => item.score >= bucket.min && item.score <= bucket.max).length,
+				count: assessedRows.filter((item) => item.score >= bucket.min && item.score <= bucket.max).length,
 			})),
-		[filteredRows]
+		[assessedRows]
 	);
 
 	const total = filteredRows.length;
@@ -870,8 +875,22 @@ export default function SixBySixAnalysisPage() {
 
 			{activeTab === 'distribution' && (
 				<section className="rounded-2xl border border-[#D9E4F2] bg-white p-3.5 shadow-[0_5px_14px_rgba(16,42,80,0.05)]">
-					<h3 className="text-xl font-bold text-[#102846]">Score Distribution</h3>
-					<p className="mt-0.5 text-xs text-[#647D9D]">Distribution of process score bands for selected department</p>
+					<div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+						<div>
+							<h3 className="text-xl font-bold text-[#102846]">Score Distribution</h3>
+							<p className="mt-0.5 text-xs text-[#647D9D]">Distribution of assessed process score bands (excludes pending assessments)</p>
+						</div>
+						<div className="flex items-center gap-2">
+							<div className="rounded-xl border border-[#DDE7F3] bg-[#F8FBFF] px-3 py-1.5 text-center">
+								<span className="text-[10px] font-bold uppercase tracking-wider text-[#617D9D]">Assessed</span>
+								<p className="text-sm font-bold text-[#102846]">{assessedRows.length}</p>
+							</div>
+							<div className="rounded-xl border border-[#CBD5E1] bg-[#F8FAFC] px-3 py-1.5 text-center">
+								<span className="text-[10px] font-bold uppercase tracking-wider text-[#64748B]">Pending</span>
+								<p className="text-sm font-bold text-[#475569]">{pendingCount}</p>
+							</div>
+						</div>
+					</div>
 
 					<div className="mt-3.5 rounded-xl border border-dashed border-[#E3EBF6] bg-[#FBFDFF] p-3">
 						<div className="flex h-64 items-end justify-between gap-2.5">
@@ -879,7 +898,7 @@ export default function SixBySixAnalysisPage() {
 								<div key={bucket.label} className="flex w-full flex-col items-center gap-1.5">
 									<div className="flex h-48 w-full items-end justify-center">
 										<div
-											className="w-full max-w-24 rounded-t-md bg-[#324ABF]"
+											className="w-full max-w-24 rounded-t-md bg-[#324ABF] transition-all duration-300"
 											style={{ height: `${Math.max(4, (bucket.count / maxScoreBucket) * 100)}%` }}
 											title={`${bucket.label}: ${bucket.count}`}
 										/>
@@ -888,6 +907,17 @@ export default function SixBySixAnalysisPage() {
 									<p className="-mt-1 text-xs text-[#7E94AF]">{bucket.count}</p>
 								</div>
 							))}
+							<div key="pending-band" className="flex w-full flex-col items-center gap-1.5 border-l border-dashed border-[#D5E1F0] pl-2">
+								<div className="flex h-48 w-full items-end justify-center">
+									<div
+										className="w-full max-w-24 rounded-t-md bg-[#94A3B8] transition-all duration-300"
+										style={{ height: `${Math.max(4, (pendingCount / Math.max(maxScoreBucket, pendingCount, 1)) * 100)}%` }}
+										title={`Pending Assessment: ${pendingCount}`}
+									/>
+								</div>
+								<p className="text-xs font-semibold text-[#64748B]">Pending</p>
+								<p className="-mt-1 text-xs text-[#7E94AF]">{pendingCount}</p>
+							</div>
 						</div>
 					</div>
 				</section>
