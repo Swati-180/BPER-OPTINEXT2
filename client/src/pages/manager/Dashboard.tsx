@@ -43,6 +43,16 @@ type DashboardReport = {
   };
   summary?: {
     totalEmployees?: number;
+    activeUserAccounts?: number;
+    hasAuthoritativeRoster?: boolean;
+    rosterSource?: 'master_roster' | 'submission_participants';
+    totalStaff?: number;
+    vacantPositions?: number;
+    submissionParticipants?: {
+      namedStaff: number;
+      vacancies: number;
+      total: number;
+    };
     totalSubmissions?: number;
     pendingReview?: number;
     approved?: number;
@@ -341,7 +351,18 @@ export default function Dashboard() {
         </div>
 
         <div className="mt-3 grid grid-cols-1 gap-2.5 sm:grid-cols-2 xl:grid-cols-5">
-          <KpiCard icon={Users} label="Total Employees" value={String(safeNumber(summary.totalEmployees))} helper="Active employee accounts" />
+          <KpiCard
+            icon={Users}
+            label={summary.hasAuthoritativeRoster ? "Total Employees" : "Operational Staff"}
+            value={summary.totalStaff ? String(summary.totalStaff) : String(safeNumber(summary.totalEmployees))}
+            helper={
+              summary.hasAuthoritativeRoster
+                ? `${summary.totalStaff} staff (${summary.vacantPositions || 0} vacant in roster)`
+                : summary.totalStaff
+                ? `${summary.totalStaff} staff (${summary.vacantPositions || 0} vacant in submissions)`
+                : "Active employee accounts"
+            }
+          />
           <KpiCard icon={FileCheck2} label="Forms Submitted" value={String(safeNumber(summary.totalSubmissions))} helper="Records in current report scope" />
           <KpiCard icon={Clock3} label="Pending Review" value={String(safeNumber(summary.pendingReview))} helper={safeNumber(summary.pendingReview) > 0 ? `Needs ${roleLabel.toLowerCase()} action` : 'No active queue'} />
           <KpiCard icon={Check} label="Approved" value={String(safeNumber(summary.approved))} helper={safeNumber(summary.approved) > 0 ? 'Review completed' : 'Awaiting approvals'} />

@@ -15,6 +15,8 @@ const employeeInviteSchema = new mongoose.Schema({
   uploadedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
   expiresAt: { type: Date, default: () => new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) }, // 7 days
   inviteLink: { type: String, default: '' },
+  employeeId: { type: String, default: null, trim: true },
+  targetUserId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
   errorMessage: { type: String, default: '' }
 }, { collection: 'employee_invites', timestamps: true });
 

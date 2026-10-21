@@ -47,23 +47,87 @@ function ensureManager(role, res) {
 
 function flattenRows(submissions) {
   return submissions.flatMap((submission) => {
-    const rows = Array.isArray(submission?.payload?.rows) ? submission.payload.rows : [];
-    return rows.map((row) => ({
-      referenceId: submission.referenceId,
-      submittedAt: submission.submittedAt,
-      status: submission.status,
-      employeeId: submission.employee?.employeeId || 'NA',
-      employeeName: submission.employee?.name || 'Unknown Employee',
-      department: submission.employee?.department || 'Unassigned',
-      tower: row.majorProcess || submission.employee?.department || 'Unassigned',
-      majorProcess: row.majorProcess || 'Unspecified Process',
-      process: row.process || 'Unspecified Process',
-      subProcess: row.subProcess || 'Unspecified Activity',
-      frequency: row.frequency || 'Unspecified',
-      activityCategory: row.activityCategory || 'core',
-      monthlyHours: safeNumber(row.timeTakenHoursPerMonth),
-      comments: row.comments || '',
-    }));
+    const defaultEmpId = submission.employee?.employeeId || 'NA';
+    const defaultEmpName = submission.employee?.name || 'Unknown Employee';
+    const defaultDept = submission.employee?.department || 'Unassigned';
+
+    // 1. Check for standard payload.rows representation
+    const payloadRows = Array.isArray(submission?.payload?.rows) ? submission.payload.rows : [];
+    const validPayloadRows = payloadRows.filter(r => r && typeof r === 'object');
+
+    if (validPayloadRows.length > 0) {
+      return validPayloadRows.map((row) => {
+        const hours = safeNumber(row.timeTakenHoursPerMonth != null ? row.timeTakenHoursPerMonth : row.hours);
+        const tower = row.tower || row.majorProcess || defaultDept;
+        return {
+          referenceId: submission.referenceId,
+          submittedAt: submission.submittedAt,
+          status: submission.status,
+          employeeId: row.employeeId || defaultEmpId,
+          employeeName: row.employeeName || defaultEmpName,
+          department: row.department || defaultDept,
+          tower,
+          majorProcess: row.majorProcess || tower,
+          process: row.process || 'Unspecified Process',
+          subProcess: row.subProcess || row.name || 'Unspecified Activity',
+          frequency: row.frequency || 'Unspecified',
+          activityCategory: row.activityCategory || row.category || 'core',
+          monthlyHours: hours,
+          comments: row.comments || '',
+        };
+      });
+    }
+
+    // 2. Check for legacy/alternative activities representation (if payload.rows is absent or empty)
+    const activities = Array.isArray(submission?.activities) ? submission.activities : [];
+    const validActivities = activities.filter(a => a && typeof a === 'object');
+
+    if (validActivities.length > 0) {
+      return validActivities.map((act) => {
+        const hours = safeNumber(act.monthlyHours != null ? act.monthlyHours : (act.timeTakenHoursPerMonth != null ? act.timeTakenHoursPerMonth : act.hours));
+        const tower = act.tower || act.majorProcess || defaultDept;
+        return {
+          referenceId: submission.referenceId,
+          submittedAt: submission.submittedAt,
+          status: submission.status,
+          employeeId: act.employeeId || defaultEmpId,
+          employeeName: act.employeeName || defaultEmpName,
+          department: act.department || defaultDept,
+          tower,
+          majorProcess: act.majorProcess || tower,
+          process: act.process || 'Unspecified Process',
+          subProcess: act.subProcess || act.name || 'Unspecified Activity',
+          frequency: act.frequency || 'Unspecified',
+          activityCategory: act.activityCategory || act.category || 'core',
+          monthlyHours: hours,
+          comments: act.comments || '',
+        };
+      });
+    }
+
+    // 3. Fallback for summary-only records (no row details, but document-level totalHours exists)
+    // Only generate a summary row if totalHours > 0 and no detailed activity rows were present.
+    const headerHours = safeNumber(submission?.totalHours);
+    if (headerHours > 0) {
+      return [{
+        referenceId: submission.referenceId,
+        submittedAt: submission.submittedAt,
+        status: submission.status,
+        employeeId: defaultEmpId,
+        employeeName: defaultEmpName,
+        department: defaultDept,
+        tower: defaultDept,
+        majorProcess: defaultDept,
+        process: 'Summary Process',
+        subProcess: 'Summary Activity',
+        frequency: 'Monthly',
+        activityCategory: 'core',
+        monthlyHours: headerHours,
+        comments: 'Derived from summary-only record',
+      }];
+    }
+
+    return [];
   });
 }
 
@@ -111,7 +175,7 @@ async function getDashboardReport(req, res) {
 
     const [submissions, totalEmployees] = await Promise.all([
       getScopedSubmissions(req),
-      User.countDocuments({ role: 'employee', isActive: true }),
+      User.countDocuments({ role: 'employee', isActive: true, isArchivedDemo: { $ne: true } }),
     ]);
 
     const rows = flattenRows(submissions);
@@ -184,13 +248,53 @@ async function getDashboardReport(req, res) {
       .sort((a, b) => b.utilizationPct - a.utilizationPct)
       .slice(0, 6);
 
+    // 1. Roster counts: derive from authoritative User roster if synced
+    // Explicitly verify whether roster synchronization has run (presence of isRosterOnly or rosterSynced employees)
+    const [authoritativeRosterCount, rosterVacantCount] = await Promise.all([
+      User.countDocuments({ role: 'employee', isActive: true, isRosterOnly: true, isArchivedDemo: { $ne: true } }),
+      User.countDocuments({ role: 'position', isVacant: true }),
+    ]);
+
+    // An authoritative roster exists if explicit roster-managed records have been synchronized
+    const hasAuthoritativeRoster = authoritativeRosterCount > 0;
+    const finalRosterNamedStaffCount = hasAuthoritativeRoster
+      ? await User.countDocuments({ role: 'employee', isActive: true, isArchivedDemo: { $ne: true } })
+      : 0;
+
+    // 2. Submission-derived active participants (distinct contributors in scoped submissions)
+    const uniqueSubmissionParticipantsMap = new Map();
+    submissions.forEach((s) => {
+      const empId = String(s.employee?.employeeId || '').trim();
+      const empName = String(s.employee?.name || '').trim();
+      if (empId) {
+        uniqueSubmissionParticipantsMap.set(empId, empName.toLowerCase() === 'vacant');
+      }
+    });
+
+    let submissionNamedCount = 0;
+    let submissionVacantCount = 0;
+    uniqueSubmissionParticipantsMap.forEach((isVacant) => {
+      if (isVacant) submissionVacantCount++;
+      else submissionNamedCount++;
+    });
+
     const summary = {
-      totalEmployees,
+      totalEmployees, // Backward-compatible (active user accounts)
+      activeUserAccounts: totalEmployees,
+      hasAuthoritativeRoster,
+      rosterSource: hasAuthoritativeRoster ? 'master_roster' : 'submission_participants',
+      totalStaff: hasAuthoritativeRoster ? finalRosterNamedStaffCount : submissionNamedCount,
+      vacantPositions: hasAuthoritativeRoster ? rosterVacantCount : submissionVacantCount,
+      submissionParticipants: {
+        namedStaff: submissionNamedCount,
+        vacancies: submissionVacantCount,
+        total: uniqueSubmissionParticipantsMap.size,
+      },
       totalSubmissions: submissions.length,
       pendingReview: pending,
       approved,
       changesRequested,
-      totalHours: Number(totalHours.toFixed(1)),
+      totalHours: Number(totalHours.toFixed(2)),
       totalFte: Number(totalFte.toFixed(2)),
       avgUtilizationPct: Number(Math.min(100, totalFte * 100).toFixed(1)),
     };
@@ -221,14 +325,18 @@ async function getDashboardReport(req, res) {
 
     const employeeMap = new Map();
     rows.forEach((row) => {
-      const current = employeeMap.get(row.employeeName) || { label: row.employeeName, hours: 0 };
-      current.hours += row.monthlyHours;
-      employeeMap.set(row.employeeName, current);
+      const isVac = String(row.employeeName).toLowerCase() === 'vacant';
+      if (!isVac) {
+        const empKey = row.employeeId || row.employeeName;
+        const current = employeeMap.get(empKey) || { label: `${row.employeeName} (${row.employeeId})`, hours: 0 };
+        current.hours += row.monthlyHours;
+        employeeMap.set(empKey, current);
+      }
     });
 
     const employeeFteData = Array.from(employeeMap.values()).map(emp => ({
       label: emp.label,
-      fte: emp.hours / STANDARD_MONTHLY_HOURS
+      fte: Number((emp.hours / STANDARD_MONTHLY_HOURS).toFixed(2))
     }));
 
     res.json({
@@ -279,7 +387,39 @@ async function getUtilizationReport(req, res) {
 
     const byFrequency = groupAndSort(rows, (row) => row.frequency, (row) => row.monthlyHours, 8);
     const byProcess = groupAndSort(rows, (row) => row.subProcess || row.process, (row) => row.monthlyHours, 8);
-    const byEmployee = groupAndSort(rows, (row) => row.employeeName, (row) => row.monthlyHours, 8);
+
+    // Filter named staff vs vacant open positions
+    const namedRows = rows.filter((row) => String(row.employeeName).toLowerCase() !== 'vacant');
+    const vacantRows = rows.filter((row) => String(row.employeeName).toLowerCase() === 'vacant');
+
+    // Rank named staff by stable Employee ID and name
+    const byEmployee = groupAndSort(
+      namedRows,
+      (row) => `${row.employeeName} (${row.employeeId})`,
+      (row) => row.monthlyHours,
+      8
+    );
+
+    // Vacancy summary statistics (preserving all vacancy hours)
+    // Safely normalize employee IDs (ignoring blank/whitespace or falling back to index)
+    const validVacantIds = new Set();
+    let unassignedVacantRowCount = 0;
+    vacantRows.forEach((r, idx) => {
+      const cleanId = String(r.employeeId || '').trim();
+      if (cleanId) {
+        validVacantIds.add(cleanId);
+      } else {
+        unassignedVacantRowCount++;
+      }
+    });
+
+    const vacantUniquePositions = validVacantIds.size + unassignedVacantRowCount;
+    const vacantTotalHours = Number(vacantRows.reduce((sum, r) => sum + (safeNumber(r.monthlyHours)), 0).toFixed(2));
+    const vacancySummary = {
+      positionsCount: vacantUniquePositions,
+      totalHours: vacantTotalHours,
+      fte: Number((vacantTotalHours / STANDARD_MONTHLY_HOURS).toFixed(2))
+    };
 
     const coreHours = rows
       .filter((row) => String(row.activityCategory).toLowerCase() !== 'support')
@@ -318,13 +458,27 @@ async function getUtilizationReport(req, res) {
       employeeId: item.employee?.employeeId || 'NA',
     }));
 
+    // Aggregate full named employee population for FTE band distribution (keyed by stable employee ID)
+    const allNamedEmpMap = new Map();
+    namedRows.forEach((row) => {
+      const empKey = row.employeeId || row.employeeName;
+      const current = allNamedEmpMap.get(empKey) || { label: `${row.employeeName} (${row.employeeId})`, hours: 0 };
+      current.hours += row.monthlyHours;
+      allNamedEmpMap.set(empKey, current);
+    });
+
+    const employeeFteData = Array.from(allNamedEmpMap.values()).map((emp) => ({
+      label: emp.label,
+      fte: Number((emp.hours / STANDARD_MONTHLY_HOURS).toFixed(2)),
+    }));
+
     res.json({
       generatedAt: new Date().toISOString(),
       summary: {
-        totalHours: Number(totalHours.toFixed(1)),
+        totalHours: Number(totalHours.toFixed(2)),
         totalSubmissions,
         avgHoursPerSubmission: Number((totalSubmissions ? totalHours / totalSubmissions : 0).toFixed(1)),
-        approvalRatePct: Math.round(toPercent(approved, totalSubmissions)),
+        approvalRatePct: Number(toPercent(approved, totalSubmissions).toFixed(1)),
       },
       statusCounts: {
         approved,
@@ -332,16 +486,18 @@ async function getUtilizationReport(req, res) {
         changesRequested,
       },
       coreSupport: {
-        coreHours: Number(coreHours.toFixed(1)),
-        supportHours: Number(supportHours.toFixed(1)),
-        totalHours: Number((coreHours + supportHours).toFixed(1)),
+        coreHours: Number(coreHours.toFixed(2)),
+        supportHours: Number(supportHours.toFixed(2)),
+        totalHours: Number((coreHours + supportHours).toFixed(2)),
       },
       charts: {
         byFrequency,
         byProcess,
         byEmployee,
         byDepartment,
+        employeeFteData,
       },
+      vacancySummary,
       tables: {
         recentSubmissions,
       },
@@ -410,7 +566,7 @@ async function getFteSummaryReport(req, res) {
     res.json({
       generatedAt: new Date().toISOString(),
       summary: {
-        totalHours: Number(totalHours.toFixed(1)),
+        totalHours: Number(totalHours.toFixed(2)),
         totalFte: Number(totalFte.toFixed(2)),
         baselineHours: STANDARD_MONTHLY_HOURS,
         totalActivities: rows.length,
@@ -529,7 +685,7 @@ async function getFitmentSummaryReport(req, res) {
     if (employeeIdsScope) {
       totalEmployees = employeeIdsScope.length;
     } else {
-      totalEmployees = await User.countDocuments({ role: 'employee', isActive: true });
+      totalEmployees = await User.countDocuments({ role: 'employee', isActive: true, isArchivedDemo: { $ne: true } });
     }
 
     const userMap = new Map(
@@ -676,7 +832,7 @@ async function getFteAnalysisReport(req, res) {
     res.json({
       generatedAt: new Date().toISOString(),
       summary: {
-        totalHours: Number(totalHours.toFixed(1)),
+        totalHours: Number(totalHours.toFixed(2)),
         totalFte: Number(totalFte.toFixed(2)),
         baselineHours: STANDARD_MONTHLY_HOURS,
         totalActivities: rows.length,
@@ -786,7 +942,7 @@ async function getFitmentAnalysisReport(req, res) {
 
     const [fitments, totalEmployees] = await Promise.all([
       Fitment.find({}).sort({ weightedScore: -1 }).lean(),
-      User.countDocuments({ role: 'employee', isActive: true }),
+      User.countDocuments({ role: 'employee', isActive: true, isArchivedDemo: { $ne: true } }),
     ]);
 
     const userMap = new Map(
@@ -968,7 +1124,7 @@ async function getUtilizationAnalysisReport(req, res) {
     res.json({
       generatedAt: new Date().toISOString(),
       summary: {
-        totalHours: Number(totalHours.toFixed(1)),
+        totalHours: Number(totalHours.toFixed(2)),
         totalSubmissions,
         totalFte: Number((totalHours / STANDARD_MONTHLY_HOURS).toFixed(2)),
         departments: byDepartmentDetail.length,
@@ -1011,4 +1167,6 @@ module.exports = {
   getFitmentAnalysisReport,
   getUtilizationAnalysisReport,
   getAuditLogs,
+  flattenRows,
+  safeNumber,
 };

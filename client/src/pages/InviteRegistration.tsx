@@ -12,6 +12,7 @@ export default function InviteRegistration() {
   const [stage, setStage] = useState<Stage>('loading');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
+  const [employeeId, setEmployeeId] = useState<string | null>(null);
   const [role, setRole] = useState('employee');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
@@ -35,6 +36,7 @@ export default function InviteRegistration() {
         }
         setName(data.name || '');
         setEmail(data.email || '');
+        setEmployeeId(data.employeeId || null);
         setRole(data.role || 'employee');
         setStage('ready');
       } catch (e) {
@@ -151,6 +153,18 @@ export default function InviteRegistration() {
                     {name}
                   </div>
                 </div>
+
+                {/* Employee ID (read-only if assigned) */}
+                {employeeId && (
+                  <div>
+                    <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1.5">
+                      Employee ID (Roster Linked)
+                    </label>
+                    <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-800">
+                      {employeeId}
+                    </div>
+                  </div>
+                )}
 
                 {/* Email (read-only) */}
                 <div>

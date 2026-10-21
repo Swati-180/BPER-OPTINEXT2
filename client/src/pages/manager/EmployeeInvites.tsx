@@ -9,6 +9,7 @@ interface Invite {
   _id: string;
   name: string;
   email: string;
+  employeeId?: string;
   status: 'pending' | 'sent' | 'registered' | 'failed';
   inviteLink: string;
   sentAt?: string;
@@ -17,7 +18,7 @@ interface Invite {
   errorMessage?: string;
 }
 
-type ParsedRow = { name: string; email: string; rowNum: number; error?: string };
+type ParsedRow = { name: string; email: string; employeeId?: string; rowNum: number; error?: string };
 
 const STATUS_CONFIG = {
   pending: { label: 'Pending', color: 'bg-slate-100 text-slate-600', icon: Clock },
@@ -131,12 +132,30 @@ export default function EmployeeInvites() {
   const parseCSV = (text: string): ParsedRow[] => {
     const lines = text.trim().split(/\r?\n/).filter(Boolean);
     if (!lines.length) return [];
-    // Remove header if first line has text "name" and "email"
+    // Check header
     const firstLine = lines[0].toLowerCase();
-    const startIdx = firstLine.includes('name') && firstLine.includes('email') ? 1 : 0;
+    const hasHeader = (firstLine.includes('name') && firstLine.includes('email')) || firstLine.includes('employee');
+    const startIdx = hasHeader ? 1 : 0;
+
+    // Detect header layout if present
+    let nameIdx = 0;
+    let emailIdx = 1;
+    let empIdIdx = 2;
+    if (hasHeader) {
+      const headers = firstLine.split(',').map(s => s.trim().replace(/^"|"$/g, ''));
+      nameIdx = headers.findIndex(h => h.includes('name'));
+      emailIdx = headers.findIndex(h => h.includes('email'));
+      empIdIdx = headers.findIndex(h => h.includes('id') || h.includes('employee'));
+      if (nameIdx === -1) nameIdx = 0;
+      if (emailIdx === -1) emailIdx = 1;
+    }
+
     return lines.slice(startIdx).map((line, i) => {
-      const [name, email] = line.split(',').map(s => s.trim().replace(/^"|"$/g, ''));
-      return { name: name || '', email: email || '', rowNum: startIdx + i + 1 };
+      const parts = line.split(',').map(s => s.trim().replace(/^"|"$/g, ''));
+      const name = parts[nameIdx] || parts[0] || '';
+      const email = parts[emailIdx] || parts[1] || '';
+      const employeeId = (empIdIdx !== -1 && parts[empIdIdx]) ? parts[empIdIdx] : (parts.length > 2 ? parts[2] : undefined);
+      return { name, email, employeeId, rowNum: startIdx + i + 1 };
     });
   };
 
@@ -281,6 +300,7 @@ export default function EmployeeInvites() {
               <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="bg-slate-50 text-[11px] font-bold text-slate-500 uppercase tracking-wider border-b border-slate-200">
+                    <th className="py-3 px-4">Employee ID</th>
                     <th className="py-3 px-4">Name</th>
                     <th className="py-3 px-4">Email</th>
                     <th className="py-3 px-4">Status</th>
@@ -292,6 +312,9 @@ export default function EmployeeInvites() {
                 <tbody className="divide-y divide-slate-100">
                   {filteredInvites.map(invite => (
                     <tr key={invite._id} className="hover:bg-slate-50/50 transition-colors">
+                      <td className="py-3 px-4 text-xs font-mono font-semibold text-slate-700">
+                        {invite.employeeId || '—'}
+                      </td>
                       <td className="py-3 px-4 text-sm font-semibold text-slate-800">{invite.name}</td>
                       <td className="py-3 px-4 text-sm text-slate-600">{invite.email}</td>
                       <td className="py-3 px-4">
@@ -440,6 +463,11 @@ export default function EmployeeInvites() {
                     {parsedRows.map((r, i) => (
                       <li key={i} className="px-5 py-2.5 text-sm flex items-center gap-4">
                         <CheckCircle size={14} className="text-emerald-500 shrink-0" />
+                        {r.employeeId && (
+                          <span className="font-mono text-xs font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
+                            {r.employeeId}
+                          </span>
+                        )}
                         <span className="font-semibold text-slate-800 w-40 truncate">{r.name}</span>
                         <span className="text-slate-500">{r.email}</span>
                       </li>

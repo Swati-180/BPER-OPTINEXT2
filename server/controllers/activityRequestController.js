@@ -55,13 +55,20 @@ exports.createRequest = async (req, res) => {
       });
     }
 
+    // Fetch authenticated user from DB to ensure accurate employee profile
+    const User = require('../models/User');
+    const user = await User.findById(req.user.userId || req.user.id);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found.' });
+    }
+
     const activityRequest = new ActivityRequest({
       employee: {
-        userId: req.user.id || req.user._id,
-        name: req.user.name || 'Employee',
-        email: req.user.email,
-        department: req.user.department || req.body.department || 'General',
-        designation: req.user.designation || '',
+        userId: user._id,
+        name: user.name || 'Employee',
+        email: user.email,
+        department: user.department || user.organization || 'General',
+        designation: user.designation || '',
         tower: cleanMajor
       },
       majorProcess: cleanMajor,
@@ -89,18 +96,19 @@ exports.createRequest = async (req, res) => {
  */
 exports.getMyRequests = async (req, res) => {
   try {
-    const userEmail = (req.user.email || '').trim();
-    const userId = req.user.id || req.user._id;
+    const User = require('../models/User');
+    const user = await User.findById(req.user.userId || req.user.id);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found.' });
+    }
 
-    const emailCondition = userEmail
-      ? [{ 'employee.email': { $regex: new RegExp(`^${userEmail.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') } }]
-      : [];
+    const conditions = [{ 'employee.userId': user._id }];
+    if (user.email) {
+      conditions.push({ 'employee.email': user.email.toLowerCase() });
+    }
 
     const requests = await ActivityRequest.find({
-      $or: [
-        ...emailCondition,
-        ...(userId ? [{ 'employee.userId': userId }] : [])
-      ]
+      $or: conditions
     }).sort({ createdAt: -1 });
 
     res.json(requests);

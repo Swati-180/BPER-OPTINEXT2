@@ -141,24 +141,68 @@ async function exportWDTSubmissionsExcel(req, res) {
     detailSheet.getRow(1).height = 30;
 
     submissions.forEach(sub => {
-      const rows = Array.isArray(sub.payload?.rows) ? sub.payload.rows : [];
+      let rows = [];
+      const payloadRows = Array.isArray(sub.payload?.rows) ? sub.payload.rows.filter(r => r && typeof r === 'object') : [];
+      if (payloadRows.length > 0) {
+        rows = payloadRows.map(row => ({
+          majorProcess: row.majorProcess || row.tower || '',
+          process: row.process || '',
+          subProcess: row.subProcess || row.name || '',
+          category: row.activityCategory || row.category || 'core',
+          frequency: row.frequency || '',
+          volume: safeNumber(row.volumesMonthly),
+          timeMins: safeNumber(row.timePerTransactionMinutes),
+          hours: safeNumber(row.timeTakenHoursPerMonth != null ? row.timeTakenHoursPerMonth : row.hours),
+          apps: row.applicationsUsed || '',
+          comments: row.comments || '',
+        }));
+      } else {
+        const activities = Array.isArray(sub.activities) ? sub.activities.filter(a => a && typeof a === 'object') : [];
+        if (activities.length > 0) {
+          rows = activities.map(act => ({
+            majorProcess: act.majorProcess || act.tower || '',
+            process: act.process || '',
+            subProcess: act.subProcess || act.name || '',
+            category: act.activityCategory || act.category || 'core',
+            frequency: act.frequency || '',
+            volume: safeNumber(act.volumesMonthly),
+            timeMins: safeNumber(act.timePerTransactionMinutes),
+            hours: safeNumber(act.monthlyHours != null ? act.monthlyHours : (act.timeTakenHoursPerMonth != null ? act.timeTakenHoursPerMonth : act.hours)),
+            apps: act.applicationsUsed || '',
+            comments: act.comments || '',
+          }));
+        } else if (safeNumber(sub.totalHours) > 0) {
+          rows = [{
+            majorProcess: sub.employee?.department || 'Summary Process',
+            process: 'Summary Process',
+            subProcess: 'Summary Activity',
+            category: 'core',
+            frequency: 'Monthly',
+            volume: 1,
+            timeMins: 0,
+            hours: safeNumber(sub.totalHours),
+            apps: '',
+            comments: 'Derived from summary record',
+          }];
+        }
+      }
+
       rows.forEach(row => {
-        const h = safeNumber(row.timeTakenHoursPerMonth);
         detailSheet.addRow({
           referenceId: sub.referenceId,
           name: sub.employee?.name || '',
           department: sub.employee?.department || '',
-          majorProcess: row.majorProcess || '',
-          process: row.process || '',
-          subProcess: row.subProcess || '',
-          category: row.activityCategory || 'core',
-          frequency: row.frequency || '',
-          volume: safeNumber(row.volumesMonthly),
-          timeMins: safeNumber(row.timePerTransactionMinutes),
-          hours: h,
-          fte: Number((h / STANDARD_MONTHLY_HOURS).toFixed(3)),
-          apps: row.applicationsUsed || '',
-          comments: row.comments || '',
+          majorProcess: row.majorProcess,
+          process: row.process,
+          subProcess: row.subProcess,
+          category: row.category,
+          frequency: row.frequency,
+          volume: row.volume,
+          timeMins: row.timeMins,
+          hours: row.hours,
+          fte: Number((row.hours / STANDARD_MONTHLY_HOURS).toFixed(3)),
+          apps: row.apps,
+          comments: row.comments,
         });
       });
     });
@@ -192,7 +236,7 @@ async function exportWDTSubmissionsExcel(req, res) {
         const fte = data.hours / STANDARD_MONTHLY_HOURS;
         fteSheet.addRow({
           dept,
-          hours: Number(data.hours.toFixed(1)),
+          hours: Number(data.hours.toFixed(2)),
           fte: Number(fte.toFixed(2)),
           subs: data.subs,
           util: Number(Math.min(100, fte * 100).toFixed(1)),
