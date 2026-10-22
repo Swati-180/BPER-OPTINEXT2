@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Check, Copy, Link2, MailPlus, Search, Users, X, Pencil, Trash2, FileUp, Loader2 } from 'lucide-react';
+import { Check, Copy, Link2, MailPlus, Search, Users, X, Pencil, Trash2, FileUp, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { apiFetch } from '../../lib/api';
 import { getInviteSignupLink, loadAuthUser } from '../../lib/authStorage';
@@ -92,6 +92,8 @@ export default function UsersPage() {
 	const [roleFilter, setRoleFilter] = useState<'All' | UserRole>('All');
 	const [departmentFilter, setDepartmentFilter] = useState<'All' | string>('All');
 	const [statusFilter, setStatusFilter] = useState<'All' | UserStatus>('All');
+	const [currentPage, setCurrentPage] = useState(1);
+	const [pageSize, setPageSize] = useState<number>(10);
 	const [isCreateUserOpen, setIsCreateUserOpen] = useState(false);
 	const [isEditUserOpen, setIsEditUserOpen] = useState(false);
 	const [editingUser, setEditingUser] = useState<UserRow | null>(null);
@@ -110,14 +112,8 @@ export default function UsersPage() {
 	const fetchUsers = async () => {
 		setIsLoading(true);
 		try {
-			const params = new URLSearchParams();
-			if (categoryFilter !== 'all') params.append('recordType', categoryFilter);
-			if (roleFilter !== 'All') params.append('role', roleFilter);
-			if (departmentFilter !== 'All') params.append('department', departmentFilter);
-			if (statusFilter !== 'All') params.append('status', statusFilter);
-			if (query.trim()) params.append('search', query.trim());
-
-			const response = await apiFetch(`/auth/users?${params.toString()}`);
+			// Fetch full workforce collection once; filtering is performed reliably on the client
+			const response = await apiFetch(`/auth/users`);
 			const data = await response.json().catch(() => null);
 			if (response.ok && data) {
 				const rawList: any[] = Array.isArray(data) ? data : (data.users || data.data || []);
@@ -147,7 +143,7 @@ export default function UsersPage() {
 						supervisorTitle: u.supervisorTitle || '',
 						employeeType: u.employeeType || 'Full-time',
 						role: (u.role || 'employee').toLowerCase() as UserRole,
-						status: u.isActive ? 'Active' : 'Inactive',
+						status: (u.status === 'Active' || u.isActive) ? 'Active' : 'Inactive',
 						recordCategory,
 						isRosterOnly: isRoster,
 						isVacant,
@@ -158,19 +154,15 @@ export default function UsersPage() {
 					};
 				});
 
-				// Calculate counts from API or derive from mapped users
-				if (data.counts && typeof data.counts.total === 'number') {
-					setWorkforceCounts(data.counts);
-				} else {
-					setWorkforceCounts({
-						total: mapped.length,
-						operationalStaff: mapped.filter(u => u.recordCategory === 'roster_only' || (u.role === 'employee' && !u.isVacant && !u.isArchivedDemo)).length,
-						loginAccounts: mapped.filter(u => u.recordCategory === 'login_account').length,
-						vacancies: mapped.filter(u => u.isVacant || u.recordCategory === 'position').length,
-						archivedDemos: mapped.filter(u => u.isArchivedDemo || u.recordCategory === 'archived_demo').length,
-					});
-				}
-
+				// Calculate exact counts across the loaded dataset
+				const counts: WorkforceCounts = {
+					total: mapped.length,
+					operationalStaff: mapped.filter(u => !u.isVacant && !u.isArchivedDemo && u.role === 'employee').length,
+					loginAccounts: mapped.filter(u => u.recordCategory === 'login_account').length,
+					vacancies: mapped.filter(u => u.isVacant || u.role === 'position' || u.recordCategory === 'position').length,
+					archivedDemos: mapped.filter(u => u.isArchivedDemo || u.role === 'archived_demo' || u.recordCategory === 'archived_demo').length,
+				};
+				setWorkforceCounts(counts);
 				setUserRows(mapped);
 			}
 		} catch (error) {
@@ -182,24 +174,51 @@ export default function UsersPage() {
 
 	useEffect(() => {
 		fetchUsers();
-	}, [categoryFilter, roleFilter, departmentFilter, statusFilter]);
+	}, []);
+
+	// Reset page to 1 whenever any filter or search query changes
+	useEffect(() => {
+		setCurrentPage(1);
+	}, [categoryFilter, roleFilter, departmentFilter, statusFilter, query, pageSize]);
 
 	const filteredUsers = useMemo(() => {
 		const normalized = query.trim().toLowerCase();
 		return userRows.filter((user) => {
+			// 1. Record Category Filter
+			if (categoryFilter === 'operational_staff') {
+				if (user.isVacant || user.isArchivedDemo || user.role !== 'employee') return false;
+			} else if (categoryFilter === 'login_accounts') {
+				if (user.recordCategory !== 'login_account') return false;
+			} else if (categoryFilter === 'vacancies') {
+				if (!user.isVacant && user.role !== 'position' && user.recordCategory !== 'position') return false;
+			} else if (categoryFilter === 'archived_demos') {
+				if (!user.isArchivedDemo && user.role !== 'archived_demo' && user.recordCategory !== 'archived_demo') return false;
+			}
+
+			// 2. Search Query Filter
 			const matchesQuery =
 				normalized.length === 0 ||
 				user.employeeId.toLowerCase().includes(normalized) ||
 				user.name.toLowerCase().includes(normalized) ||
-				user.email.toLowerCase().includes(normalized);
+				user.email.toLowerCase().includes(normalized) ||
+				user.designation.toLowerCase().includes(normalized) ||
+				user.department.toLowerCase().includes(normalized);
 
-			const matchesRole = roleFilter === 'All' || user.role === roleFilter;
+			// 3. Dropdown Filters (case-insensitive role matching)
+			const matchesRole = roleFilter === 'All' || user.role.toLowerCase() === roleFilter.toLowerCase();
 			const matchesDepartment = departmentFilter === 'All' || user.department === departmentFilter;
 			const matchesStatus = statusFilter === 'All' || user.status === statusFilter;
 
 			return matchesQuery && matchesRole && matchesDepartment && matchesStatus;
 		});
-	}, [query, roleFilter, departmentFilter, statusFilter, userRows]);
+	}, [categoryFilter, query, roleFilter, departmentFilter, statusFilter, userRows]);
+
+	const totalPages = Math.max(1, Math.ceil(filteredUsers.length / pageSize));
+	const safeCurrentPage = Math.min(currentPage, totalPages);
+	const paginatedUsers = useMemo(() => {
+		const startIndex = (safeCurrentPage - 1) * pageSize;
+		return filteredUsers.slice(startIndex, startIndex + pageSize);
+	}, [filteredUsers, safeCurrentPage, pageSize]);
 
 	async function handleUpdateUser(event: React.FormEvent) {
 		event.preventDefault();
@@ -632,10 +651,10 @@ export default function UsersPage() {
 										</td>
 									</tr>
 								) : (
-									filteredUsers.map((user, index) => (
+									paginatedUsers.map((user, index) => (
 										<tr
 											key={`${user.employeeId}-${user._id || index}`}
-											className={`border-b border-[#E7EDF6] text-[#1A3556] transition-colors hover:bg-[#FAFCFF] ${index === filteredUsers.length - 1 ? 'border-b-0' : ''}`}
+											className={`border-b border-[#E7EDF6] text-[#1A3556] transition-colors hover:bg-[#FAFCFF] ${index === paginatedUsers.length - 1 ? 'border-b-0' : ''}`}
 										>
 											<td className="px-4 py-3 text-[14px] font-bold leading-none text-[#1A5AA6]">
 												{user.employeeId}
@@ -760,6 +779,92 @@ export default function UsersPage() {
 								)}
 							</tbody>
 						</table>
+					</div>
+
+					{/* Pagination Footer */}
+					<div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between border-t border-[#E3EBF7] bg-[#FAFCFF] px-4 py-3 text-xs text-[#5D7694]">
+						<div className="flex items-center gap-2">
+							<span>
+								{filteredUsers.length === 0 ? (
+									'Showing 0 of 0 records'
+								) : (
+									<>
+										Showing <strong className="text-[#1A3556]">{(safeCurrentPage - 1) * pageSize + 1}</strong>–<strong className="text-[#1A3556]">{Math.min(safeCurrentPage * pageSize, filteredUsers.length)}</strong> of <strong className="text-[#1A3556]">{filteredUsers.length}</strong> records
+									</>
+								)}
+							</span>
+							<span className="text-[#CAD7E6]">|</span>
+							<label className="flex items-center gap-1.5 text-xs text-[#5D7694]">
+								<span>Rows:</span>
+								<select
+									value={pageSize}
+									onChange={(e) => setPageSize(Number(e.target.value))}
+									className="h-7 rounded-md border border-[#CCD8E8] bg-white px-2 text-xs font-semibold text-[#254366] outline-none focus:border-[#6E97CB]"
+								>
+									<option value={10}>10</option>
+									<option value={25}>25</option>
+									<option value={50}>50</option>
+								</select>
+							</label>
+						</div>
+
+						<div className="flex items-center gap-1">
+							<button
+								type="button"
+								disabled={safeCurrentPage <= 1 || filteredUsers.length === 0}
+								onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+								className="inline-flex items-center gap-1 rounded-lg border border-[#CCD8E8] bg-white px-2.5 py-1 text-xs font-semibold text-[#254366] hover:bg-[#F0F4FA] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+							>
+								<ChevronLeft className="h-3.5 w-3.5" />
+								<span>Previous</span>
+							</button>
+
+							<div className="flex items-center gap-1 px-1">
+								{Array.from({ length: totalPages }, (_, i) => i + 1)
+									.filter((page) => {
+										// Show current page, first, last, and immediate siblings
+										if (page === 1 || page === totalPages) return true;
+										return Math.abs(page - safeCurrentPage) <= 1;
+									})
+									.reduce<(number | string)[]>((acc, page, idx, arr) => {
+										if (idx > 0 && typeof arr[idx - 1] === 'number' && page - (arr[idx - 1] as number) > 1) {
+											acc.push('...');
+										}
+										acc.push(page);
+										return acc;
+									}, [])
+									.map((item, idx) =>
+										typeof item === 'string' ? (
+											<span key={`ellipsis-${idx}`} className="px-1 text-xs text-[#8BA1BC]">
+												…
+											</span>
+										) : (
+											<button
+												key={`page-${item}`}
+												type="button"
+												onClick={() => setCurrentPage(item)}
+												className={`h-7 min-w-7 rounded-md px-2 text-xs font-bold transition-colors ${
+													safeCurrentPage === item
+														? 'bg-[#165BAA] text-white shadow-xs'
+														: 'border border-[#CCD8E8] bg-white text-[#254366] hover:bg-[#F0F4FA]'
+												}`}
+											>
+												{item}
+											</button>
+										)
+									)}
+							</div>
+
+							<button
+								type="button"
+								disabled={safeCurrentPage >= totalPages || filteredUsers.length === 0}
+								onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+								className="inline-flex items-center gap-1 rounded-lg border border-[#CCD8E8] bg-white px-2.5 py-1 text-xs font-semibold text-[#254366] hover:bg-[#F0F4FA] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+							>
+								<span>Next</span>
+								<ChevronRight className="h-3.5 w-3.5" />
+							</button>
+						</div>
 					</div>
 				</div>
 			</section>
