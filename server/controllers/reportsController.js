@@ -15,8 +15,11 @@ function toPercent(value, total) {
 }
 
 function buildScopeMatch(department) {
-  if (!department || department === 'All Departments') return {};
-  return { 'employee.department': department };
+  const match = { batchId: 'PFA-DEMO-OCT-2026' };
+  if (department && department !== 'All Departments') {
+    match['employee.department'] = department;
+  }
+  return match;
 }
 
 async function resolveRequestUser(req) {
@@ -131,14 +134,31 @@ function flattenRows(submissions) {
   });
 }
 
-function buildConsolidationSignal(row) {
+function classifyScreeningSignals(row) {
   const comment = String(row.comments || '').toLowerCase();
-  return (
-    comment.includes('automation') ||
-    comment.includes('rpa') ||
-    comment.includes('repeat') ||
-    row.monthlyHours >= 26
-  );
+  const isHighVolume = row.monthlyHours >= 26;
+  const hasKeyword = comment.includes('automation') || comment.includes('rpa') || comment.includes('repeat');
+
+  let screeningSignal = 'None';
+  if (isHighVolume && hasKeyword) {
+    screeningSignal = 'High Volume & Keyword';
+  } else if (isHighVolume) {
+    screeningSignal = 'High Volume (>=26h)';
+  } else if (hasKeyword) {
+    screeningSignal = 'Keyword Flagged';
+  }
+
+  return {
+    isHighVolume,
+    hasKeyword,
+    isScreened: isHighVolume || hasKeyword,
+    screeningSignal
+  };
+}
+
+function buildConsolidationSignal(row) {
+  const signals = classifyScreeningSignals(row);
+  return signals.isScreened;
 }
 
 function buildTrend(row) {
@@ -477,6 +497,7 @@ async function getUtilizationReport(req, res) {
       summary: {
         totalHours: Number(totalHours.toFixed(2)),
         totalSubmissions,
+        totalFte: Number((totalHours / STANDARD_MONTHLY_HOURS).toFixed(2)),
         avgHoursPerSubmission: Number((totalSubmissions ? totalHours / totalSubmissions : 0).toFixed(1)),
         approvalRatePct: Number(toPercent(approved, totalSubmissions).toFixed(1)),
       },
@@ -587,22 +608,38 @@ async function getFteConsolidationSummaryReport(req, res) {
     const requestUser = await resolveRequestUser(req);
     if (!ensureManager(requestUser.role, res)) return;
 
+    const efficiencyFactor = Number(req.query.efficiencyFactor) || 0.35;
+    const costPerFteLakhs = Number(req.query.costPerFteLakhs) || 10;
+    const costPerFteCr = costPerFteLakhs / 100;
+
     const submissions = await getScopedSubmissions(req);
     const rows = flattenRows(submissions);
 
+    let highVolumeCount = 0;
+    let keywordCount = 0;
+    let overlapCount = 0;
+
     const candidateRows = rows.map((row) => {
-      const consolidate = buildConsolidationSignal(row);
+      const signals = classifyScreeningSignals(row);
       const fte = row.monthlyHours / STANDARD_MONTHLY_HOURS;
+
+      if (signals.isHighVolume && signals.hasKeyword) overlapCount++;
+      else if (signals.isHighVolume) highVolumeCount++;
+      else if (signals.hasKeyword) keywordCount++;
+
       return {
         ...row,
-        consolidate,
+        ...signals,
+        consolidate: signals.isScreened,
         fte,
       };
     });
 
     const consolidateActivities = candidateRows.filter((row) => row.consolidate);
-    const savedFte = consolidateActivities.reduce((sum, row) => sum + row.fte * 0.35, 0);
-    const estimatedSavingsCr = savedFte * 0.1;
+    const candidateHours = consolidateActivities.reduce((sum, row) => sum + row.monthlyHours, 0);
+    const candidateFte = candidateHours / STANDARD_MONTHLY_HOURS;
+    const savedFte = candidateFte * efficiencyFactor;
+    const estimatedSavingsCr = savedFte * costPerFteCr;
 
     const byDepartmentMap = new Map();
     candidateRows.forEach((row) => {
@@ -610,12 +647,16 @@ async function getFteConsolidationSummaryReport(req, res) {
         department: row.department,
         totalActivities: 0,
         consolidateActivities: 0,
+        candidateHours: 0,
+        candidateFte: 0,
         savedFte: 0,
       };
       current.totalActivities += 1;
       if (row.consolidate) {
         current.consolidateActivities += 1;
-        current.savedFte += row.fte * 0.35;
+        current.candidateHours += row.monthlyHours;
+        current.candidateFte += row.fte;
+        current.savedFte += row.fte * efficiencyFactor;
       }
       byDepartmentMap.set(row.department, current);
     });
@@ -626,7 +667,10 @@ async function getFteConsolidationSummaryReport(req, res) {
         totalActivities: item.totalActivities,
         consolidateActivities: item.consolidateActivities,
         consolidationRatePct: Number(toPercent(item.consolidateActivities, item.totalActivities).toFixed(1)),
+        candidateHours: Number(item.candidateHours.toFixed(1)),
+        candidateFte: Number(item.candidateFte.toFixed(2)),
         savedFte: Number(item.savedFte.toFixed(2)),
+        estimatedSavingsCr: Number((item.savedFte * costPerFteCr).toFixed(2)),
       }))
       .sort((a, b) => b.savedFte - a.savedFte);
 
@@ -637,10 +681,11 @@ async function getFteConsolidationSummaryReport(req, res) {
         department: row.department,
         monthlyHours: Number(row.monthlyHours.toFixed(1)),
         fte: Number(row.fte.toFixed(2)),
-        savedFte: Number((row.fte * 0.35).toFixed(2)),
+        screeningSignal: row.screeningSignal,
+        savedFte: Number((row.fte * efficiencyFactor).toFixed(2)),
         trend: buildTrend(row),
       }))
-      .sort((a, b) => b.savedFte - a.savedFte)
+      .sort((a, b) => b.monthlyHours - a.monthlyHours)
       .slice(0, 10);
 
     res.json({
@@ -649,8 +694,22 @@ async function getFteConsolidationSummaryReport(req, res) {
         totalActivities: candidateRows.length,
         consolidateActivities: consolidateActivities.length,
         consolidationRatePct: Number(toPercent(consolidateActivities.length, candidateRows.length).toFixed(1)),
+        candidateHours: Number(candidateHours.toFixed(2)),
+        candidateFte: Number(candidateFte.toFixed(2)),
         savedFte: Number(savedFte.toFixed(2)),
         estimatedSavingsCr: Number(estimatedSavingsCr.toFixed(2)),
+        screeningCriteria: {
+          highVolumeOnlyCount: highVolumeCount,
+          keywordOnlyCount: keywordCount,
+          overlapCount: overlapCount,
+          totalUniqueScreened: consolidateActivities.length,
+        },
+        scenarioParameters: {
+          efficiencyFactor,
+          costPerFteLakhs,
+          isScenarioModel: true,
+          notice: 'Screened candidate activities and efficiency figures represent hypothetical planning scenarios, not audited realized savings.'
+        }
       },
       charts: {
         byDepartment,
@@ -854,22 +913,38 @@ async function getConsolidationAnalysisReport(req, res) {
     const requestUser = await resolveRequestUser(req);
     if (!ensureManager(requestUser.role, res)) return;
 
+    const efficiencyFactor = Number(req.query.efficiencyFactor) || 0.35;
+    const costPerFteLakhs = Number(req.query.costPerFteLakhs) || 10;
+    const costPerFteCr = costPerFteLakhs / 100;
+
     const submissions = await getScopedSubmissions(req);
     const rows = flattenRows(submissions);
 
+    let highVolumeCount = 0;
+    let keywordCount = 0;
+    let overlapCount = 0;
+
     const candidateRows = rows.map((row) => {
-      const consolidate = buildConsolidationSignal(row);
+      const signals = classifyScreeningSignals(row);
       const fte = row.monthlyHours / STANDARD_MONTHLY_HOURS;
+
+      if (signals.isHighVolume && signals.hasKeyword) overlapCount++;
+      else if (signals.isHighVolume) highVolumeCount++;
+      else if (signals.hasKeyword) keywordCount++;
+
       return {
         ...row,
-        consolidate,
+        ...signals,
+        consolidate: signals.isScreened,
         fte,
       };
     });
 
     const consolidateActivities = candidateRows.filter((row) => row.consolidate);
-    const savedFte = consolidateActivities.reduce((sum, row) => sum + row.fte * 0.35, 0);
-    const estimatedSavingsCr = savedFte * 0.1;
+    const candidateHours = consolidateActivities.reduce((sum, row) => sum + row.monthlyHours, 0);
+    const candidateFte = candidateHours / STANDARD_MONTHLY_HOURS;
+    const savedFte = candidateFte * efficiencyFactor;
+    const estimatedSavingsCr = savedFte * costPerFteCr;
 
     // By Department Detail
     const byDeptMap = new Map();
@@ -878,12 +953,16 @@ async function getConsolidationAnalysisReport(req, res) {
         department: row.department,
         totalActivities: 0,
         consolidateActivities: 0,
+        candidateHours: 0,
+        candidateFte: 0,
         savedFte: 0,
       };
       current.totalActivities += 1;
       if (row.consolidate) {
         current.consolidateActivities += 1;
-        current.savedFte += row.fte * 0.35;
+        current.candidateHours += row.monthlyHours;
+        current.candidateFte += row.fte;
+        current.savedFte += row.fte * efficiencyFactor;
       }
       byDeptMap.set(row.department, current);
     });
@@ -892,10 +971,12 @@ async function getConsolidationAnalysisReport(req, res) {
       .map((item) => ({
         department: item.department,
         totalActivities: item.totalActivities,
-        consolidateActivities: item.consolidateActivities,
+        consolidationCandidates: item.consolidateActivities,
         consolidationRatePct: Number(toPercent(item.consolidateActivities, item.totalActivities).toFixed(1)),
+        candidateHours: Number(item.candidateHours.toFixed(1)),
+        candidateFte: Number(item.candidateFte.toFixed(2)),
         savedFte: Number(item.savedFte.toFixed(2)),
-        estimatedSavingsCr: Number((item.savedFte * 0.1).toFixed(2)),
+        estimatedSavingsCr: Number((item.savedFte * costPerFteCr).toFixed(2)),
       }))
       .sort((a, b) => b.savedFte - a.savedFte);
 
@@ -909,12 +990,14 @@ async function getConsolidationAnalysisReport(req, res) {
         frequency: row.frequency,
         monthlyHours: Number(row.monthlyHours.toFixed(1)),
         fte: Number(row.fte.toFixed(2)),
-        savedFte: Number((row.fte * 0.35).toFixed(2)),
-        estimatedSavingsCr: Number((row.fte * 0.35 * 0.1).toFixed(2)),
-        consolidationSignal: row.consolidate ? 'Yes' : 'No',
+        savedFte: Number((row.fte * efficiencyFactor).toFixed(2)),
+        estimatedSavingsCr: Number((row.fte * efficiencyFactor * costPerFteCr).toFixed(2)),
+        consolidationSignal: row.screeningSignal,
+        isHighVolume: row.isHighVolume,
+        hasKeyword: row.hasKeyword,
         comment: row.comments,
       }))
-      .sort((a, b) => b.savedFte - a.savedFte);
+      .sort((a, b) => b.monthlyHours - a.monthlyHours);
 
     res.json({
       generatedAt: new Date().toISOString(),
@@ -922,8 +1005,22 @@ async function getConsolidationAnalysisReport(req, res) {
         totalActivities: candidateRows.length,
         consolidateActivities: consolidateActivities.length,
         consolidationRatePct: Number(toPercent(consolidateActivities.length, candidateRows.length).toFixed(1)),
+        candidateHours: Number(candidateHours.toFixed(2)),
+        candidateFte: Number(candidateFte.toFixed(2)),
         savedFte: Number(savedFte.toFixed(2)),
         estimatedSavingsCr: Number(estimatedSavingsCr.toFixed(2)),
+        screeningCriteria: {
+          highVolumeOnlyCount: highVolumeCount,
+          keywordOnlyCount: keywordCount,
+          overlapCount: overlapCount,
+          totalUniqueScreened: consolidateActivities.length,
+        },
+        scenarioParameters: {
+          efficiencyFactor,
+          costPerFteLakhs,
+          isScenarioModel: true,
+          notice: 'Screened candidate activities and efficiency figures represent hypothetical planning scenarios, not audited realized savings.'
+        }
       },
       tabs: {
         byDepartment: byDepartmentDetail,
@@ -1015,6 +1112,8 @@ async function getFitmentAnalysisReport(req, res) {
         coveragePct: Number(toPercent(profiles, totalEmployees).toFixed(1)),
         avgWeightedScore,
         labelBreakdown,
+        evaluationStatus: profiles === 0 ? 'Pending Institutional Evaluation' : (profiles < totalEmployees ? 'Partial Assessment in Progress' : 'Fully Evaluated'),
+        dataNotice: profiles <= 1 ? 'Institutional competency assessment is pending for active staff roster. Figures reflect verified assessment documents only.' : null,
       },
       charts: {
         scoreDistribution,

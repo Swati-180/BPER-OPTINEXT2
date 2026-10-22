@@ -75,7 +75,11 @@ async function startServer() {
     await mongoose.connect(mongoUri, { serverSelectionTimeoutMS: 5000 });
     console.log('Connected to MongoDB successfully.');
   } catch (err) {
-    console.log('Primary MongoDB connection failed. Attempting In-Memory fallback...');
+    if (process.env.NODE_ENV === 'production') {
+      console.error('CRITICAL: Primary MongoDB connection failed in production mode. Refusing in-memory fallback or seed in production.');
+      process.exit(1);
+    }
+    console.log('Primary MongoDB connection failed. Attempting In-Memory fallback for local development...');
     try {
       const { MongoMemoryServer } = require('mongodb-memory-server');
       const mongoServer = await MongoMemoryServer.create();

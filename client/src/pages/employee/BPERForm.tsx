@@ -6,7 +6,6 @@ import { Step2 } from "./Step2";
 import { Step3 } from "./Step3";
 import type { WdtPayload, WdtActivityRow, ProcessSelection } from "./formTypes";
 import { ProcessSelectionPanel } from "./ProcessSelectionPanel";
-import { demoEmployeeProfile } from "./demoEmployeeData";
 import {
   buildBperSubmission,
   saveBperSubmission,
@@ -58,14 +57,16 @@ export default function BPERForm() {
           };
           setProfile(mappedProfile);
         } else if (res.ok && !data) {
-          console.warn("Profile fetch succeeded but returned empty/invalid JSON data");
-          setProfile(demoEmployeeProfile);
+          console.error("Profile fetch succeeded but returned empty/invalid user data.");
+          setProfile(null);
         } else if (res.status === 401 || res.status === 404) {
-          console.error("User session invalid or user deleted. Redirecting to login.");
+          console.error("User session invalid or user not found. Redirecting to login.");
           localStorage.removeItem('bper.auth.token');
           localStorage.removeItem('bper.auth.user');
           window.location.href = '/login';
           return;
+        } else {
+          setProfile(null);
         }
 
         if (windowRes.ok) {
@@ -73,6 +74,7 @@ export default function BPERForm() {
         }
       } catch (error) {
         console.error("Failed to fetch profile/window for form:", error);
+        setProfile(null);
       } finally {
         setIsLoadingProfile(false);
       }

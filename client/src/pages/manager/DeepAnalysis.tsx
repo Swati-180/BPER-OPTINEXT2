@@ -98,8 +98,22 @@ interface ConsolidationAnalysisReport {
     totalActivities: number;
     consolidateActivities: number;
     consolidationRatePct: number;
+    candidateHours?: number;
+    candidateFte?: number;
     savedFte: number;
     estimatedSavingsCr: number;
+    screeningCriteria?: {
+      highVolumeOnlyCount: number;
+      keywordOnlyCount: number;
+      overlapCount: number;
+      totalUniqueScreened: number;
+    };
+    scenarioParameters?: {
+      efficiencyFactor: number;
+      costPerFteLakhs: number;
+      isScenarioModel: boolean;
+      notice: string;
+    };
   };
   tabs: {
     byDepartment: Array<{
@@ -107,14 +121,23 @@ interface ConsolidationAnalysisReport {
       totalActivities: number;
       consolidationCandidates: number;
       consolidationRatePct: number;
+      candidateHours?: number;
+      candidateFte?: number;
+      savedFte?: number;
+      estimatedSavingsCr?: number;
     }>;
     allCandidates: Array<{
-      name: string;
+      name?: string;
+      activityName?: string;
       tower: string;
       department: string;
       process: string;
       monthlyHours: number;
+      fte?: number;
+      savedFte?: number;
       consolidationSignal: string;
+      isHighVolume?: boolean;
+      hasKeyword?: boolean;
       estimatedSavingsCr: number;
     }>;
   };
@@ -132,6 +155,8 @@ interface FitmentAnalysisReport {
       trainToFit: number;
       unfit: number;
     };
+    evaluationStatus?: string;
+    dataNotice?: string | null;
   };
   charts: {
     scoreDistribution: Array<{
@@ -763,35 +788,44 @@ export default function DeepAnalysis() {
               </div>
             ) : (
               <div className="space-y-6 animate-in fade-in duration-500">
+                {/* Scenario Model Disclaimer Banner */}
+                <div className="bg-[#EFF6FF] border border-[#BFDBFE] rounded-2xl p-4 text-xs text-[#1E40AF] leading-relaxed">
+                  <span className="font-bold">Planning Simulation Model:</span> Screened candidate activities represent high-volume items (≥26 hrs/month) and self-noted automation comments. FTE and cost reductions are hypothetical simulation scenarios based on a configurable 35% efficiency assumption and ₹10L/FTE, not verified historical savings.
+                </div>
+
                 {/* KPI Cards */}
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
                   <div className="rounded-2xl border border-[#D9E4F2] bg-white p-5 shadow-[0_4px_12px_rgba(16,42,80,0.06)] hover:shadow-[0_6px_16px_rgba(16,42,80,0.1)] transition-all">
-                    <p className="text-xs font-bold text-[#637F9F] uppercase tracking-wide">Consolidation Rate</p>
-                    <p className="text-3xl font-bold text-[#0F2649] mt-3">
-                      {safeNumber(consolidationReport.summary.consolidationRatePct)}%
-                    </p>
-                    <p className="text-xs text-[#8898AF] mt-2">Consolidation ratio</p>
-                  </div>
-                  <div className="rounded-2xl border border-[#D9E4F2] bg-white p-5 shadow-[0_4px_12px_rgba(16,42,80,0.06)] hover:shadow-[0_6px_16px_rgba(16,42,80,0.1)] transition-all">
-                    <p className="text-xs font-bold text-[#637F9F] uppercase tracking-wide">Saved FTE</p>
-                    <p className="text-3xl font-bold text-[#165BAA] mt-3">
-                      {safeNumber(consolidationReport.summary.savedFte)}
-                    </p>
-                    <p className="text-xs text-[#8898AF] mt-2">Potential reduction</p>
-                  </div>
-                  <div className="rounded-2xl border border-[#D9E4F2] bg-white p-5 shadow-[0_4px_12px_rgba(16,42,80,0.06)] hover:shadow-[0_6px_16px_rgba(16,42,80,0.1)] transition-all">
-                    <p className="text-xs font-bold text-[#637F9F] uppercase tracking-wide">Est. Savings (₹Cr)</p>
-                    <p className="text-3xl font-bold text-[#1A5BA7] mt-3">
-                      {safeNumber(consolidationReport.summary.estimatedSavingsCr)}
-                    </p>
-                    <p className="text-xs text-[#8898AF] mt-2">Cost reduction</p>
-                  </div>
-                  <div className="rounded-2xl border border-[#D9E4F2] bg-white p-5 shadow-[0_4px_12px_rgba(16,42,80,0.06)] hover:shadow-[0_6px_16px_rgba(16,42,80,0.1)] transition-all">
-                    <p className="text-xs font-bold text-[#637F9F] uppercase tracking-wide">Candidates</p>
+                    <p className="text-xs font-bold text-[#637F9F] uppercase tracking-wide">Screened Activities</p>
                     <p className="text-3xl font-bold text-[#2367AE] mt-3">
                       {consolidationReport.summary.consolidateActivities}
                     </p>
-                    <p className="text-xs text-[#8898AF] mt-2">Items for review</p>
+                    <p className="text-xs text-[#8898AF] mt-2">
+                      {consolidationReport.summary.screeningCriteria ? `${consolidationReport.summary.screeningCriteria.highVolumeOnlyCount} high-vol + ${consolidationReport.summary.screeningCriteria.keywordOnlyCount} keyword` : 'Items meeting criteria'}
+                    </p>
+                  </div>
+                  <div className="rounded-2xl border border-[#D9E4F2] bg-white p-5 shadow-[0_4px_12px_rgba(16,42,80,0.06)] hover:shadow-[0_6px_16px_rgba(16,42,80,0.1)] transition-all">
+                    <p className="text-xs font-bold text-[#637F9F] uppercase tracking-wide">Screened Workload</p>
+                    <p className="text-3xl font-bold text-[#0F2649] mt-3">
+                      {safeNumber(consolidationReport.summary.candidateHours ?? 0)} hrs
+                    </p>
+                    <p className="text-xs text-[#8898AF] mt-2">
+                      {safeNumber(consolidationReport.summary.candidateFte ?? 0)} FTE pool ({safeNumber(consolidationReport.summary.consolidationRatePct)}% of total)
+                    </p>
+                  </div>
+                  <div className="rounded-2xl border border-[#D9E4F2] bg-white p-5 shadow-[0_4px_12px_rgba(16,42,80,0.06)] hover:shadow-[0_6px_16px_rgba(16,42,80,0.1)] transition-all">
+                    <p className="text-xs font-bold text-[#637F9F] uppercase tracking-wide">Scenario: Saved FTE</p>
+                    <p className="text-3xl font-bold text-[#165BAA] mt-3">
+                      {safeNumber(consolidationReport.summary.savedFte)}
+                    </p>
+                    <p className="text-xs text-[#8898AF] mt-2">At 35% assumed factor</p>
+                  </div>
+                  <div className="rounded-2xl border border-[#D9E4F2] bg-white p-5 shadow-[0_4px_12px_rgba(16,42,80,0.06)] hover:shadow-[0_6px_16px_rgba(16,42,80,0.1)] transition-all">
+                    <p className="text-xs font-bold text-[#637F9F] uppercase tracking-wide">Scenario: Cost Impact</p>
+                    <p className="text-3xl font-bold text-[#1A5BA7] mt-3">
+                      ₹{safeNumber(consolidationReport.summary.estimatedSavingsCr)} Cr
+                    </p>
+                    <p className="text-xs text-[#8898AF] mt-2">At ₹10L/FTE assumption</p>
                   </div>
                 </div>
 
@@ -938,6 +972,13 @@ export default function DeepAnalysis() {
               </div>
             ) : (
               <div className="space-y-6 animate-in fade-in duration-500">
+                {/* Pending Evaluation Banner if coverage is minimal */}
+                {fitmentReport.summary.dataNotice && (
+                  <div className="bg-[#FFFBEB] border border-[#FDE68A] rounded-2xl p-4 text-xs text-[#92400E] leading-relaxed">
+                    <span className="font-bold">Evaluation Status ({fitmentReport.summary.evaluationStatus || 'Pending'}):</span> {fitmentReport.summary.dataNotice}
+                  </div>
+                )}
+
                 {/* KPI Cards */}
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
                   <div className="rounded-2xl border border-[#D9E4F2] bg-white p-5 shadow-[0_4px_12px_rgba(16,42,80,0.06)] hover:shadow-[0_6px_16px_rgba(16,42,80,0.1)] transition-all">

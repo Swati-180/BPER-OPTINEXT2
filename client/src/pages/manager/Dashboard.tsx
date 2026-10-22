@@ -122,6 +122,7 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const user = loadAuthUser();
   const isAdmin = user?.role === 'admin';
+  const basePath = isAdmin ? '/admin' : '/manager';
   const roleLabel = isAdmin ? 'Admin' : 'Manager';
   const [dashboard, setDashboard] = useState<DashboardReport | null>(null);
   const [fteSummary, setFteSummary] = useState<FteSummaryReport | null>(null);
@@ -389,7 +390,7 @@ export default function Dashboard() {
                 <div 
                   key={tower.tower} 
                   className="grid grid-cols-[130px_1fr_auto] items-center gap-2.5 cursor-pointer hover:bg-[#F8FBFF] p-1.5 -mx-1.5 rounded-lg transition-colors"
-                  onClick={() => navigate(`/manager/deep-analysis?tab=fte&subTab=activities&towerFilter=${encodeURIComponent(tower.tower)}`)}
+                  onClick={() => navigate(`${basePath}/deep-analysis?tab=fte&subTab=activities&towerFilter=${encodeURIComponent(tower.tower)}`)}
                 >
                   <p className="text-xs font-semibold text-[#5E7594] leading-tight">{tower.tower}</p>
                   <div className="h-7 rounded-lg bg-[#EEF4FC] overflow-hidden border border-[#DFE9F7]">
@@ -516,7 +517,7 @@ export default function Dashboard() {
 
           <button
             type="button"
-            onClick={() => navigate('/manager/deep-analysis?tab=utilization&subTab=employee')}
+            onClick={() => navigate(`${basePath}/deep-analysis?tab=utilization&subTab=employee`)}
             className="mt-4 inline-flex items-center gap-2 text-xs font-bold text-[#1E5EA9] hover:text-[#194F8D]"
           >
             View Full Team Breakdown
@@ -526,25 +527,38 @@ export default function Dashboard() {
       </section>
 
       <section ref={consolidationRef} className="rounded-2xl border border-[#0F386A] bg-linear-to-r from-[#001F45] via-[#032C5D] to-[#05396E] p-4.5 shadow-[0_8px_18px_rgba(5,34,72,0.3)]">
-        <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#6BB4FF]">Platform Insights</p>
-        <div className="mt-2.5 grid grid-cols-1 gap-3 xl:grid-cols-[1.35fr_1.4fr_auto] xl:items-start">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/10 pb-2.5">
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#6BB4FF]">Platform Insights — Hypothetical Planning Scenarios</p>
+          <span className="rounded bg-amber-500/20 px-2 py-0.5 text-[11px] font-semibold text-amber-200 border border-amber-400/30">
+            Planning Scenario (Not Measured Savings)
+          </span>
+        </div>
+
+        {/* Concise Disclaimer */}
+        <div className="mt-2.5 rounded-lg bg-blue-950/60 p-2.5 border border-blue-400/20 text-xs text-[#BFD9FF] leading-relaxed">
+          <p className="font-medium">
+            <span className="font-bold text-[#E6F2FF]">Model Assumptions:</span> Scenario projections assume an industry benchmark 35% efficiency factor and ₹10 Lakh per FTE annually on screened candidate activities. These are hypothetical planning estimates, not measured or realized historical savings. Actual workload metrics remain separate.
+          </p>
+        </div>
+
+        <div className="mt-3 grid grid-cols-1 gap-3 xl:grid-cols-[1.35fr_1.4fr_auto] xl:items-start">
           <div>
-            <h3 className="text-3xl font-bold leading-tight text-white">Consolidation Summary</h3>
-            <p className="mt-2 text-sm leading-relaxed text-[#BFD9FF]">
-              Estimated from live activity patterns and fitment coverage.
+            <h3 className="text-2xl font-bold leading-tight text-white">Consolidation Potential</h3>
+            <p className="mt-1 text-xs leading-relaxed text-[#BFD9FF]">
+              Estimated scenario outcomes based on screened activities and fitment coverage.
             </p>
           </div>
 
           <div className="grid grid-cols-3 gap-3">
-            <InsightMetric label="Total Activities" value={String(safeNumber(consolidatedSummary.totalActivities))} />
-            <InsightMetric label="Saved FTE" value={safeNumber(consolidatedSummary.savedFte).toFixed(2)} />
-            <InsightMetric label="Cost Saving" value={`INR ${safeNumber(consolidatedSummary.estimatedSavingsCr).toFixed(2)} Cr`} emphasize />
+            <InsightMetric label="Screened Activities" value={String(safeNumber(consolidatedSummary.totalActivities))} />
+            <InsightMetric label="Scenario: Saved FTE" value={safeNumber(consolidatedSummary.savedFte).toFixed(2)} />
+            <InsightMetric label="Scenario: Cost Impact" value={`INR ${safeNumber(consolidatedSummary.estimatedSavingsCr).toFixed(2)} Cr`} emphasize />
           </div>
 
           <div className="grid gap-2 xl:justify-self-end">
             <button
               type="button"
-              onClick={() => navigate('/manager/deep-analysis?tab=consolidation&subTab=overview')}
+              onClick={() => navigate(`${basePath}/deep-analysis?tab=consolidation&subTab=overview`)}
               className="inline-flex w-fit items-center justify-center gap-2 rounded-lg border border-white/20 bg-white px-4 py-2.5 text-sm font-semibold text-[#09274D] hover:bg-[#EAF2FF]"
             >
               View Full Report
