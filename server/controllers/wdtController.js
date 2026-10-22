@@ -1,6 +1,7 @@
 const WDTSubmission = require('../models/WDTSubmission');
 const User = require('../models/User');
 const { logAction } = require('../utils/auditLogger');
+const { invalidateScopedReportsCache } = require('./reportsController');
 
 const submitWDT = async (req, res) => {
   try {
@@ -59,6 +60,7 @@ const submitWDT = async (req, res) => {
         existing.status = 'Under Review';
         existing.pendingFrom = employee.supervisorName || 'Manager'; // Route to supervisor
         await existing.save();
+        invalidateScopedReportsCache();
 
         // Send resubmission notification email
         try {
@@ -75,6 +77,7 @@ const submitWDT = async (req, res) => {
     }
 
     const record = await WDTSubmission.create(req.body);
+    invalidateScopedReportsCache();
 
     // Send submission confirmation email
     try {
@@ -199,6 +202,7 @@ const updateSubmissionStatus = async (req, res) => {
     }
     
     await submission.save();
+    invalidateScopedReportsCache();
 
     // Send review notification email to employee
     try {

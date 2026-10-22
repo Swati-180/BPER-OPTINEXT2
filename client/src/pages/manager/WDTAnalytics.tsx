@@ -376,8 +376,8 @@ export default function WDTAnalyticsPage() {
 
       {employeeFteData.length > 0 && (
         <section className="rounded-2xl border border-[#D9E4F2] bg-white p-4 shadow-[0_6px_16px_rgba(16,42,80,0.06)]">
-          <h3 className="text-lg font-bold text-[#102846]">FTE Band Distribution</h3>
-          <p className="mt-1 text-xs text-[#6E86A3]">Distribution of employee FTE values across 5 utilization bands (based on 160h/month baseline)</p>
+          <h3 className="text-lg font-bold text-[#102846]">Employee Capacity Distribution</h3>
+          <p className="mt-1 text-xs text-[#6E86A3]">Distribution of employees by capacity utilization, based on a 160-hour monthly baseline.</p>
           <div className="mt-4">
             <FTEBandChart data={employeeFteData} height={200} />
           </div>

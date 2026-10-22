@@ -248,6 +248,7 @@ async function seed() {
     }
 
     // Insert Fitment data
+    const employees = users.filter(u => u.role === 'employee');
     const fitmentRecords = employees.map((emp, idx) => {
       const scores = [45, 72, 88, 58, 92, 65, 78, 55, 81, 68];
       const labels = ['TRAIN TO FIT', 'FIT', 'FIT', 'TRAIN TO FIT', 'FIT', 'TRAIN TO FIT', 'FIT', 'TRAIN TO FIT', 'FIT', 'TRAIN TO FIT'];

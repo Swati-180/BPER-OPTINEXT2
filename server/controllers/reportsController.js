@@ -185,10 +185,51 @@ function getSubmissionWindowStatus() {
   };
 }
 
+// --- In-Memory Scoped Reports Cache with Scope Isolation ---
+const scopedSubmissionsCache = new Map();
+const CACHE_TTL_MS = 60 * 1000; // 60 seconds TTL
+
+function invalidateScopedReportsCache() {
+  scopedSubmissionsCache.clear();
+}
+
 async function getScopedSubmissions(req) {
   const { department, month, year } = req.query;
   const match = buildScopeMatch(department, month, year);
-  return WDTSubmission.find(match).sort({ submittedAt: -1 }).lean();
+  const cacheKey = JSON.stringify(match);
+
+  const cached = scopedSubmissionsCache.get(cacheKey);
+  const now = Date.now();
+  if (cached && cached.expiresAt > now && cached.data) {
+    return cached.data;
+  }
+  // Coalesce in-flight queries for the same scope so concurrent endpoints don't execute 3 identical scans
+  if (cached && cached.inFlightPromise) {
+    return cached.inFlightPromise;
+  }
+
+  const queryPromise = WDTSubmission.find(match)
+    .select('referenceId batchId submittedAt month year status totalHours pendingFrom employee.employeeId employee.name employee.email employee.department employee.designation employee.tower payload.rows activities')
+    .sort({ submittedAt: -1 })
+    .lean()
+    .then((docs) => {
+      scopedSubmissionsCache.set(cacheKey, {
+        data: docs,
+        expiresAt: Date.now() + CACHE_TTL_MS,
+      });
+      return docs;
+    })
+    .catch((err) => {
+      scopedSubmissionsCache.delete(cacheKey);
+      throw err;
+    });
+
+  scopedSubmissionsCache.set(cacheKey, {
+    inFlightPromise: queryPromise,
+    expiresAt: now + CACHE_TTL_MS,
+  });
+
+  return queryPromise;
 }
 
 async function getDashboardReport(req, res) {
@@ -249,8 +290,7 @@ async function getDashboardReport(req, res) {
         consolidate: item.consolidate,
         trend: buildTrend(item),
       }))
-      .sort((a, b) => b.fte - a.fte)
-      .slice(0, 5);
+      .sort((a, b) => b.fte - a.fte);
 
     const byDepartment = new Map();
     rows.forEach((row) => {
@@ -351,16 +391,30 @@ async function getDashboardReport(req, res) {
       const isVac = String(row.employeeName).toLowerCase() === 'vacant';
       if (!isVac) {
         const empKey = row.employeeId || row.employeeName;
-        const current = employeeMap.get(empKey) || { label: `${row.employeeName} (${row.employeeId})`, hours: 0 };
+        const current = employeeMap.get(empKey) || {
+          employeeId: row.employeeId || 'NA',
+          name: row.employeeName || 'Unknown Employee',
+          label: `${row.employeeName} (${row.employeeId})`,
+          hours: 0,
+        };
         current.hours += row.monthlyHours;
         employeeMap.set(empKey, current);
       }
     });
 
-    const employeeFteData = Array.from(employeeMap.values()).map(emp => ({
-      label: emp.label,
-      fte: Number((emp.hours / STANDARD_MONTHLY_HOURS).toFixed(2))
-    }));
+    const employeeFteData = Array.from(employeeMap.values()).map(emp => {
+      const hours = Number(emp.hours.toFixed(2));
+      const fte = Number((emp.hours / STANDARD_MONTHLY_HOURS).toFixed(2));
+      const capacityPct = Number((fte * 100).toFixed(1));
+      return {
+        label: emp.label,
+        name: emp.name,
+        employeeId: emp.employeeId,
+        totalHours: hours,
+        fte,
+        capacityPct,
+      };
+    });
 
     res.json({
       generatedAt: new Date().toISOString(),
@@ -1344,4 +1398,5 @@ module.exports = {
   getAuditLogs,
   flattenRows,
   safeNumber,
+  invalidateScopedReportsCache,
 };

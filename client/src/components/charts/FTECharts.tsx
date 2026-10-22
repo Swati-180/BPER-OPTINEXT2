@@ -27,109 +27,258 @@ const BAND_COLORS: Record<FTEBand, string> = {
 
 const ALL_BANDS: FTEBand[] = ['0–0.25', '0.25–0.5', '0.5–0.75', '0.75–1.0', '1.0+'];
 
-type FTEEntry = { label: string; fte: number };
+export type CapacityEntry = {
+  label: string;
+  fte: number;
+  name?: string;
+  employeeId?: string;
+  totalHours?: number;
+  capacityPct?: number;
+};
 
 interface FTEBandChartProps {
-  data: FTEEntry[];
+  data: CapacityEntry[];
   title?: string;
   height?: number;
 }
 
 /**
- * FTEBandChart — Shows distribution of FTE values across 5 bands.
- * Input: array of { label, fte } items.
+ * FTEBandChart / Employee Capacity Distribution Chart
+ * Shows distribution of employees by capacity utilization, based on a 160-hour monthly baseline.
  */
 export function FTEBandChart({ data, title, height = 220 }: FTEBandChartProps) {
   const [selectedBand, setSelectedBand] = useState<FTEBand | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 10;
 
-  // Count entries per band
+  const totalEligible = data.length;
+
+  // Enrich data entries with capacityPct, hours, and clean name/employeeId
+  const enrichedData = data.map(d => {
+    let name = d.name;
+    let employeeId = d.employeeId;
+    if (!name || !employeeId) {
+      const match = d.label.match(/^(.*?)\s*\((.*?)\)$/);
+      if (match) {
+        name = name || match[1].trim();
+        employeeId = employeeId || match[2].trim();
+      } else {
+        name = name || d.label;
+        employeeId = employeeId || '—';
+      }
+    }
+    const fte = Number(d.fte) || 0;
+    const totalHours = d.totalHours != null ? Number(d.totalHours) : Number((fte * 160).toFixed(2));
+    const capacityPct = d.capacityPct != null ? Number(d.capacityPct) : Number((fte * 100).toFixed(1));
+    return {
+      label: d.label,
+      fte,
+      name,
+      employeeId,
+      totalHours,
+      capacityPct,
+    };
+  });
+
+  // Group entries by band
   const bandCounts = ALL_BANDS.map(band => {
-    const items = data.filter(d => getFTEBand(d.fte) === band);
-    return { band, count: items.length, items, color: BAND_COLORS[band] };
+    const items = enrichedData.filter(d => getFTEBand(d.fte) === band);
+    const count = items.length;
+    const pctOfTotal = totalEligible > 0 ? Number(((count / totalEligible) * 100).toFixed(1)) : 0;
+    return {
+      band,
+      count,
+      pctOfTotal,
+      items,
+      color: BAND_COLORS[band],
+    };
   });
 
   const max = Math.max(...bandCounts.map(b => b.count), 1);
-  const fullFteCount = data.filter(d => d.fte >= 1.0).length;
-  const underFteCount = data.filter(d => d.fte < 0.5).length;
+  const fullCapacityCount = enrichedData.filter(d => d.fte >= 1.0).length;
+  const underCapacityCount = enrichedData.filter(d => d.fte < 0.5).length;
+  const fullCapacityPct = totalEligible > 0 ? Number(((fullCapacityCount / totalEligible) * 100).toFixed(1)) : 0;
+  const underCapacityPct = totalEligible > 0 ? Number(((underCapacityCount / totalEligible) * 100).toFixed(1)) : 0;
+
+  // Selected band items and search filtering
+  const activeBandData = selectedBand ? bandCounts.find(b => b.band === selectedBand) : null;
+  const filteredItems = (activeBandData?.items || []).filter(item => {
+    if (!searchTerm.trim()) return true;
+    const q = searchTerm.toLowerCase();
+    return (
+      item.name.toLowerCase().includes(q) ||
+      item.employeeId.toLowerCase().includes(q) ||
+      item.label.toLowerCase().includes(q)
+    );
+  });
+
+  const totalPages = Math.ceil(filteredItems.length / pageSize) || 1;
+  const pagedItems = filteredItems.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+
+  function handleSelectBand(band: FTEBand) {
+    if (selectedBand === band) {
+      setSelectedBand(null);
+    } else {
+      setSelectedBand(band);
+      setSearchTerm('');
+      setCurrentPage(1);
+    }
+  }
 
   return (
     <div>
       {title && <p className="mb-2 text-sm font-semibold text-[#102846]">{title}</p>}
-      <div className="rounded-xl border border-[#DCE7F4] bg-[#FAFCFF] px-3 py-3" style={{ minHeight: height }}>
-        <div className="grid grid-cols-[92px_1fr_auto] items-center gap-2 text-[11px] font-semibold text-[#5F7898]">
-          <span>Band</span>
+      <div className="rounded-xl border border-[#DCE7F4] bg-[#FAFCFF] px-4 py-3.5" style={{ minHeight: height }}>
+        <div className="grid grid-cols-[110px_1fr_160px] items-center gap-3 text-[11px] font-bold uppercase tracking-[0.08em] text-[#5F7898]">
+          <span>Capacity Band</span>
           <span>Distribution</span>
-          <span>Count</span>
+          <span className="text-right">Count & Share</span>
         </div>
-        <div className="mt-2 space-y-2">
+        <div className="mt-2.5 space-y-2">
           {bandCounts.map((entry) => {
             const widthPct = max > 0 ? Math.max((entry.count / max) * 100, entry.count > 0 ? 8 : 0) : 0;
+            const isSelected = selectedBand === entry.band;
             return (
               <button
                 key={entry.band}
                 type="button"
-                onClick={() => setSelectedBand(entry.band)}
-                title={`${entry.band}: ${entry.count} employees`}
-                className="grid w-full grid-cols-[92px_1fr_auto] items-center gap-2 rounded-lg px-1 py-1.5 text-left transition-colors hover:bg-[#F1F7FF]"
+                onClick={() => handleSelectBand(entry.band)}
+                title={`Click to view all ${entry.count} employee${entry.count === 1 ? '' : 's'} in ${entry.band} band`}
+                className={`grid w-full grid-cols-[110px_1fr_160px] items-center gap-3 rounded-lg px-2 py-2 text-left transition-all ${
+                  isSelected ? 'bg-[#EBF3FF] ring-1 ring-[#3B82F6]' : 'hover:bg-[#F1F7FF]'
+                }`}
               >
-                <span className="text-xs font-semibold text-[#4F6D91]">{entry.band}</span>
-                <div className="h-5 rounded-md bg-[#E6EDF7] p-[2px]">
+                <span className="text-xs font-semibold text-[#324B6D]">{entry.band}</span>
+                <div className="h-5.5 rounded-md bg-[#E6EDF7] p-[2px]">
                   <div
                     className="h-full rounded-[4px] transition-all duration-300"
                     style={{
                       width: `${Math.min(widthPct, 100)}%`,
                       backgroundColor: entry.color,
-                      opacity: selectedBand && selectedBand !== entry.band ? 0.35 : 1,
+                      opacity: selectedBand && !isSelected ? 0.35 : 1,
                     }}
                   />
                 </div>
-                <span className="text-xs font-bold text-[#173E6B]">{entry.count}</span>
+                <div className="text-right whitespace-nowrap">
+                  <span className="text-xs font-bold text-[#173E6B]">
+                    {entry.count} employee{entry.count === 1 ? '' : 's'}
+                  </span>
+                  <span className="ml-1 text-[11px] font-medium text-[#6582A4]">
+                    · {entry.pctOfTotal}%
+                  </span>
+                </div>
               </button>
             );
           })}
         </div>
-        <p className="mt-2 text-[10px] text-[#7D93AE]">Click a band to view employee-level entries.</p>
-      </div>
-
-      <div className="mt-3 rounded-lg bg-[#F8FBFF] p-3 text-sm text-[#4B6889] border border-[#E3EBF7]">
-        <p>
-          <strong className="text-[#102846]">{fullFteCount} employees</strong> are working at full capacity (1.0+ FTE).{' '}
-          <strong className="text-[#102846]">{underFteCount} employees</strong> are underutilized (below 0.5 FTE).
+        <p className="mt-2.5 text-[11px] text-[#7D93AE]">
+          Click any band to view and search the complete list of employees.
         </p>
       </div>
 
-      {selectedBand && (
+      {/* Dynamic Capacity Distribution Summary */}
+      <div className="mt-3 rounded-lg bg-[#F8FBFF] p-3 text-sm text-[#4B6889] border border-[#E3EBF7]">
+        <p className="leading-relaxed">
+          Distribution across <strong className="text-[#102846]">{totalEligible} employee{totalEligible === 1 ? '' : 's'}</strong>:{' '}
+          <strong className="text-[#102846]">{fullCapacityCount} employee{fullCapacityCount === 1 ? '' : 's'}</strong> ({fullCapacityPct}%) are at full capacity (1.0+ FTE), and{' '}
+          <strong className="text-[#102846]">{underCapacityCount} employee{underCapacityCount === 1 ? '' : 's'}</strong> ({underCapacityPct}%) are below 0.5 FTE.
+        </p>
+      </div>
+
+      {/* Employee List Table */}
+      {selectedBand && activeBandData && (
         <div className="mt-4 rounded-xl border border-[#D9E4F2] bg-white shadow-sm overflow-hidden animate-in slide-in-from-top-2 duration-300">
-          <div className="flex items-center justify-between border-b border-[#E3EBF7] bg-[#F9FBFF] px-4 py-2.5">
-            <h4 className="text-sm font-bold text-[#102846]">Employees in {selectedBand} Band</h4>
-            <button 
-              onClick={() => setSelectedBand(null)}
-              className="text-[#6E86A3] hover:text-[#102846] text-xs font-semibold"
-            >
-              Close
-            </button>
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#E3EBF7] bg-[#F9FBFF] px-4 py-3">
+            <div>
+              <h4 className="text-sm font-bold text-[#102846]">
+                Employees in {selectedBand} Capacity Band ({activeBandData.count})
+              </h4>
+              <p className="text-xs text-[#6A85A4]">
+                Showing complete employee capacity details ({activeBandData.pctOfTotal}% of total population).
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={(e) => {
+                  setSearchTerm(e.target.value);
+                  setCurrentPage(1);
+                }}
+                placeholder="Search by name or ID..."
+                className="h-8 rounded-lg border border-[#CCD8E8] bg-white px-2.5 text-xs text-[#102846] placeholder-[#90A5BF] outline-none focus:border-[#3B82F6]"
+              />
+              <button
+                onClick={() => setSelectedBand(null)}
+                className="rounded-lg border border-[#D0DDEE] bg-white px-2.5 py-1 text-xs font-semibold text-[#6E86A3] hover:bg-[#F2F6FB] hover:text-[#102846]"
+              >
+                Close
+              </button>
+            </div>
           </div>
-          <div className="max-h-48 overflow-y-auto">
-            <table className="w-full text-left text-sm">
-              <thead className="bg-white sticky top-0 border-b border-[#E3EBF7] z-10">
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-[#F8FBFF] border-b border-[#E3EBF7] text-[#5E7998] uppercase tracking-wider text-[10px] font-bold">
                 <tr>
-                  <th className="px-4 py-2 font-semibold text-[#6E86A3]">Employee Name</th>
-                  <th className="px-4 py-2 font-semibold text-[#6E86A3] text-right">FTE Value</th>
+                  <th className="px-4 py-2.5">Employee ID</th>
+                  <th className="px-4 py-2.5">Employee Name</th>
+                  <th className="px-4 py-2.5 text-right">Total Hours</th>
+                  <th className="px-4 py-2.5 text-right">FTE</th>
+                  <th className="px-4 py-2.5 text-right">Capacity %</th>
                 </tr>
               </thead>
-              <tbody>
-                {bandCounts.find(b => b.band === selectedBand)?.items.map((item, i) => (
-                  <tr key={i} className="border-b border-[#F0F4F9] last:border-0 hover:bg-[#F8FBFF]">
-                    <td className="px-4 py-2.5 font-medium text-[#102846]">{item.label}</td>
-                    <td className="px-4 py-2.5 text-right font-semibold text-[#3B82F6]">{item.fte.toFixed(2)}</td>
+              <tbody className="divide-y divide-[#F0F4F9]">
+                {pagedItems.map((item, i) => (
+                  <tr key={`${item.employeeId}-${i}`} className="hover:bg-[#F8FBFF] transition-colors">
+                    <td className="px-4 py-2.5 font-mono font-medium text-[#496587]">{item.employeeId}</td>
+                    <td className="px-4 py-2.5 font-semibold text-[#102846]">{item.name}</td>
+                    <td className="px-4 py-2.5 text-right text-[#344E6F]">{item.totalHours.toFixed(2)} hrs</td>
+                    <td className="px-4 py-2.5 text-right font-bold text-[#1E5EAB]">{item.fte.toFixed(2)}</td>
+                    <td className="px-4 py-2.5 text-right font-bold text-[#102846]">{item.capacityPct.toFixed(1)}%</td>
                   </tr>
                 ))}
-                {bandCounts.find(b => b.band === selectedBand)?.items.length === 0 && (
-                  <tr><td colSpan={2} className="px-4 py-4 text-center text-xs text-[#8BA0BA]">No employees in this band</td></tr>
+                {filteredItems.length === 0 && (
+                  <tr>
+                    <td colSpan={5} className="px-4 py-6 text-center text-xs text-[#8BA0BA]">
+                      {activeBandData.count === 0 ? 'No employees in this band' : 'No matching employees found'}
+                    </td>
+                  </tr>
                 )}
               </tbody>
             </table>
           </div>
+
+          {/* Pagination Controls */}
+          {filteredItems.length > pageSize && (
+            <div className="flex items-center justify-between border-t border-[#E3EBF7] bg-[#FAFCFF] px-4 py-2 text-xs text-[#5D7694]">
+              <span>
+                Showing {(currentPage - 1) * pageSize + 1}–{Math.min(currentPage * pageSize, filteredItems.length)} of {filteredItems.length}
+              </span>
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  disabled={currentPage === 1}
+                  onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                  className="rounded border border-[#CCD8E8] bg-white px-2 py-0.5 text-xs font-semibold text-[#254366] hover:bg-[#F0F4FA] disabled:opacity-40"
+                >
+                  Prev
+                </button>
+                <span className="px-1 text-xs">
+                  {currentPage} / {totalPages}
+                </span>
+                <button
+                  type="button"
+                  disabled={currentPage >= totalPages}
+                  onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                  className="rounded border border-[#CCD8E8] bg-white px-2 py-0.5 text-xs font-semibold text-[#254366] hover:bg-[#F0F4FA] disabled:opacity-40"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>

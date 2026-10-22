@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   AlertCircle,
   ArrowRight,
@@ -6,6 +6,7 @@ import {
   Clock3,
   Download,
   FileCheck2,
+  RefreshCw,
   TrendingUp,
   Users,
   X,
@@ -20,7 +21,7 @@ import {
 import { loadAuthUser } from '../../lib/authStorage';
 import { useNavigate } from 'react-router-dom';
 import { formatDateISO } from '../employee/bperSubmissionStorage';
-import { DashboardSkeleton, InlineUpdatingBadge } from '../../components/PortalSkeletons';
+import { InlineUpdatingBadge, SkeletonBlock } from '../../components/PortalSkeletons';
 import { FTEBandChart } from '../../components/charts/FTECharts';
 
 type Trend = 'up' | 'steady' | 'down';
@@ -118,19 +119,49 @@ function getStatusClass(status: 'Under Review' | 'Approved' | 'Changes Requested
   return 'bg-blue-100 text-blue-700 border-blue-200';
 }
 
+function SectionError({ message, onRetry }: { message: string; onRetry: () => void }) {
+  return (
+    <div className="flex flex-col items-center justify-center p-6 text-center text-red-600 bg-red-50/50 rounded-xl border border-red-200 my-2">
+      <AlertCircle className="h-6 w-6 text-red-500 mb-2" />
+      <p className="text-xs font-semibold text-red-800">{message}</p>
+      <button
+        type="button"
+        onClick={onRetry}
+        className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-red-300 bg-white text-xs font-semibold text-red-700 hover:bg-red-100 transition-colors"
+      >
+        <RefreshCw className="h-3 w-3" />
+        Retry Section
+      </button>
+    </div>
+  );
+}
+
 export default function Dashboard() {
   const navigate = useNavigate();
   const user = loadAuthUser();
   const isAdmin = user?.role === 'admin';
   const basePath = isAdmin ? '/admin' : '/manager';
   const roleLabel = isAdmin ? 'Admin' : 'Manager';
+
+  // Section data states
   const [dashboard, setDashboard] = useState<DashboardReport | null>(null);
   const [fteSummary, setFteSummary] = useState<FteSummaryReport | null>(null);
   const [fteConsolidation, setFteConsolidation] = useState<FteConsolidationReport | null>(null);
   const [fitmentSummary, setFitmentSummary] = useState<FitmentSummaryReport | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+
+  // Independent section loading states
+  const [isDashboardLoading, setIsDashboardLoading] = useState(true);
+  const [isFteSummaryLoading, setIsFteSummaryLoading] = useState(true);
+  const [isConsolidationLoading, setIsConsolidationLoading] = useState(true);
+  const [isFitmentLoading, setIsFitmentLoading] = useState(true);
+
+  // Independent section error states
+  const [dashboardError, setDashboardError] = useState<string | null>(null);
+  const [fteSummaryError, setFteSummaryError] = useState<string | null>(null);
+  const [consolidationError, setConsolidationError] = useState<string | null>(null);
+  const [fitmentError, setFitmentError] = useState<string | null>(null);
+
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [isExporting, setIsExporting] = useState(false);
 
   const headerRef = useRef<HTMLDivElement>(null);
@@ -140,44 +171,100 @@ export default function Dashboard() {
   const consolidationRef = useRef<HTMLDivElement>(null);
   const recentReviewsRef = useRef<HTMLDivElement>(null);
 
+  // Guard against duplicate loads in React StrictMode
+  const hasTriggeredInitialLoad = useRef(false);
 
-  async function loadReports(blocking = false) {
-    if (blocking || !dashboard) {
-      setIsLoading(true);
-    } else {
-      setIsRefreshing(true);
+  const loadDashboardData = useCallback(async (isSilent = false) => {
+    if (!isSilent) {
+      setIsDashboardLoading(true);
+      setDashboardError(null);
     }
-    if (blocking) setError(null);
     try {
-      const [dashboardData, fteSummaryData, consolidationData, fitmentData] = await Promise.all([
-        getDashboardReport(),
-        getFteSummaryReport(),
-        getFteConsolidationSummaryReport(),
-        getFitmentSummaryReport(),
-      ]);
-
-      setDashboard(dashboardData);
-      setFteSummary(fteSummaryData);
-      setFteConsolidation(consolidationData);
-      setFitmentSummary(fitmentData);
+      const data = await getDashboardReport();
+      setDashboard(data);
+      setDashboardError(null);
     } catch (err: any) {
-      // Only show errors on the initial blocking load.
-      // Swallow background refresh errors (network hiccups, 401 race conditions)
-      // to avoid crashing the component or triggering the error boundary.
-      if (blocking) {
-        setError(err?.message || 'Failed to load dashboard reports.');
+      if (!isSilent) {
+        setDashboardError(err?.message || 'Failed to load primary dashboard metrics.');
       } else {
-        console.warn('Dashboard background refresh failed (swallowed):', err?.message);
+        console.warn('Dashboard background refresh failed:', err?.message);
       }
     } finally {
-      setIsLoading(false);
-      setIsRefreshing(false);
+      if (!isSilent) setIsDashboardLoading(false);
     }
-  }
+  }, []);
+
+  const loadFteSummaryData = useCallback(async (isSilent = false) => {
+    if (!isSilent) {
+      setIsFteSummaryLoading(true);
+      setFteSummaryError(null);
+    }
+    try {
+      const data = await getFteSummaryReport();
+      setFteSummary(data);
+      setFteSummaryError(null);
+    } catch (err: any) {
+      if (!isSilent) {
+        setFteSummaryError(err?.message || 'Failed to load FTE summary.');
+      }
+    } finally {
+      if (!isSilent) setIsFteSummaryLoading(false);
+    }
+  }, []);
+
+  const loadConsolidationData = useCallback(async (isSilent = false) => {
+    if (!isSilent) {
+      setIsConsolidationLoading(true);
+      setConsolidationError(null);
+    }
+    try {
+      const data = await getFteConsolidationSummaryReport();
+      setFteConsolidation(data);
+      setConsolidationError(null);
+    } catch (err: any) {
+      if (!isSilent) {
+        setConsolidationError(err?.message || 'Failed to load consolidation analysis.');
+      }
+    } finally {
+      if (!isSilent) setIsConsolidationLoading(false);
+    }
+  }, []);
+
+  const loadFitmentData = useCallback(async (isSilent = false) => {
+    if (!isSilent) {
+      setIsFitmentLoading(true);
+      setFitmentError(null);
+    }
+    try {
+      const data = await getFitmentSummaryReport();
+      setFitmentSummary(data);
+      setFitmentError(null);
+    } catch (err: any) {
+      if (!isSilent) {
+        setFitmentError(err?.message || 'Failed to load fitment coverage.');
+      }
+    } finally {
+      if (!isSilent) setIsFitmentLoading(false);
+    }
+  }, []);
+
+  // Fetch all independently without blocking one section on another
+  const loadAllReports = useCallback(async (isSilent = false) => {
+    if (isSilent) setIsRefreshing(true);
+    await Promise.allSettled([
+      loadDashboardData(isSilent),
+      loadFteSummaryData(isSilent),
+      loadConsolidationData(isSilent),
+      loadFitmentData(isSilent),
+    ]);
+    if (isSilent) setIsRefreshing(false);
+  }, [loadDashboardData, loadFteSummaryData, loadConsolidationData, loadFitmentData]);
 
   useEffect(() => {
-    loadReports(true);
-  }, []);
+    if (hasTriggeredInitialLoad.current) return;
+    hasTriggeredInitialLoad.current = true;
+    loadAllReports(false);
+  }, [loadAllReports]);
 
   async function handleDownloadPdf() {
     if (isExporting || !dashboard) return;
@@ -200,13 +287,11 @@ export default function Dashboard() {
 
   useEffect(() => {
     const refreshOnDataUpdate = () => {
-      loadReports(false);
+      loadAllReports(true);
     };
 
-    // Refresh every 2 minutes instead of 30s to reduce API pressure
-    // and lower the chance of concurrent request failures.
     const refreshInterval = window.setInterval(() => {
-      loadReports(false);
+      loadAllReports(true);
     }, 120_000);
 
     window.addEventListener('bper:data-updated', refreshOnDataUpdate as EventListener);
@@ -215,7 +300,7 @@ export default function Dashboard() {
       window.clearInterval(refreshInterval);
       window.removeEventListener('bper:data-updated', refreshOnDataUpdate as EventListener);
     };
-  }, []);
+  }, [loadAllReports]);
 
   const summary = dashboard?.summary || {};
   const windowStatus = dashboard?.submissionWindow;
@@ -287,31 +372,6 @@ export default function Dashboard() {
   const consolidatedSummary = fteConsolidation?.summary || {};
   const fitmentCoverage = safeNumber(fitmentSummary?.summary?.coveragePct);
 
-  if (isLoading) {
-    return <DashboardSkeleton />;
-  }
-
-  if (error) {
-    return (
-      <div className="rounded-2xl border border-red-200 bg-red-50 p-5 text-red-700">
-        <div className="flex items-start gap-3">
-          <AlertCircle className="mt-0.5 h-5 w-5" />
-          <div>
-            <p className="text-sm font-semibold">Unable to load dashboard reports</p>
-            <p className="mt-1 text-xs">{error}</p>
-            <button
-              type="button"
-              onClick={loadReports}
-              className="mt-3 rounded-lg border border-red-300 bg-white px-3 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-100"
-            >
-              Retry
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-3.5 animate-in fade-in duration-500">
       <section ref={headerRef} className="rounded-2xl border border-[#D9E4F2] bg-white p-4 shadow-[0_5px_14px_rgba(16,42,80,0.08)]">
@@ -351,30 +411,60 @@ export default function Dashboard() {
           </div>
         </div>
 
-        <div className="mt-3 grid grid-cols-1 gap-2.5 sm:grid-cols-2 xl:grid-cols-5">
-          <KpiCard
-            icon={Users}
-            label={summary.hasAuthoritativeRoster ? "Total Employees" : "Operational Staff"}
-            value={summary.totalStaff ? String(summary.totalStaff) : String(safeNumber(summary.totalEmployees))}
-            helper={
-              summary.hasAuthoritativeRoster
-                ? `${summary.totalStaff} staff (${summary.vacantPositions || 0} vacant in roster)`
-                : summary.totalStaff
-                ? `${summary.totalStaff} staff (${summary.vacantPositions || 0} vacant in submissions)`
-                : "Active employee accounts"
-            }
-          />
-          <KpiCard icon={FileCheck2} label="Forms Submitted" value={String(safeNumber(summary.totalSubmissions))} helper="Records in current report scope" />
-          <KpiCard icon={Clock3} label="Pending Review" value={String(safeNumber(summary.pendingReview))} helper={safeNumber(summary.pendingReview) > 0 ? `Needs ${roleLabel.toLowerCase()} action` : 'No active queue'} />
-          <KpiCard icon={Check} label="Approved" value={String(safeNumber(summary.approved))} helper={safeNumber(summary.approved) > 0 ? 'Review completed' : 'Awaiting approvals'} />
-          <KpiCard
-            icon={TrendingUp}
-            label="Total FTE"
-            value={safeNumber(summary.totalFte).toFixed(2)}
-            helper={`${toPercent(safeNumber(summary.avgUtilizationPct))} Avg Utilization`}
-            highlight
-          />
-        </div>
+        {isDashboardLoading ? (
+          <div className="mt-3 grid grid-cols-1 gap-2.5 sm:grid-cols-2 xl:grid-cols-5">
+            {[1, 2, 3, 4, 5].map((i) => (
+              <div key={i} className="rounded-xl border border-[#D8E1EE] bg-white p-3.5 shadow-sm space-y-2">
+                <SkeletonBlock className="h-8 w-8 rounded-lg" />
+                <SkeletonBlock className="h-3 w-20" />
+                <SkeletonBlock className="h-6 w-16" />
+                <SkeletonBlock className="h-2.5 w-28" />
+              </div>
+            ))}
+          </div>
+        ) : dashboardError ? (
+          <SectionError message={dashboardError} onRetry={() => loadDashboardData(false)} />
+        ) : (
+          <div className="mt-3 grid grid-cols-1 gap-2.5 sm:grid-cols-2 xl:grid-cols-5">
+            <KpiCard
+              icon={Users}
+              label={summary.hasAuthoritativeRoster ? "Total Employees" : "Operational Staff"}
+              value={summary.totalStaff ? String(summary.totalStaff) : String(safeNumber(summary.totalEmployees))}
+              helper={
+                summary.hasAuthoritativeRoster
+                  ? `${summary.totalStaff} staff (${summary.vacantPositions || 0} vacant in roster)`
+                  : summary.totalStaff
+                  ? `${summary.totalStaff} staff (${summary.vacantPositions || 0} vacant in submissions)`
+                  : "Active employee accounts"
+              }
+            />
+            <KpiCard
+              icon={FileCheck2}
+              label="Forms Submitted"
+              value={String(safeNumber(summary.totalSubmissions))}
+              helper="Records in current report scope"
+            />
+            <KpiCard
+              icon={Clock3}
+              label="Pending Review"
+              value={String(safeNumber(summary.pendingReview))}
+              helper={safeNumber(summary.pendingReview) > 0 ? `Needs ${roleLabel.toLowerCase()} action` : 'No active queue'}
+            />
+            <KpiCard
+              icon={Check}
+              label="Approved"
+              value={String(safeNumber(summary.approved))}
+              helper={safeNumber(summary.approved) > 0 ? 'Review completed' : 'Awaiting approvals'}
+            />
+            <KpiCard
+              icon={TrendingUp}
+              label="Total FTE"
+              value={safeNumber(summary.totalFte).toFixed(2)}
+              helper={`${toPercent(safeNumber(summary.avgUtilizationPct))} Avg Utilization`}
+              highlight
+            />
+          </div>
+        )}
       </section>
 
       <section ref={chartsRowRef} className="grid grid-cols-1 gap-3.5 xl:grid-cols-[2fr_1fr]">
@@ -383,7 +473,19 @@ export default function Dashboard() {
           <p className="mt-1 text-xs text-[#617C9E]">Live FTE split from monthly activity effort</p>
 
           <div className="mt-4 space-y-2.5 overflow-y-auto flex-1 pr-1.5 custom-scrollbar">
-            {towerDistribution.length === 0 ? (
+            {isFteSummaryLoading && !fteSummary ? (
+              <div className="space-y-3 p-2">
+                {[1, 2, 3, 4, 5].map((i) => (
+                  <div key={i} className="flex items-center gap-3">
+                    <SkeletonBlock className="h-4 w-28" />
+                    <SkeletonBlock className="h-7 flex-1 rounded-lg" />
+                    <SkeletonBlock className="h-4 w-12" />
+                  </div>
+                ))}
+              </div>
+            ) : fteSummaryError && !fteSummary ? (
+              <SectionError message={fteSummaryError} onRetry={() => loadFteSummaryData(false)} />
+            ) : towerDistribution.length === 0 ? (
               <EmptyBlock label="No tower-level FTE data available." />
             ) : (
               towerDistribution.map((tower) => (
@@ -411,102 +513,154 @@ export default function Dashboard() {
           <p className="mt-1 text-xs text-[#617C9E]">Current review progress</p>
 
           <div className="mt-4 flex flex-1 flex-col items-center justify-between gap-4">
-            <div className="flex justify-center">
-              <div
-                className="relative h-40 w-40 rounded-full"
-                style={{ background: statusSegments.ringBackground }}
-              >
-                <div className="absolute inset-6 rounded-full border border-[#E3ECF9] bg-white px-2 text-center flex flex-col items-center justify-center">
-                  <p className="text-[10px] font-bold uppercase tracking-[0.08em] leading-tight text-[#6E88A9]">
-                    Total Submissions
-                  </p>
-                  <p className="mt-1 text-4xl leading-none font-bold text-[#102846]">{statusSegments.total}</p>
+            {isDashboardLoading ? (
+              <div className="flex flex-1 flex-col items-center justify-center w-full gap-4">
+                <SkeletonBlock className="h-36 w-36 rounded-full" />
+                <div className="w-full space-y-2">
+                  <SkeletonBlock className="h-3 w-full" />
+                  <SkeletonBlock className="h-3 w-4/5" />
                 </div>
               </div>
-            </div>
+            ) : dashboardError ? (
+              <SectionError message={dashboardError} onRetry={() => loadDashboardData(false)} />
+            ) : (
+              <>
+                <div className="flex justify-center">
+                  <div
+                    className="relative h-40 w-40 rounded-full"
+                    style={{ background: statusSegments.ringBackground }}
+                  >
+                    <div className="absolute inset-6 rounded-full border border-[#E3ECF9] bg-white px-2 text-center flex flex-col items-center justify-center">
+                      <p className="text-[10px] font-bold uppercase tracking-[0.08em] leading-tight text-[#6E88A9]">
+                        Total Submissions
+                      </p>
+                      <p className="mt-1 text-4xl leading-none font-bold text-[#102846]">{statusSegments.total}</p>
+                    </div>
+                  </div>
+                </div>
 
-            <div className="w-full space-y-2.5">
-              {statusSegments.rows.map((row, idx) => (
-                <StatusRow key={row.key || idx} label={row.label} value={row.percent} colorClass={row.colorClass} count={row.count} />
-              ))}
-            </div>
+                <div className="w-full space-y-2.5">
+                  {statusSegments.rows.map((row, idx) => (
+                    <StatusRow key={row.key || idx} label={row.label} value={row.percent} colorClass={row.colorClass} count={row.count} />
+                  ))}
+                </div>
+              </>
+            )}
           </div>
         </article>
       </section>
 
-      {dashboard?.charts?.employeeFteData && dashboard.charts.employeeFteData.length > 0 && (
+      {isDashboardLoading ? (
+        <section ref={fteBandRef} className="rounded-2xl border border-[#D9E4F2] bg-white p-4 shadow-[0_5px_14px_rgba(16,42,80,0.06)] space-y-3">
+          <SkeletonBlock className="h-5 w-60" />
+          <SkeletonBlock className="h-3 w-80" />
+          <SkeletonBlock className="h-44 w-full rounded-xl" />
+        </section>
+      ) : dashboard?.charts?.employeeFteData && dashboard.charts.employeeFteData.length > 0 ? (
         <section ref={fteBandRef} className="rounded-2xl border border-[#D9E4F2] bg-white p-4 shadow-[0_5px_14px_rgba(16,42,80,0.06)]">
-          <h3 className="text-xl font-bold text-[#102846]">FTE Band Distribution</h3>
-          <p className="mt-1 text-xs text-[#6E86A3]">Distribution of employee FTE values across 5 utilization bands (based on 160h/month baseline)</p>
+          <h3 className="text-xl font-bold text-[#102846]">Employee Capacity Distribution</h3>
+          <p className="mt-1 text-xs text-[#6E86A3]">Distribution of employees by capacity utilization, based on a 160-hour monthly baseline.</p>
           <div className="mt-4">
             <FTEBandChart data={dashboard.charts.employeeFteData} height={200} />
           </div>
         </section>
-      )}
+      ) : null}
 
       <section ref={activitiesUtilizationRef} className="grid grid-cols-1 gap-3.5 xl:grid-cols-[2fr_1.2fr]">
-        <article className="rounded-2xl border border-[#D9E4F2] bg-white shadow-[0_5px_14px_rgba(16,42,80,0.06)] overflow-hidden">
-          <div className="flex items-center justify-between border-b border-[#E4ECF7] px-4 py-3">
-            <h3 className="text-xl font-bold text-[#102846]">Top Activities by FTE</h3>
-            <span className="text-xs font-semibold uppercase tracking-[0.14em] text-[#8AA0BA]">Live Aggregation</span>
+        <article className="rounded-2xl border border-[#D9E4F2] bg-white shadow-[0_5px_14px_rgba(16,42,80,0.06)] overflow-hidden flex flex-col h-[320px]">
+          <div className="flex items-center justify-between border-b border-[#E4ECF7] px-4 py-3 shrink-0">
+            <div>
+              <h3 className="text-xl font-bold text-[#102846]">Top Activities by FTE</h3>
+              <p className="text-[11px] text-[#6E86A3]">All recorded activities sorted by effort capacity</p>
+            </div>
+            <span className="text-xs font-semibold uppercase tracking-[0.14em] text-[#8AA0BA]">
+              {topActivities.length > 0 ? `${topActivities.length} Activities` : 'Live Aggregation'}
+            </span>
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full border-collapse text-left">
-              <thead>
-                <tr className="bg-[#F5F8FD] text-[11px] font-bold uppercase tracking-[0.13em] text-[#748DAA] border-b border-[#E3EAF4]">
-                  <th className="px-3 py-2.5">Activity Name</th>
-                  <th className="px-3 py-2.5">Tower</th>
-                  <th className="px-2 py-2.5 text-right">FTE</th>
-                  <th className="px-2 py-2.5 text-center">Trend</th>
-                  <th className="px-2 py-2.5 text-center">Consolidate</th>
-                </tr>
-              </thead>
-              <tbody>
-                {topActivities.length === 0 ? (
-                  <tr>
-                    <td colSpan={5} className="px-4 py-7 text-center text-xs text-[#6E86A3]">
-                      No activity data available.
-                    </td>
+          <div className="overflow-x-auto overflow-y-auto flex-1 custom-scrollbar min-h-0">
+            {isDashboardLoading ? (
+              <div className="p-4 space-y-3">
+                {[1, 2, 3, 4, 5].map((i) => (
+                  <SkeletonBlock key={i} className="h-8 w-full rounded-lg" />
+                ))}
+              </div>
+            ) : dashboardError ? (
+              <SectionError message={dashboardError} onRetry={() => loadDashboardData(false)} />
+            ) : (
+              <table className="w-full border-collapse text-left">
+                <thead className="sticky top-0 z-10 bg-[#F5F8FD] shadow-[0_1px_0_#E3EAF4]">
+                  <tr className="text-[11px] font-bold uppercase tracking-[0.13em] text-[#748DAA] border-b border-[#E3EAF4]">
+                    <th className="px-3 py-2.5">Activity Name</th>
+                    <th className="px-3 py-2.5">Tower</th>
+                    <th className="px-2 py-2.5 text-right">FTE</th>
+                    <th className="px-2 py-2.5 text-center">Trend</th>
+                    <th className="px-2 py-2.5 text-center">Consolidate</th>
                   </tr>
-                ) : (
-                  topActivities.map((activity) => (
-                    <tr key={`${activity.name}-${activity.tower}`} className="border-b border-[#E8EEF7] last:border-b-0">
-                      <td className="px-3 py-3 text-xs font-semibold text-[#1C334E]">{activity.name}</td>
-                      <td className="px-3 py-3 text-xs text-[#4E6787]">{activity.tower}</td>
-                      <td className="px-2 py-3 text-right text-xs font-bold text-[#1E5EA9]">{safeNumber(activity.fte).toFixed(2)}</td>
-                      <td className="px-2 py-3">
-                        <TrendSpark trend={activity.trend || 'steady'} />
-                      </td>
-                      <td className="px-2 py-3">
-                        <div className="flex justify-center">
-                          {activity.consolidate ? (
-                            <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
-                              <Check className="h-4 w-4" />
-                            </span>
-                          ) : (
-                            <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-slate-200 text-slate-500">
-                              <X className="h-4 w-4" />
-                            </span>
-                          )}
-                        </div>
+                </thead>
+                <tbody>
+                  {topActivities.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} className="px-4 py-7 text-center text-xs text-[#6E86A3]">
+                        No activity data available.
                       </td>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+                  ) : (
+                    topActivities.map((activity) => {
+                      const fteVal = safeNumber(activity.fte);
+                      const hoursVal = safeNumber(activity.monthlyHours);
+                      return (
+                        <tr key={`${activity.name}-${activity.tower}`} className="border-b border-[#E8EEF7] last:border-b-0 hover:bg-[#F9FBFE] transition-colors">
+                          <td className="px-3 py-2.5 text-xs font-semibold text-[#1C334E]">{activity.name}</td>
+                          <td className="px-3 py-2.5 text-xs text-[#4E6787]">{activity.tower}</td>
+                          <td className="px-2 py-2.5 text-right text-xs font-bold text-[#1E5EA9]">
+                            {fteVal.toFixed(2)}
+                          </td>
+                          <td className="px-2 py-2.5">
+                            <TrendSpark trend={activity.trend || 'steady'} monthlyHours={hoursVal} />
+                          </td>
+                          <td className="px-2 py-2.5">
+                            <div className="flex justify-center">
+                              {activity.consolidate ? (
+                                <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-emerald-100 text-emerald-700" aria-label="Consolidation Candidate">
+                                  <Check className="h-4 w-4" />
+                                </span>
+                              ) : (
+                                <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-slate-200 text-slate-500" aria-label="Standard Activity">
+                                  <X className="h-4 w-4" />
+                                </span>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            )}
           </div>
         </article>
 
-        <article className="rounded-2xl border border-[#D9E4F2] bg-white p-3.5 shadow-[0_5px_14px_rgba(16,42,80,0.06)]">
+        <article className="rounded-2xl border border-[#D9E4F2] bg-white p-3.5 shadow-[0_5px_14px_rgba(16,42,80,0.06)] flex flex-col h-[320px]">
           <div className="flex items-center justify-between">
             <h3 className="text-xl font-bold text-[#102846]">Team Utilization Overview</h3>
             <span className="rounded-md bg-[#EEF4FB] px-2.5 py-1 text-xs font-semibold text-[#6E86A3]">Live</span>
           </div>
 
           <div className="mt-3.5 space-y-3">
-            {teamUtilization.length === 0 ? (
+            {isDashboardLoading ? (
+              <div className="space-y-3 py-2">
+                {[1, 2, 3, 4, 5].map((i) => (
+                  <div key={i} className="space-y-1.5">
+                    <SkeletonBlock className="h-3 w-32" />
+                    <SkeletonBlock className="h-3 w-full rounded-full" />
+                  </div>
+                ))}
+              </div>
+            ) : dashboardError ? (
+              <SectionError message={dashboardError} onRetry={() => loadDashboardData(false)} />
+            ) : teamUtilization.length === 0 ? (
               <EmptyBlock label="No utilization data available." compact />
             ) : (
               teamUtilization.slice(0, 5).map((item, idx) => (
@@ -541,32 +695,63 @@ export default function Dashboard() {
           </p>
         </div>
 
-        <div className="mt-3 grid grid-cols-1 gap-3 xl:grid-cols-[1.35fr_1.4fr_auto] xl:items-start">
-          <div>
-            <h3 className="text-2xl font-bold leading-tight text-white">Consolidation Potential</h3>
-            <p className="mt-1 text-xs leading-relaxed text-[#BFD9FF]">
-              Estimated scenario outcomes based on screened activities and fitment coverage.
-            </p>
+        {isConsolidationLoading && !fteConsolidation ? (
+          <div className="mt-4 grid grid-cols-1 gap-3 xl:grid-cols-[1.35fr_1.4fr_auto] xl:items-start">
+            <div className="space-y-2">
+              <SkeletonBlock className="h-6 w-48 bg-white/20" />
+              <SkeletonBlock className="h-3 w-64 bg-white/10" />
+            </div>
+            <div className="grid grid-cols-3 gap-3">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="space-y-1">
+                  <SkeletonBlock className="h-3 w-20 bg-white/15" />
+                  <SkeletonBlock className="h-7 w-24 bg-white/25" />
+                </div>
+              ))}
+            </div>
+            <SkeletonBlock className="h-10 w-32 bg-white/20 rounded-lg" />
           </div>
-
-          <div className="grid grid-cols-3 gap-3">
-            <InsightMetric label="Screened Activities" value={String(safeNumber(consolidatedSummary.totalActivities))} />
-            <InsightMetric label="Scenario: Saved FTE" value={safeNumber(consolidatedSummary.savedFte).toFixed(2)} />
-            <InsightMetric label="Scenario: Cost Impact" value={`INR ${safeNumber(consolidatedSummary.estimatedSavingsCr).toFixed(2)} Cr`} emphasize />
-          </div>
-
-          <div className="grid gap-2 xl:justify-self-end">
+        ) : consolidationError && !fteConsolidation ? (
+          <div className="mt-3 p-4 rounded-lg bg-red-900/40 border border-red-500/30 text-white flex items-center justify-between">
+            <p className="text-xs text-red-200">{consolidationError}</p>
             <button
               type="button"
-              onClick={() => navigate(`${basePath}/deep-analysis?tab=consolidation&subTab=overview`)}
-              className="inline-flex w-fit items-center justify-center gap-2 rounded-lg border border-white/20 bg-white px-4 py-2.5 text-sm font-semibold text-[#09274D] hover:bg-[#EAF2FF]"
+              onClick={() => loadConsolidationData(false)}
+              className="px-3 py-1 rounded bg-white/10 hover:bg-white/20 text-xs font-semibold text-white border border-white/20"
             >
-              View Full Report
-              <ArrowRight className="h-4 w-4" />
+              Retry
             </button>
-            <p className="text-right text-xs text-[#BFD9FF]">Fitment Coverage: {fitmentCoverage.toFixed(1)}%</p>
           </div>
-        </div>
+        ) : (
+          <div className="mt-3 grid grid-cols-1 gap-3 xl:grid-cols-[1.35fr_1.4fr_auto] xl:items-start">
+            <div>
+              <h3 className="text-2xl font-bold leading-tight text-white">Consolidation Potential</h3>
+              <p className="mt-1 text-xs leading-relaxed text-[#BFD9FF]">
+                Estimated scenario outcomes based on screened activities and fitment coverage.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-3 gap-3">
+              <InsightMetric label="Screened Activities" value={String(safeNumber(consolidatedSummary.totalActivities))} />
+              <InsightMetric label="Scenario: Saved FTE" value={safeNumber(consolidatedSummary.savedFte).toFixed(2)} />
+              <InsightMetric label="Scenario: Cost Impact" value={`INR ${safeNumber(consolidatedSummary.estimatedSavingsCr).toFixed(2)} Cr`} emphasize />
+            </div>
+
+            <div className="grid gap-2 xl:justify-self-end">
+              <button
+                type="button"
+                onClick={() => navigate(`${basePath}/deep-analysis?tab=consolidation&subTab=overview`)}
+                className="inline-flex w-fit items-center justify-center gap-2 rounded-lg border border-white/20 bg-white px-4 py-2.5 text-sm font-semibold text-[#09274D] hover:bg-[#EAF2FF]"
+              >
+                View Full Report
+                <ArrowRight className="h-4 w-4" />
+              </button>
+              <p className="text-right text-xs text-[#BFD9FF]">
+                Fitment Coverage: {isFitmentLoading && !fitmentSummary ? 'Loading...' : `${fitmentCoverage.toFixed(1)}%`}
+              </p>
+            </div>
+          </div>
+        )}
       </section>
 
       <section ref={recentReviewsRef} className="rounded-2xl border border-[#D9E4F2] bg-white shadow-[0_5px_14px_rgba(16,42,80,0.06)] overflow-hidden">
@@ -576,40 +761,50 @@ export default function Dashboard() {
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full min-w-170 border-collapse text-left">
-            <thead>
-              <tr className="bg-[#F5F8FD] text-[11px] font-bold uppercase tracking-[0.13em] text-[#617D9D] border-b border-[#E3EAF4]">
-                <th className="px-4 py-2.5">Form ID</th>
-                <th className="px-4 py-2.5">Employee</th>
-                <th className="px-4 py-2.5">Status</th>
-                <th className="px-4 py-2.5 text-right">Monthly Hours</th>
-                <th className="px-4 py-2.5">Submitted</th>
-              </tr>
-            </thead>
-            <tbody>
-              {recentSubmissions.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className="px-4 py-7 text-center text-xs text-[#6E86A3]">
-                    No submissions available.
-                  </td>
+          {isDashboardLoading ? (
+            <div className="p-4 space-y-3">
+              {[1, 2, 3, 4].map((i) => (
+                <SkeletonBlock key={i} className="h-9 w-full rounded-lg" />
+              ))}
+            </div>
+          ) : dashboardError ? (
+            <SectionError message={dashboardError} onRetry={() => loadDashboardData(false)} />
+          ) : (
+            <table className="w-full min-w-170 border-collapse text-left">
+              <thead>
+                <tr className="bg-[#F5F8FD] text-[11px] font-bold uppercase tracking-[0.13em] text-[#617D9D] border-b border-[#E3EAF4]">
+                  <th className="px-4 py-2.5">Form ID</th>
+                  <th className="px-4 py-2.5">Employee</th>
+                  <th className="px-4 py-2.5">Status</th>
+                  <th className="px-4 py-2.5 text-right">Monthly Hours</th>
+                  <th className="px-4 py-2.5">Submitted</th>
                 </tr>
-              ) : (
-                recentSubmissions.slice(0, 6).map((submission) => (
-                  <tr key={submission.referenceId} className="border-b border-[#E8EEF7] last:border-b-0">
-                    <td className="px-4 py-3 text-xs font-semibold text-[#1A5CA8]">{submission.referenceId}</td>
-                    <td className="px-4 py-3 text-xs text-[#1A3556]">{submission.employee.name}</td>
-                    <td className="px-4 py-3">
-                      <span className={`inline-flex rounded-md border px-2 py-1 text-xs font-semibold ${getStatusClass(submission.status)}`}>
-                        {submission.status}
-                      </span>
+              </thead>
+              <tbody>
+                {recentSubmissions.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="px-4 py-7 text-center text-xs text-[#6E86A3]">
+                      No submissions available.
                     </td>
-                    <td className="px-4 py-3 text-right text-xs font-semibold text-[#0E2646]">{safeNumber(submission.totalHours).toFixed(1)}</td>
-                    <td className="px-4 py-3 text-xs text-[#4F6785]">{formatDateISO(submission.submittedAt)}</td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+                ) : (
+                  recentSubmissions.slice(0, 6).map((submission) => (
+                    <tr key={submission.referenceId} className="border-b border-[#E8EEF7] last:border-b-0">
+                      <td className="px-4 py-3 text-xs font-semibold text-[#1A5CA8]">{submission.referenceId}</td>
+                      <td className="px-4 py-3 text-xs text-[#1A3556]">{submission.employee.name}</td>
+                      <td className="px-4 py-3">
+                        <span className={`inline-flex rounded-md border px-2 py-1 text-xs font-semibold ${getStatusClass(submission.status)}`}>
+                          {submission.status}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-right text-xs font-semibold text-[#0E2646]">{safeNumber(submission.totalHours).toFixed(1)}</td>
+                      <td className="px-4 py-3 text-xs text-[#4F6785]">{formatDateISO(submission.submittedAt)}</td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          )}
         </div>
       </section>
     </div>
@@ -631,7 +826,7 @@ function KpiCard({
 }) {
   return (
     <article
-      className={`rounded-xl border p-3.5 shadow-[0_4px_10px_rgba(15,40,86,0.06)] ${
+      className={`rounded-xl border p-3.5 shadow-[0_4px_10px_rgba(15,40,86,0.06)] h-full ${
         highlight
           ? 'border-[#295FA7] bg-linear-to-b from-[#153C8B] to-[#2152B8] text-white'
           : 'border-[#D8E1EE] bg-white'
@@ -668,13 +863,13 @@ function StatusRow({ label, value, colorClass, count }: { label: string; value: 
   );
 }
 
-function TrendSpark({ trend }: { trend: Trend }) {
+function TrendSpark({ trend, monthlyHours }: { trend: Trend; monthlyHours?: number }) {
   const stroke = trend === 'up' ? '#16A34A' : trend === 'down' ? '#64748B' : '#64748B';
   const d = trend === 'up' ? 'M4 16 L16 12 L28 12 L40 10 L52 9' : trend === 'down' ? 'M4 9 L16 10 L28 11 L40 13 L52 13' : 'M4 12 L16 12 L28 12 L40 12 L52 12';
 
   return (
     <div className="flex justify-center">
-      <svg width="56" height="22" viewBox="0 0 56 22" fill="none" aria-label="activity trend">
+      <svg width="56" height="22" viewBox="0 0 56 22" fill="none" aria-label={`Activity trend: ${trend}`}>
         <path d={d} stroke={stroke} strokeWidth="2" strokeLinecap="round" />
       </svg>
     </div>
