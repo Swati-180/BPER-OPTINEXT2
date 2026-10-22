@@ -747,7 +747,14 @@ async function getFitmentSummaryReport(req, res) {
     if (employeeIdsScope) {
       totalEmployees = employeeIdsScope.length;
     } else {
-      totalEmployees = await User.countDocuments({ role: 'employee', isActive: true, isArchivedDemo: { $ne: true } });
+      const authoritativeRosterCount = await User.countDocuments({ role: 'employee', isActive: true, isRosterOnly: true, isArchivedDemo: { $ne: true } });
+      if (authoritativeRosterCount > 0) {
+        totalEmployees = await User.countDocuments({ role: 'employee', isActive: true, isArchivedDemo: { $ne: true } });
+      } else {
+        // Fallback to active named staff in WDT submissions
+        const wdtNamed = await WDTSubmission.distinct('employee.employeeId', { 'employee.name': { $not: /^vacant$/i } });
+        totalEmployees = wdtNamed.length > 0 ? wdtNamed.length : await User.countDocuments({ role: 'employee', isActive: true, isArchivedDemo: { $ne: true } });
+      }
     }
 
     const userMap = new Map(
@@ -1040,10 +1047,16 @@ async function getFitmentAnalysisReport(req, res) {
     const requestUser = await resolveRequestUser(req);
     if (!ensureManager(requestUser.role, res)) return;
 
-    const [fitments, totalEmployees] = await Promise.all([
-      Fitment.find({}).sort({ weightedScore: -1 }).lean(),
-      User.countDocuments({ role: 'employee', isActive: true, isArchivedDemo: { $ne: true } }),
-    ]);
+    const authoritativeRosterCount = await User.countDocuments({ role: 'employee', isActive: true, isRosterOnly: true, isArchivedDemo: { $ne: true } });
+    let totalEmployees = 0;
+    if (authoritativeRosterCount > 0) {
+      totalEmployees = await User.countDocuments({ role: 'employee', isActive: true, isArchivedDemo: { $ne: true } });
+    } else {
+      const wdtNamed = await WDTSubmission.distinct('employee.employeeId', { 'employee.name': { $not: /^vacant$/i } });
+      totalEmployees = wdtNamed.length > 0 ? wdtNamed.length : await User.countDocuments({ role: 'employee', isActive: true, isArchivedDemo: { $ne: true } });
+    }
+
+    const fitments = await Fitment.find({}).sort({ weightedScore: -1 }).lean();
 
     const userMap = new Map(
       (

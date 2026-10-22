@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
+const WDTSubmission = require('../models/WDTSubmission');
 const AdminWhitelist = require('../models/AdminWhitelist');
 const { logAction } = require('../utils/auditLogger');
 
@@ -399,13 +400,13 @@ const getAllUsers = async (req, res) => {
 
     // Compute workforce breakdown summary for tabs and metrics
     const [
-      totalCount,
+      authoritativeRosterCount,
       loginAccountsCount,
       operationalStaffCount,
       vacanciesCount,
       archivedDemosCount
     ] = await Promise.all([
-      User.countDocuments({}),
+      User.countDocuments({ role: 'employee', isActive: true, isRosterOnly: true, isArchivedDemo: { $ne: true } }),
       User.countDocuments({
         isRosterOnly: { $ne: true },
         isVacant: { $ne: true },
@@ -417,7 +418,9 @@ const getAllUsers = async (req, res) => {
       User.countDocuments({ $or: [{ isArchivedDemo: true }, { role: 'archived_demo' }] })
     ]);
 
-    const sanitizedUsers = users.map((user) => {
+    const hasAuthoritativeRoster = authoritativeRosterCount > 0;
+
+    let sanitizedUsers = users.map((user) => {
       const hasPassword = Boolean(user.password && user.password.length > 0);
       const next = user.toObject();
       delete next.password;
@@ -436,15 +439,125 @@ const getAllUsers = async (req, res) => {
       return next;
     });
 
+    let finalCounts = {
+      total: users.length,
+      loginAccounts: loginAccountsCount,
+      operationalStaff: operationalStaffCount,
+      vacancies: vacanciesCount,
+      archivedDemos: archivedDemosCount
+    };
+
+    // Fallback: If no authoritative roster is synced to the users collection,
+    // dynamically supplement with unique participants from WDT submissions (Option A - read only)
+    if (!hasAuthoritativeRoster) {
+      const wdtSubmissions = await WDTSubmission.find({}).sort({ submittedAt: -1 }).lean();
+      
+      const existingEmpIdSet = new Set(sanitizedUsers.map(u => String(u.employeeId || '').trim()).filter(Boolean));
+      const existingEmailSet = new Set(sanitizedUsers.map(u => String(u.email || '').toLowerCase().trim()).filter(Boolean));
+
+      const participantMap = new Map();
+      for (const s of wdtSubmissions) {
+        const empId = String(s.employee?.employeeId || '').trim();
+        if (!empId || participantMap.has(empId)) continue;
+        const rawName = String(s.employee?.name || '').trim();
+        const isVac = rawName.toLowerCase() === 'vacant';
+
+        participantMap.set(empId, {
+          _id: `roster-${empId}`,
+          employeeId: empId,
+          name: isVac ? `Vacant Position (${empId})` : (rawName || 'Unknown Staff'),
+          email: s.employee?.email || `${empId}@demo.optinext.com`,
+          department: s.employee?.department || 'Finance & Accounting',
+          designation: s.employee?.designation || (isVac ? 'Budgeted Vacant Position' : 'Operational Staff'),
+          band: s.employee?.grade || 'L1',
+          client: s.employee?.organization || 'BU011',
+          location: s.employee?.location || '',
+          supervisorName: s.employee?.supervisorName || '',
+          supervisorTitle: s.employee?.supervisorTitle || '',
+          employeeType: 'Full-time',
+          role: isVac ? 'position' : 'employee',
+          status: isVac ? 'Inactive' : 'Active',
+          recordCategory: isVac ? 'position' : 'roster_only',
+          isRosterOnly: true,
+          isVacant: isVac,
+          isArchivedDemo: false,
+          hasPassword: false,
+          maxMonthlyHours: 160,
+          source: 'wdt_participants'
+        });
+      }
+
+      const allParticipants = Array.from(participantMap.values());
+      const participantNamedStaff = allParticipants.filter(p => !p.isVacant);
+      const participantVacancies = allParticipants.filter(p => p.isVacant);
+
+      finalCounts = {
+        total: loginAccountsCount + allParticipants.length,
+        loginAccounts: loginAccountsCount,
+        operationalStaff: participantNamedStaff.length,
+        vacancies: participantVacancies.length,
+        archivedDemos: archivedDemosCount
+      };
+
+      // Filter participant records by requested recordType if applicable
+      let supplementalRecords = allParticipants;
+      if (recordType === 'login_accounts') {
+        supplementalRecords = [];
+      } else if (recordType === 'operational_staff') {
+        supplementalRecords = participantNamedStaff;
+      } else if (recordType === 'vacancies') {
+        supplementalRecords = participantVacancies;
+      } else if (recordType === 'archived_demos') {
+        supplementalRecords = [];
+      }
+
+      // Filter by role if requested
+      if (role && role !== 'All') {
+        const normRole = role.toLowerCase().trim();
+        supplementalRecords = supplementalRecords.filter(r => r.role === normRole);
+      }
+
+      // Filter by department if requested
+      if (department && department !== 'All') {
+        supplementalRecords = supplementalRecords.filter(r => r.department === department);
+      }
+
+      // Filter by status if requested
+      if (status && status !== 'All') {
+        supplementalRecords = supplementalRecords.filter(r => r.status === status);
+      }
+
+      // Filter by search query if requested
+      if (search && search.trim()) {
+        const q = search.trim().toLowerCase();
+        supplementalRecords = supplementalRecords.filter(r =>
+          String(r.name || '').toLowerCase().includes(q) ||
+          String(r.employeeId || '').toLowerCase().includes(q) ||
+          String(r.email || '').toLowerCase().includes(q) ||
+          String(r.designation || '').toLowerCase().includes(q)
+        );
+      }
+
+      // Merge avoiding any duplicate employee IDs with genuine login accounts
+      const nonCollidingSupplemental = supplementalRecords.filter(r => !existingEmpIdSet.has(r.employeeId));
+      
+      if (recordType === 'login_accounts') {
+        // Keep sanitizedUsers as login accounts only
+      } else if (recordType === 'operational_staff') {
+        sanitizedUsers = nonCollidingSupplemental;
+      } else if (recordType === 'vacancies') {
+        sanitizedUsers = nonCollidingSupplemental;
+      } else if (recordType === 'archived_demos') {
+        // sanitizedUsers already filtered
+      } else {
+        // recordType === 'all' or default: combine login accounts + participants
+        sanitizedUsers = [...sanitizedUsers, ...nonCollidingSupplemental];
+      }
+    }
+
     res.json({
       users: sanitizedUsers,
-      counts: {
-        total: totalCount,
-        loginAccounts: loginAccountsCount,
-        operationalStaff: operationalStaffCount,
-        vacancies: vacanciesCount,
-        archivedDemos: archivedDemosCount
-      }
+      counts: finalCounts
     });
   } catch (err) {
     res.status(500).json({ message: err.message });
