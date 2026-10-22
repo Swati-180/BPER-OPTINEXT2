@@ -3,8 +3,14 @@ const bcrypt = require('bcryptjs');
 
 const userSchema = new mongoose.Schema({
   name: { type: String, required: true },
-  email: { type: String, required: true, unique: true, lowercase: true },
-  password: { type: String, required: true },
+  email: { type: String, unique: true, sparse: true, lowercase: true },
+  password: {
+    type: String,
+    required: function() {
+      // Password is only required if user is an active login account (not a roster-only record or vacant position)
+      return !this.isRosterOnly && !this.isVacant && this.role !== 'position';
+    }
+  },
   employeeId: { type: String, unique: true, sparse: true },
   designation: { type: String, default: '' },
   band: { type: String, default: '' },
@@ -13,9 +19,10 @@ const userSchema = new mongoose.Schema({
   supervisorName: { type: String, default: '' },
   supervisorTitle: { type: String, default: '' },
   department: { type: String, default: '' },
+  employeeType: { type: String, default: 'Full-time' },
   role: {
     type: String,
-    enum: ['admin', 'manager', 'employee', 'Admin', 'Manager', 'Employee'],
+    enum: ['admin', 'manager', 'employee', 'position', 'archived_demo', 'Admin', 'Manager', 'Employee'],
     default: 'employee',
     lowercase: true,
     trim: true,
@@ -26,6 +33,10 @@ const userSchema = new mongoose.Schema({
   },
   organization: { type: String, default: '' },
   isActive: { type: Boolean, default: true },
+  isVacant: { type: Boolean, default: false },
+  isRosterOnly: { type: Boolean, default: false },
+  isArchivedDemo: { type: Boolean, default: false },
+  archivedAt: { type: Date, default: null },
   lastLoginAt: { type: Date, default: null },
   maxMonthlyHours: { type: Number, default: 160, min: 1, max: 744 },
   // When false, employee is visible in 'Pending User Approvals' and cannot submit forms
@@ -89,10 +100,15 @@ userSchema.pre('findOneAndUpdate', function(next) {
 
 userSchema.pre('save', async function() {
   if (!this.isModified('password')) return;
+  if (!this.password || typeof this.password !== 'string') {
+    this.password = undefined;
+    return;
+  }
   this.password = await bcrypt.hash(this.password, 10);
 });
 
 userSchema.methods.comparePassword = async function(candidatePassword) {
+  if (!this.password || !candidatePassword) return false;
   return bcrypt.compare(candidatePassword, this.password);
 };
 

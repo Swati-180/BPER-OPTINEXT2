@@ -159,6 +159,9 @@ const login = async (req, res) => {
     
     if (!user) return res.status(401).json({ message: 'Invalid credentials.' });
     if (user.isActive === false) return res.status(403).json({ message: 'Account pending approval.' });
+    if (user.isRosterOnly || user.isVacant || user.role === 'position' || !user.password) {
+      return res.status(401).json({ message: 'Account is not configured for web login. Please request an invitation.' });
+    }
 
     const isMatch = await user.comparePassword(password);
     if (!isMatch) return res.status(401).json({ message: 'Invalid credentials.' });
@@ -300,7 +303,52 @@ const changeMyPassword = async (req, res) => {
 
 const getAllUsers = async (req, res) => {
   try {
-    const users = await User.find({}).sort({ createdAt: 1 });
+    const { recordType, role, department, status, search } = req.query;
+
+    const baseQuery = {};
+
+    // Record Type Filter:
+    // 'all' | 'login_accounts' | 'operational_staff' | 'vacancies' | 'archived_demos'
+    if (recordType === 'login_accounts') {
+      baseQuery.isRosterOnly = { $ne: true };
+      baseQuery.isVacant = { $ne: true };
+      baseQuery.role = { $nin: ['position', 'archived_demo'] };
+      baseQuery.password = { $exists: true, $ne: '' };
+    } else if (recordType === 'operational_staff') {
+      baseQuery.role = 'employee';
+      baseQuery.isVacant = { $ne: true };
+      baseQuery.isArchivedDemo = { $ne: true };
+    } else if (recordType === 'vacancies') {
+      baseQuery.$or = [{ role: 'position' }, { isVacant: true }];
+    } else if (recordType === 'archived_demos') {
+      baseQuery.$or = [{ isArchivedDemo: true }, { role: 'archived_demo' }];
+    }
+
+    if (role && role !== 'All') {
+      baseQuery.role = role.toLowerCase().trim();
+    }
+
+    if (department && department !== 'All') {
+      baseQuery.department = department;
+    }
+
+    if (status && status !== 'All') {
+      baseQuery.isActive = status === 'Active';
+    }
+
+    if (search && search.trim()) {
+      const q = search.trim();
+      const regex = new RegExp(q, 'i');
+      baseQuery.$or = [
+        { name: regex },
+        { employeeId: regex },
+        { email: regex },
+        { designation: regex },
+        { supervisorName: regex }
+      ];
+    }
+
+    const users = await User.find(baseQuery).sort({ createdAt: -1 });
 
     const existingBperIds = users
       .map((user) => user.employeeId)
@@ -311,9 +359,14 @@ const getAllUsers = async (req, res) => {
     let nextBperId = (existingBperIds.length > 0 ? Math.max(...existingBperIds) : 100) + 1;
 
     for (const user of users) {
+      // Do not mutate or auto-assign BPER IDs to roster-only records, vacancies, or archived demo accounts
+      if (user.isRosterOnly || user.isVacant || user.role === 'position' || user.isArchivedDemo) {
+        continue;
+      }
+
       let shouldSave = false;
 
-      if (isMissingValue(user.name)) {
+      if (isMissingValue(user.name) && user.email) {
         user.name = inferNameFromEmail(user.email);
         shouldSave = true;
       }
@@ -344,13 +397,55 @@ const getAllUsers = async (req, res) => {
       }
     }
 
+    // Compute workforce breakdown summary for tabs and metrics
+    const [
+      totalCount,
+      loginAccountsCount,
+      operationalStaffCount,
+      vacanciesCount,
+      archivedDemosCount
+    ] = await Promise.all([
+      User.countDocuments({}),
+      User.countDocuments({
+        isRosterOnly: { $ne: true },
+        isVacant: { $ne: true },
+        role: { $nin: ['position', 'archived_demo'] },
+        password: { $exists: true, $ne: '' }
+      }),
+      User.countDocuments({ role: 'employee', isVacant: { $ne: true }, isArchivedDemo: { $ne: true } }),
+      User.countDocuments({ $or: [{ role: 'position' }, { isVacant: true }] }),
+      User.countDocuments({ $or: [{ isArchivedDemo: true }, { role: 'archived_demo' }] })
+    ]);
+
     const sanitizedUsers = users.map((user) => {
+      const hasPassword = Boolean(user.password && user.password.length > 0);
       const next = user.toObject();
       delete next.password;
+      next.hasPassword = hasPassword;
+
+      // Explicitly classify record category
+      if (next.isArchivedDemo || next.role === 'archived_demo') {
+        next.recordCategory = 'archived_demo';
+      } else if (next.isVacant || next.role === 'position') {
+        next.recordCategory = 'position';
+      } else if (next.isRosterOnly || !hasPassword) {
+        next.recordCategory = 'roster_only';
+      } else {
+        next.recordCategory = 'login_account';
+      }
       return next;
     });
 
-    res.json(sanitizedUsers);
+    res.json({
+      users: sanitizedUsers,
+      counts: {
+        total: totalCount,
+        loginAccounts: loginAccountsCount,
+        operationalStaff: operationalStaffCount,
+        vacancies: vacanciesCount,
+        archivedDemos: archivedDemosCount
+      }
+    });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -362,6 +457,21 @@ const updateUser = async (req, res) => {
     if (!existingUser) return res.status(404).json({ message: 'User not found.' });
 
     const updateData = { ...req.body };
+
+    // Prevent turning a vacant position or archived demo record into an active operational employee or granting login
+    if (existingUser.isVacant || existingUser.role === 'position') {
+      if (updateData.role && updateData.role !== 'position') {
+        return res.status(400).json({ message: 'Vacant positions cannot be converted directly into user accounts. Please invite the employee.' });
+      }
+      delete updateData.password;
+      delete updateData.isVacant;
+    }
+
+    if (existingUser.isArchivedDemo) {
+      if (updateData.isActive === true) {
+        return res.status(400).json({ message: 'Archived demo accounts cannot be reactivated as active workforce.' });
+      }
+    }
     
     // Explicitly reject if a non-admin tries to alter the role
     if (updateData.role && updateData.role !== existingUser.role && req.user.role !== 'admin') {

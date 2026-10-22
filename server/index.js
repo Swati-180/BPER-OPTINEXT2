@@ -52,14 +52,34 @@ app.use('/api/invite', inviteRoutes);
 app.use('/api/admin-whitelist', adminWhitelistRoutes);
 
 async function startServer() {
+  const fs = require('fs');
+  const path = require('path');
+  const localTestInfo = path.join(__dirname, '.local_test_db.json');
+
   let mongoUri = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/bper';
 
+  if (fs.existsSync(localTestInfo)) {
+    try {
+      const { uri } = JSON.parse(fs.readFileSync(localTestInfo, 'utf-8'));
+      if (uri && (uri.startsWith('mongodb://127.0.0.1:27018') || uri.startsWith('mongodb://localhost:27018'))) {
+        mongoUri = uri;
+        console.log(`[ISOLATION MODE] Connecting exclusively to verified isolated local test DB: ${mongoUri}`);
+      }
+    } catch (e) {
+      console.warn('Could not read .local_test_db.json, falling back to MONGODB_URI.');
+    }
+  }
+
   try {
-    console.log(`Connecting to primary MongoDB...`);
+    console.log(`Connecting to MongoDB at: ${mongoUri.replace(/:([^:@]{4})[^:@]*@/, ':****@')}...`);
     await mongoose.connect(mongoUri, { serverSelectionTimeoutMS: 5000 });
     console.log('Connected to MongoDB successfully.');
   } catch (err) {
-    console.log('Primary MongoDB connection failed. Attempting In-Memory fallback...');
+    if (process.env.NODE_ENV === 'production') {
+      console.error('CRITICAL: Primary MongoDB connection failed in production mode. Refusing in-memory fallback or seed in production.');
+      process.exit(1);
+    }
+    console.log('Primary MongoDB connection failed. Attempting In-Memory fallback for local development...');
     try {
       const { MongoMemoryServer } = require('mongodb-memory-server');
       const mongoServer = await MongoMemoryServer.create();

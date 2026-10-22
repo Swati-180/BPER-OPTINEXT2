@@ -230,6 +230,31 @@ const getSubmissionByRefId = async (req, res) => {
     const { referenceId } = req.params;
     const submission = await WDTSubmission.findOne({ referenceId });
     if (!submission) return res.status(404).json({ message: 'Submission not found' });
+
+    // Authorization check: Employees can only view their own submissions
+    const currentUser = await User.findById(req.user.userId || req.user.id);
+    if (!currentUser) return res.status(404).json({ message: 'User not found' });
+
+    const isAdmin = currentUser.role === 'admin' || currentUser.email === 'admin@bper.com';
+    const isManager = currentUser.userType === 'manager' || currentUser.role === 'manager';
+
+    if (!isAdmin && !isManager) {
+      const isOwnByEmpId = currentUser.employeeId && submission.employee?.employeeId === currentUser.employeeId;
+      const isOwnByEmail = currentUser.email && submission.employee?.email?.toLowerCase() === currentUser.email.toLowerCase();
+      if (!isOwnByEmpId && !isOwnByEmail) {
+        return res.status(403).json({ message: 'Access denied: You can only view your own submission.' });
+      }
+    } else if (isManager && !isAdmin) {
+      // Manager can view if submission is in their department or explicitly pending from them
+      const isSameDept = currentUser.department && submission.employee?.department === currentUser.department;
+      const isPending = submission.pendingFrom === currentUser.name;
+      const isOwn = (currentUser.employeeId && submission.employee?.employeeId === currentUser.employeeId) ||
+                    (currentUser.email && submission.employee?.email?.toLowerCase() === currentUser.email.toLowerCase());
+      if (!isSameDept && !isPending && !isOwn) {
+        return res.status(403).json({ message: 'Access denied: You can only view submissions in your department or assigned to you.' });
+      }
+    }
+
     res.json(submission);
   } catch (err) {
     res.status(500).json({ message: err.message });

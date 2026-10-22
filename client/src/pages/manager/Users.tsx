@@ -7,20 +7,39 @@ import { getInviteSignupLink, loadAuthUser } from '../../lib/authStorage';
 import { TableLoadingRow } from '../../components/PortalSkeletons';
 import { useNavigate } from 'react-router-dom';
 
-type UserRole = 'employee' | 'manager' | 'admin';
+type UserRole = 'employee' | 'manager' | 'admin' | 'position' | 'archived_demo';
 type UserStatus = 'Active' | 'Inactive';
+type RecordCategory = 'all' | 'operational_staff' | 'login_accounts' | 'vacancies' | 'archived_demos';
 
 type UserRow = {
 	employeeId: string;
 	name: string;
-	email: string;
+	email?: string;
 	department: string;
 	band: string;
 	designation: string;
+	client?: string;
+	location?: string;
+	supervisorName?: string;
+	supervisorTitle?: string;
+	employeeType?: string;
 	role: UserRole;
 	status: UserStatus;
+	recordCategory: 'operational_staff' | 'login_account' | 'roster_only' | 'position' | 'archived_demo';
+	isRosterOnly?: boolean;
+	isVacant?: boolean;
+	isArchivedDemo?: boolean;
+	hasPassword?: boolean;
 	maxMonthlyHours: number;
 	_id?: string;
+};
+
+type WorkforceCounts = {
+	total: number;
+	operationalStaff: number;
+	loginAccounts: number;
+	vacancies: number;
+	archivedDemos: number;
 };
 
 type CreateUserFormState = {
@@ -61,6 +80,14 @@ export default function UsersPage() {
 	const navigate = useNavigate();
 	const [userRows, setUserRows] = useState<UserRow[]>([]);
 	const [isLoading, setIsLoading] = useState(true);
+	const [categoryFilter, setCategoryFilter] = useState<RecordCategory>('all');
+	const [workforceCounts, setWorkforceCounts] = useState<WorkforceCounts>({
+		total: 0,
+		operationalStaff: 0,
+		loginAccounts: 0,
+		vacancies: 0,
+		archivedDemos: 0,
+	});
 	const [query, setQuery] = useState('');
 	const [roleFilter, setRoleFilter] = useState<'All' | UserRole>('All');
 	const [departmentFilter, setDepartmentFilter] = useState<'All' | string>('All');
@@ -83,21 +110,67 @@ export default function UsersPage() {
 	const fetchUsers = async () => {
 		setIsLoading(true);
 		try {
-			const response = await apiFetch('/auth/users');
+			const params = new URLSearchParams();
+			if (categoryFilter !== 'all') params.append('recordType', categoryFilter);
+			if (roleFilter !== 'All') params.append('role', roleFilter);
+			if (departmentFilter !== 'All') params.append('department', departmentFilter);
+			if (statusFilter !== 'All') params.append('status', statusFilter);
+			if (query.trim()) params.append('search', query.trim());
+
+			const response = await apiFetch(`/auth/users?${params.toString()}`);
 			const data = await response.json().catch(() => null);
-			if (response.ok) {
-				const mapped: UserRow[] = (Array.isArray(data) ? data : []).map((u: any) => ({
-					employeeId: u.employeeId || '-',
-					name: u.name || 'Unknown User',
-					email: u.email,
-					department: u.department || 'Unassigned',
-					band: u.band || 'B1',
-					designation: u.designation || 'Employee',
-					role: (u.role || 'employee').toLowerCase() as UserRole,
-					status: u.isActive ? 'Active' : 'Inactive',
-					maxMonthlyHours: u.maxMonthlyHours ?? 160,
-					_id: u._id,
-				}));
+			if (response.ok && data) {
+				const rawList: any[] = Array.isArray(data) ? data : (data.users || data.data || []);
+
+				const mapped: UserRow[] = rawList.map((u: any) => {
+					const hasPassword = Boolean(u.hasPassword || (u.password && String(u.password).length > 0));
+					const isVacant = Boolean(u.isVacant || u.role === 'position');
+					const isArchived = Boolean(u.isArchivedDemo || u.role === 'archived_demo');
+					const isRoster = Boolean(u.isRosterOnly || !hasPassword);
+
+					let recordCategory: UserRow['recordCategory'] = 'login_account';
+					if (isArchived) recordCategory = 'archived_demo';
+					else if (isVacant) recordCategory = 'position';
+					else if (isRoster) recordCategory = 'roster_only';
+					else recordCategory = 'login_account';
+
+					return {
+						employeeId: u.employeeId || '-',
+						name: u.name || (isVacant ? `Vacant Position (${u.employeeId})` : 'Unknown Employee'),
+						email: u.email || '',
+						department: u.department || 'Finance & Accounting',
+						band: u.band || 'L1',
+						designation: u.designation || (isVacant ? 'Budgeted Vacant Position' : 'Operational Staff'),
+						client: u.client || '',
+						location: u.location || '',
+						supervisorName: u.supervisorName || '',
+						supervisorTitle: u.supervisorTitle || '',
+						employeeType: u.employeeType || 'Full-time',
+						role: (u.role || 'employee').toLowerCase() as UserRole,
+						status: u.isActive ? 'Active' : 'Inactive',
+						recordCategory,
+						isRosterOnly: isRoster,
+						isVacant,
+						isArchivedDemo: isArchived,
+						hasPassword,
+						maxMonthlyHours: u.maxMonthlyHours ?? 160,
+						_id: u._id,
+					};
+				});
+
+				// Calculate counts from API or derive from mapped users
+				if (data.counts && typeof data.counts.total === 'number') {
+					setWorkforceCounts(data.counts);
+				} else {
+					setWorkforceCounts({
+						total: mapped.length,
+						operationalStaff: mapped.filter(u => u.recordCategory === 'roster_only' || (u.role === 'employee' && !u.isVacant && !u.isArchivedDemo)).length,
+						loginAccounts: mapped.filter(u => u.recordCategory === 'login_account').length,
+						vacancies: mapped.filter(u => u.isVacant || u.recordCategory === 'position').length,
+						archivedDemos: mapped.filter(u => u.isArchivedDemo || u.recordCategory === 'archived_demo').length,
+					});
+				}
+
 				setUserRows(mapped);
 			}
 		} catch (error) {
@@ -109,7 +182,7 @@ export default function UsersPage() {
 
 	useEffect(() => {
 		fetchUsers();
-	}, []);
+	}, [categoryFilter, roleFilter, departmentFilter, statusFilter]);
 
 	const filteredUsers = useMemo(() => {
 		const normalized = query.trim().toLowerCase();
@@ -131,7 +204,7 @@ export default function UsersPage() {
 	async function handleUpdateUser(event: React.FormEvent) {
 		event.preventDefault();
 		if (!editingUser) return;
-		
+
 		setIsLoading(true);
 		try {
 			const payload = { ...editingUser, organization: editingUser.department };
@@ -288,7 +361,7 @@ export default function UsersPage() {
 
 			const result = await response.json().catch(() => null);
 			if (!response.ok) throw new Error(result?.message || 'Upload failed');
-			
+
 			setUploadResult({
 				added: result.added || 0,
 				updated: result.updated || 0,
@@ -317,11 +390,11 @@ export default function UsersPage() {
 					</div>
 
 					<div className="flex flex-wrap items-center gap-2">
-						<input 
-							type="file" 
-							ref={fileInputRef} 
-							accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel" 
-							className="hidden" 
+						<input
+							type="file"
+							ref={fileInputRef}
+							accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel"
+							className="hidden"
 							onChange={handleFileUpload}
 						/>
 						<div className="relative group">
@@ -339,7 +412,7 @@ export default function UsersPage() {
 							<div className="absolute right-[-260px] top-full mt-2.5 z-50 w-max max-w-[800px] rounded-xl border border-[#DCE6F3] bg-white p-3 shadow-[0_12px_32px_rgba(10,42,80,0.15)] opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 pointer-events-none origin-[calc(100%-308px)_top] transform group-hover:scale-100 scale-95">
 								<div className="absolute -top-2 right-[308px] border-8 border-transparent border-b-[#DCE6F3]"></div>
 								<div className="absolute -top-[7px] right-[308px] border-8 border-transparent border-b-white"></div>
-								
+
 								<div className="mb-3 flex items-center gap-2 border-b border-[#F0F4FA] pb-2.5">
 									<div className="flex h-6 w-6 items-center justify-center rounded-md bg-[#EEF5FF] border border-[#C4D9F5]">
 										<FileUp className="h-3.5 w-3.5 text-[#1E5EAB]" />
@@ -396,6 +469,86 @@ export default function UsersPage() {
 							Create User
 						</button>
 					</div>
+				</div>
+
+				{/* Workforce Record Type Breakdown Tabs */}
+				<div className="mt-4 flex flex-wrap items-center gap-2 border-b border-[#E3EAF4] pb-3">
+					<button
+						type="button"
+						onClick={() => setCategoryFilter('all')}
+						className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-all ${
+							categoryFilter === 'all'
+								? 'bg-[#102B52] text-white shadow-sm'
+								: 'bg-[#F2F6FB] text-[#4E6787] hover:bg-[#E5EEF9]'
+						}`}
+					>
+						<span>All Records</span>
+						<span className="rounded-full bg-white/20 px-1.5 py-0.2 text-[10px] font-semibold">
+							{workforceCounts.total}
+						</span>
+					</button>
+
+					<button
+						type="button"
+						onClick={() => setCategoryFilter('operational_staff')}
+						className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-all ${
+							categoryFilter === 'operational_staff'
+								? 'bg-[#1A5AA6] text-white shadow-sm'
+								: 'bg-[#EEF5FF] text-[#1A5AA6] hover:bg-[#E0EEFF]'
+						}`}
+					>
+						<span>Operational Staff</span>
+						<span className={`rounded-full px-1.5 py-0.2 text-[10px] font-semibold ${categoryFilter === 'operational_staff' ? 'bg-white/20' : 'bg-blue-100 text-[#1A5AA6]'}`}>
+							{workforceCounts.operationalStaff}
+						</span>
+					</button>
+
+					<button
+						type="button"
+						onClick={() => setCategoryFilter('login_accounts')}
+						className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-all ${
+							categoryFilter === 'login_accounts'
+								? 'bg-[#2E7D32] text-white shadow-sm'
+								: 'bg-[#E8F5E9] text-[#2E7D32] hover:bg-[#C8E6C9]'
+						}`}
+					>
+						<span>Active Login Accounts</span>
+						<span className={`rounded-full px-1.5 py-0.2 text-[10px] font-semibold ${categoryFilter === 'login_accounts' ? 'bg-white/20' : 'bg-green-100 text-[#2E7D32]'}`}>
+							{workforceCounts.loginAccounts}
+						</span>
+					</button>
+
+					<button
+						type="button"
+						onClick={() => setCategoryFilter('vacancies')}
+						className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-all ${
+							categoryFilter === 'vacancies'
+								? 'bg-[#E65100] text-white shadow-sm'
+								: 'bg-[#FFF3E0] text-[#E65100] hover:bg-[#FFE0B2]'
+						}`}
+					>
+						<span>Vacant Positions</span>
+						<span className={`rounded-full px-1.5 py-0.2 text-[10px] font-semibold ${categoryFilter === 'vacancies' ? 'bg-white/20' : 'bg-orange-100 text-[#E65100]'}`}>
+							{workforceCounts.vacancies}
+						</span>
+					</button>
+
+					{workforceCounts.archivedDemos > 0 && (
+						<button
+							type="button"
+							onClick={() => setCategoryFilter('archived_demos')}
+							className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-all ${
+								categoryFilter === 'archived_demos'
+									? 'bg-[#546E7A] text-white shadow-sm'
+									: 'bg-[#ECEFF1] text-[#546E7A] hover:bg-[#CFD8DC]'
+							}`}
+						>
+							<span>Archived Demo Accounts</span>
+							<span className={`rounded-full px-1.5 py-0.2 text-[10px] font-semibold ${categoryFilter === 'archived_demos' ? 'bg-white/20' : 'bg-gray-200 text-[#546E7A]'}`}>
+								{workforceCounts.archivedDemos}
+							</span>
+						</button>
+					)}
 				</div>
 
 				<div className="mt-3 grid grid-cols-1 gap-2.5 rounded-xl border border-[#E4EBF6] bg-[#F7FAFF] p-2.5 md:grid-cols-12 md:items-end">
@@ -455,18 +608,18 @@ export default function UsersPage() {
 
 				<div className="mt-3 overflow-hidden rounded-xl border border-[#DCE6F3]">
 					<div className="overflow-x-auto">
-						<table className="w-full min-w-180 border-collapse text-left">
+						<table className="w-full min-w-240 border-collapse text-left">
 							<thead>
 								<tr className="bg-[#F5F8FD] text-[10px] font-bold uppercase tracking-[0.14em] text-[#617D9D] border-b border-[#E3EAF4]">
 									<th className="px-4 py-3">Employee ID</th>
-									<th className="px-4 py-3">Name</th>
-									<th className="px-4 py-3">Email</th>
+									<th className="px-4 py-3">Name / Role</th>
+									<th className="px-4 py-3">Record Type</th>
+									<th className="px-4 py-3">Contact</th>
 									<th className="px-4 py-3">Department</th>
 									<th className="px-4 py-3">Band</th>
 									<th className="px-4 py-3">Max Hrs</th>
-									<th className="px-4 py-3">Role</th>
-									<th className="px-5 py-3">Status</th>
-									<th className="px-5 py-3 text-right">Actions</th>
+									<th className="px-4 py-3">Status</th>
+									<th className="px-4 py-3 text-right min-w-[130px]">Actions</th>
 								</tr>
 							</thead>
 							<tbody>
@@ -475,13 +628,13 @@ export default function UsersPage() {
 								) : filteredUsers.length === 0 ? (
 									<tr>
 										<td colSpan={9} className="px-4 py-7 text-center text-xs text-[#6B829E]">
-											No users match the selected filters.
+											No records match the selected category and filters.
 										</td>
 									</tr>
 								) : (
 									filteredUsers.map((user, index) => (
 										<tr
-											key={user.employeeId}
+											key={`${user.employeeId}-${user._id || index}`}
 											className={`border-b border-[#E7EDF6] text-[#1A3556] transition-colors hover:bg-[#FAFCFF] ${index === filteredUsers.length - 1 ? 'border-b-0' : ''}`}
 										>
 											<td className="px-4 py-3 text-[14px] font-bold leading-none text-[#1A5AA6]">
@@ -489,16 +642,58 @@ export default function UsersPage() {
 											</td>
 											<td className="px-4 py-3">
 												<div className="flex items-center gap-2.5">
-													<div className="h-8 w-8 rounded-full bg-linear-to-br from-[#CFE1F6] to-[#A8C3EA] text-[#123E73] font-bold text-[11px] flex items-center justify-center border border-[#BCD2ED]">
-														{user.name.split(' ').filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase() ?? '').join('')}
+													<div className={`h-8 w-8 rounded-full font-bold text-[11px] flex items-center justify-center border ${
+														user.isVacant
+															? 'bg-orange-100 text-orange-700 border-orange-200'
+															: user.isArchivedDemo
+															? 'bg-gray-100 text-gray-500 border-gray-300'
+															: user.isRosterOnly
+															? 'bg-blue-50 text-blue-700 border-blue-200'
+															: 'bg-linear-to-br from-[#CFE1F6] to-[#A8C3EA] text-[#123E73] border-[#BCD2ED]'
+													}`}>
+														{user.isVacant ? 'VP' : user.name.split(' ').filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase() ?? '').join('')}
 													</div>
 													<div>
-														<p className="text-[16px] font-bold leading-tight text-[#1A2E4D]">{user.name}</p>
-														<p className="mt-0.5 text-xs text-[#6A82A0]">{user.designation}</p>
+														<p className={`text-[15px] font-bold leading-tight ${user.isVacant ? 'text-orange-900 italic' : user.isArchivedDemo ? 'text-gray-500 line-through' : 'text-[#1A2E4D]'}`}>
+															{user.name}
+														</p>
+														<p className="mt-0.5 text-xs text-[#6A82A0]">
+															{user.designation} {user.location ? `• ${user.location}` : ''}
+														</p>
 													</div>
 												</div>
 											</td>
-											<td className="px-4 py-3 text-sm text-[#586F8D]">{user.email}</td>
+											<td className="px-4 py-3">
+												{user.recordCategory === 'login_account' && (
+													<span className="inline-flex items-center rounded-full bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 text-[11px] font-bold text-emerald-700">
+														Login Account ({user.role})
+													</span>
+												)}
+												{user.recordCategory === 'roster_only' && (
+													<span className="inline-flex items-center rounded-full bg-blue-50 border border-blue-200 px-2.5 py-0.5 text-[11px] font-semibold text-blue-700">
+														Operational Roster
+													</span>
+												)}
+												{user.recordCategory === 'position' && (
+													<span className="inline-flex items-center rounded-full bg-orange-50 border border-orange-200 px-2.5 py-0.5 text-[11px] font-semibold text-orange-700">
+														Vacant Position
+													</span>
+												)}
+												{user.recordCategory === 'archived_demo' && (
+													<span className="inline-flex items-center rounded-full bg-gray-100 border border-gray-300 px-2.5 py-0.5 text-[11px] font-semibold text-gray-600">
+														Archived Demo
+													</span>
+												)}
+											</td>
+											<td className="px-4 py-3 text-sm text-[#586F8D]">
+												{user.email ? (
+													<span>{user.email}</span>
+												) : (
+													<span className="text-xs text-amber-700 font-medium bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
+														No Web Login
+													</span>
+												)}
+											</td>
 											<td className="px-4 py-3 text-sm font-semibold text-[#4E6687]">{user.department}</td>
 											<td className="px-4 py-3">
 												<span className="inline-flex min-w-10 items-center justify-center rounded-md bg-[#F0F4FA] px-2 py-0.5 text-xs font-bold text-[#6A7F9C] border border-[#E1E9F4]">
@@ -510,20 +705,55 @@ export default function UsersPage() {
 													{user.maxMonthlyHours}h
 												</span>
 											</td>
-											<td className="px-4 py-3">
-												<span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold ${user.role === 'manager' ? 'border-[#BCD3EF] bg-[#E8F1FF] text-[#235BA7]' : 'border-[#D6DEE9] bg-[#F4F7FB] text-[#5E718A]'}`}>
-													{user.role.charAt(0).toUpperCase() + user.role.slice(1)}
+											<td className="px-4 py-3 text-sm text-[#6A82A0]">
+												<span className={`inline-flex items-center rounded px-2 py-0.5 text-xs font-semibold ${
+													user.status === 'Active' ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-600'
+												}`}>
+													{user.status}
 												</span>
 											</td>
-											<td className="px-5 py-3 text-sm text-[#6A82A0]">{user.status}</td>
-											<td className="px-5 py-3 text-right">
-												<button
-													onClick={() => openEditUserModal(user)}
-													className="rounded-lg p-2 text-[#7D94B1] hover:bg-[#F0F4FA] hover:text-[#1E5BAA] transition-colors"
-													title="Edit User"
-												>
-													<Pencil className="h-4 w-4" />
-												</button>
+											<td className="px-4 py-3 text-right whitespace-nowrap">
+												{user.isVacant ? (
+													<span className="inline-flex items-center rounded bg-orange-50 border border-orange-200 px-2 py-0.5 text-[11px] font-semibold text-orange-800" title="Budgeted vacant position. Unfilled.">
+														Vacant Position
+													</span>
+												) : user.isArchivedDemo ? (
+													<span className="inline-flex items-center rounded bg-gray-100 border border-gray-200 px-2 py-0.5 text-[11px] font-medium text-gray-500" title="Historical demo record. Inactive.">
+														Archived
+													</span>
+												) : user.isRosterOnly ? (
+													<div className="inline-flex items-center justify-end gap-1.5">
+														<button
+															type="button"
+															onClick={() => navigate('../employee-invites')}
+															className="inline-flex items-center gap-1 rounded-md border border-[#BFD3EA] bg-[#F4F8FF] px-2 py-1 text-xs font-semibold text-[#1E5EAB] hover:bg-[#EAF2FF] transition-colors"
+															title="Send onboarding invitation"
+														>
+															<MailPlus className="h-3 w-3" />
+															<span>Invite</span>
+														</button>
+														<button
+															type="button"
+															onClick={() => openEditUserModal(user)}
+															className="rounded-md border border-[#D6E0EE] bg-white p-1 text-[#587293] hover:bg-[#F0F4FA] hover:text-[#1E5BAA] transition-colors"
+															title="Edit roster details"
+														>
+															<Pencil className="h-3.5 w-3.5" />
+														</button>
+													</div>
+												) : (
+													<div className="inline-flex items-center justify-end gap-1.5">
+														<button
+															type="button"
+															onClick={() => openEditUserModal(user)}
+															className="inline-flex items-center gap-1 rounded-md border border-[#D6E0EE] bg-white px-2 py-1 text-xs font-semibold text-[#30537A] hover:bg-[#F0F4FA] hover:text-[#1E5BAA] transition-colors"
+															title={user.role === 'admin' || user.role === 'manager' ? 'Manage system account' : 'Edit employee account'}
+														>
+															<Pencil className="h-3 w-3" />
+															<span>Edit</span>
+														</button>
+													</div>
+												)}
 											</td>
 										</tr>
 									))
@@ -878,7 +1108,7 @@ export default function UsersPage() {
 								</div>
 							)}
 						</div>
-						
+
 						<div className="border-t border-[#E3EBF7] bg-[#F8FAFC] px-6 py-4 flex justify-end">
 							<button type="button" onClick={() => setUploadResult(null)} className="rounded-xl bg-[#165BAA] px-6 py-2 text-sm font-semibold text-white shadow-md transition-colors hover:bg-[#124B8D]">
 								Close

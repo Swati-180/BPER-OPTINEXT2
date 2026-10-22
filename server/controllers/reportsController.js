@@ -15,8 +15,11 @@ function toPercent(value, total) {
 }
 
 function buildScopeMatch(department) {
-  if (!department || department === 'All Departments') return {};
-  return { 'employee.department': department };
+  const match = { batchId: 'PFA-DEMO-OCT-2026' };
+  if (department && department !== 'All Departments') {
+    match['employee.department'] = department;
+  }
+  return match;
 }
 
 async function resolveRequestUser(req) {
@@ -47,34 +50,115 @@ function ensureManager(role, res) {
 
 function flattenRows(submissions) {
   return submissions.flatMap((submission) => {
-    const rows = Array.isArray(submission?.payload?.rows) ? submission.payload.rows : [];
-    return rows.map((row) => ({
-      referenceId: submission.referenceId,
-      submittedAt: submission.submittedAt,
-      status: submission.status,
-      employeeId: submission.employee?.employeeId || 'NA',
-      employeeName: submission.employee?.name || 'Unknown Employee',
-      department: submission.employee?.department || 'Unassigned',
-      tower: row.majorProcess || submission.employee?.department || 'Unassigned',
-      majorProcess: row.majorProcess || 'Unspecified Process',
-      process: row.process || 'Unspecified Process',
-      subProcess: row.subProcess || 'Unspecified Activity',
-      frequency: row.frequency || 'Unspecified',
-      activityCategory: row.activityCategory || 'core',
-      monthlyHours: safeNumber(row.timeTakenHoursPerMonth),
-      comments: row.comments || '',
-    }));
+    const defaultEmpId = submission.employee?.employeeId || 'NA';
+    const defaultEmpName = submission.employee?.name || 'Unknown Employee';
+    const defaultDept = submission.employee?.department || 'Unassigned';
+
+    // 1. Check for standard payload.rows representation
+    const payloadRows = Array.isArray(submission?.payload?.rows) ? submission.payload.rows : [];
+    const validPayloadRows = payloadRows.filter(r => r && typeof r === 'object');
+
+    if (validPayloadRows.length > 0) {
+      return validPayloadRows.map((row) => {
+        const hours = safeNumber(row.timeTakenHoursPerMonth != null ? row.timeTakenHoursPerMonth : row.hours);
+        const tower = row.tower || row.majorProcess || defaultDept;
+        return {
+          referenceId: submission.referenceId,
+          submittedAt: submission.submittedAt,
+          status: submission.status,
+          employeeId: row.employeeId || defaultEmpId,
+          employeeName: row.employeeName || defaultEmpName,
+          department: row.department || defaultDept,
+          tower,
+          majorProcess: row.majorProcess || tower,
+          process: row.process || 'Unspecified Process',
+          subProcess: row.subProcess || row.name || 'Unspecified Activity',
+          frequency: row.frequency || 'Unspecified',
+          activityCategory: row.activityCategory || row.category || 'core',
+          monthlyHours: hours,
+          comments: row.comments || '',
+        };
+      });
+    }
+
+    // 2. Check for legacy/alternative activities representation (if payload.rows is absent or empty)
+    const activities = Array.isArray(submission?.activities) ? submission.activities : [];
+    const validActivities = activities.filter(a => a && typeof a === 'object');
+
+    if (validActivities.length > 0) {
+      return validActivities.map((act) => {
+        const hours = safeNumber(act.monthlyHours != null ? act.monthlyHours : (act.timeTakenHoursPerMonth != null ? act.timeTakenHoursPerMonth : act.hours));
+        const tower = act.tower || act.majorProcess || defaultDept;
+        return {
+          referenceId: submission.referenceId,
+          submittedAt: submission.submittedAt,
+          status: submission.status,
+          employeeId: act.employeeId || defaultEmpId,
+          employeeName: act.employeeName || defaultEmpName,
+          department: act.department || defaultDept,
+          tower,
+          majorProcess: act.majorProcess || tower,
+          process: act.process || 'Unspecified Process',
+          subProcess: act.subProcess || act.name || 'Unspecified Activity',
+          frequency: act.frequency || 'Unspecified',
+          activityCategory: act.activityCategory || act.category || 'core',
+          monthlyHours: hours,
+          comments: act.comments || '',
+        };
+      });
+    }
+
+    // 3. Fallback for summary-only records (no row details, but document-level totalHours exists)
+    // Only generate a summary row if totalHours > 0 and no detailed activity rows were present.
+    const headerHours = safeNumber(submission?.totalHours);
+    if (headerHours > 0) {
+      return [{
+        referenceId: submission.referenceId,
+        submittedAt: submission.submittedAt,
+        status: submission.status,
+        employeeId: defaultEmpId,
+        employeeName: defaultEmpName,
+        department: defaultDept,
+        tower: defaultDept,
+        majorProcess: defaultDept,
+        process: 'Summary Process',
+        subProcess: 'Summary Activity',
+        frequency: 'Monthly',
+        activityCategory: 'core',
+        monthlyHours: headerHours,
+        comments: 'Derived from summary-only record',
+      }];
+    }
+
+    return [];
   });
 }
 
-function buildConsolidationSignal(row) {
+function classifyScreeningSignals(row) {
   const comment = String(row.comments || '').toLowerCase();
-  return (
-    comment.includes('automation') ||
-    comment.includes('rpa') ||
-    comment.includes('repeat') ||
-    row.monthlyHours >= 26
-  );
+  const isHighVolume = row.monthlyHours >= 26;
+  const hasKeyword = comment.includes('automation') || comment.includes('rpa') || comment.includes('repeat');
+
+  let screeningSignal = 'None';
+  if (isHighVolume && hasKeyword) {
+    screeningSignal = 'High Volume & Keyword';
+  } else if (isHighVolume) {
+    screeningSignal = 'High Volume (>=26h)';
+  } else if (hasKeyword) {
+    screeningSignal = 'Keyword Flagged';
+  }
+
+  return {
+    isHighVolume,
+    hasKeyword,
+    isScreened: isHighVolume || hasKeyword,
+    screeningSignal
+  };
+}
+
+function buildConsolidationSignal(row) {
+  const signals = classifyScreeningSignals(row);
+  return signals.isScreened;
 }
 
 function buildTrend(row) {
@@ -111,7 +195,7 @@ async function getDashboardReport(req, res) {
 
     const [submissions, totalEmployees] = await Promise.all([
       getScopedSubmissions(req),
-      User.countDocuments({ role: 'employee', isActive: true }),
+      User.countDocuments({ role: 'employee', isActive: true, isArchivedDemo: { $ne: true } }),
     ]);
 
     const rows = flattenRows(submissions);
@@ -184,13 +268,53 @@ async function getDashboardReport(req, res) {
       .sort((a, b) => b.utilizationPct - a.utilizationPct)
       .slice(0, 6);
 
+    // 1. Roster counts: derive from authoritative User roster if synced
+    // Explicitly verify whether roster synchronization has run (presence of isRosterOnly or rosterSynced employees)
+    const [authoritativeRosterCount, rosterVacantCount] = await Promise.all([
+      User.countDocuments({ role: 'employee', isActive: true, isRosterOnly: true, isArchivedDemo: { $ne: true } }),
+      User.countDocuments({ role: 'position', isVacant: true }),
+    ]);
+
+    // An authoritative roster exists if explicit roster-managed records have been synchronized
+    const hasAuthoritativeRoster = authoritativeRosterCount > 0;
+    const finalRosterNamedStaffCount = hasAuthoritativeRoster
+      ? await User.countDocuments({ role: 'employee', isActive: true, isArchivedDemo: { $ne: true } })
+      : 0;
+
+    // 2. Submission-derived active participants (distinct contributors in scoped submissions)
+    const uniqueSubmissionParticipantsMap = new Map();
+    submissions.forEach((s) => {
+      const empId = String(s.employee?.employeeId || '').trim();
+      const empName = String(s.employee?.name || '').trim();
+      if (empId) {
+        uniqueSubmissionParticipantsMap.set(empId, empName.toLowerCase() === 'vacant');
+      }
+    });
+
+    let submissionNamedCount = 0;
+    let submissionVacantCount = 0;
+    uniqueSubmissionParticipantsMap.forEach((isVacant) => {
+      if (isVacant) submissionVacantCount++;
+      else submissionNamedCount++;
+    });
+
     const summary = {
-      totalEmployees,
+      totalEmployees, // Backward-compatible (active user accounts)
+      activeUserAccounts: totalEmployees,
+      hasAuthoritativeRoster,
+      rosterSource: hasAuthoritativeRoster ? 'master_roster' : 'submission_participants',
+      totalStaff: hasAuthoritativeRoster ? finalRosterNamedStaffCount : submissionNamedCount,
+      vacantPositions: hasAuthoritativeRoster ? rosterVacantCount : submissionVacantCount,
+      submissionParticipants: {
+        namedStaff: submissionNamedCount,
+        vacancies: submissionVacantCount,
+        total: uniqueSubmissionParticipantsMap.size,
+      },
       totalSubmissions: submissions.length,
       pendingReview: pending,
       approved,
       changesRequested,
-      totalHours: Number(totalHours.toFixed(1)),
+      totalHours: Number(totalHours.toFixed(2)),
       totalFte: Number(totalFte.toFixed(2)),
       avgUtilizationPct: Number(Math.min(100, totalFte * 100).toFixed(1)),
     };
@@ -221,14 +345,18 @@ async function getDashboardReport(req, res) {
 
     const employeeMap = new Map();
     rows.forEach((row) => {
-      const current = employeeMap.get(row.employeeName) || { label: row.employeeName, hours: 0 };
-      current.hours += row.monthlyHours;
-      employeeMap.set(row.employeeName, current);
+      const isVac = String(row.employeeName).toLowerCase() === 'vacant';
+      if (!isVac) {
+        const empKey = row.employeeId || row.employeeName;
+        const current = employeeMap.get(empKey) || { label: `${row.employeeName} (${row.employeeId})`, hours: 0 };
+        current.hours += row.monthlyHours;
+        employeeMap.set(empKey, current);
+      }
     });
 
     const employeeFteData = Array.from(employeeMap.values()).map(emp => ({
       label: emp.label,
-      fte: emp.hours / STANDARD_MONTHLY_HOURS
+      fte: Number((emp.hours / STANDARD_MONTHLY_HOURS).toFixed(2))
     }));
 
     res.json({
@@ -279,7 +407,39 @@ async function getUtilizationReport(req, res) {
 
     const byFrequency = groupAndSort(rows, (row) => row.frequency, (row) => row.monthlyHours, 8);
     const byProcess = groupAndSort(rows, (row) => row.subProcess || row.process, (row) => row.monthlyHours, 8);
-    const byEmployee = groupAndSort(rows, (row) => row.employeeName, (row) => row.monthlyHours, 8);
+
+    // Filter named staff vs vacant open positions
+    const namedRows = rows.filter((row) => String(row.employeeName).toLowerCase() !== 'vacant');
+    const vacantRows = rows.filter((row) => String(row.employeeName).toLowerCase() === 'vacant');
+
+    // Rank named staff by stable Employee ID and name
+    const byEmployee = groupAndSort(
+      namedRows,
+      (row) => `${row.employeeName} (${row.employeeId})`,
+      (row) => row.monthlyHours,
+      8
+    );
+
+    // Vacancy summary statistics (preserving all vacancy hours)
+    // Safely normalize employee IDs (ignoring blank/whitespace or falling back to index)
+    const validVacantIds = new Set();
+    let unassignedVacantRowCount = 0;
+    vacantRows.forEach((r, idx) => {
+      const cleanId = String(r.employeeId || '').trim();
+      if (cleanId) {
+        validVacantIds.add(cleanId);
+      } else {
+        unassignedVacantRowCount++;
+      }
+    });
+
+    const vacantUniquePositions = validVacantIds.size + unassignedVacantRowCount;
+    const vacantTotalHours = Number(vacantRows.reduce((sum, r) => sum + (safeNumber(r.monthlyHours)), 0).toFixed(2));
+    const vacancySummary = {
+      positionsCount: vacantUniquePositions,
+      totalHours: vacantTotalHours,
+      fte: Number((vacantTotalHours / STANDARD_MONTHLY_HOURS).toFixed(2))
+    };
 
     const coreHours = rows
       .filter((row) => String(row.activityCategory).toLowerCase() !== 'support')
@@ -318,13 +478,28 @@ async function getUtilizationReport(req, res) {
       employeeId: item.employee?.employeeId || 'NA',
     }));
 
+    // Aggregate full named employee population for FTE band distribution (keyed by stable employee ID)
+    const allNamedEmpMap = new Map();
+    namedRows.forEach((row) => {
+      const empKey = row.employeeId || row.employeeName;
+      const current = allNamedEmpMap.get(empKey) || { label: `${row.employeeName} (${row.employeeId})`, hours: 0 };
+      current.hours += row.monthlyHours;
+      allNamedEmpMap.set(empKey, current);
+    });
+
+    const employeeFteData = Array.from(allNamedEmpMap.values()).map((emp) => ({
+      label: emp.label,
+      fte: Number((emp.hours / STANDARD_MONTHLY_HOURS).toFixed(2)),
+    }));
+
     res.json({
       generatedAt: new Date().toISOString(),
       summary: {
-        totalHours: Number(totalHours.toFixed(1)),
+        totalHours: Number(totalHours.toFixed(2)),
         totalSubmissions,
+        totalFte: Number((totalHours / STANDARD_MONTHLY_HOURS).toFixed(2)),
         avgHoursPerSubmission: Number((totalSubmissions ? totalHours / totalSubmissions : 0).toFixed(1)),
-        approvalRatePct: Math.round(toPercent(approved, totalSubmissions)),
+        approvalRatePct: Number(toPercent(approved, totalSubmissions).toFixed(1)),
       },
       statusCounts: {
         approved,
@@ -332,16 +507,18 @@ async function getUtilizationReport(req, res) {
         changesRequested,
       },
       coreSupport: {
-        coreHours: Number(coreHours.toFixed(1)),
-        supportHours: Number(supportHours.toFixed(1)),
-        totalHours: Number((coreHours + supportHours).toFixed(1)),
+        coreHours: Number(coreHours.toFixed(2)),
+        supportHours: Number(supportHours.toFixed(2)),
+        totalHours: Number((coreHours + supportHours).toFixed(2)),
       },
       charts: {
         byFrequency,
         byProcess,
         byEmployee,
         byDepartment,
+        employeeFteData,
       },
+      vacancySummary,
       tables: {
         recentSubmissions,
       },
@@ -410,7 +587,7 @@ async function getFteSummaryReport(req, res) {
     res.json({
       generatedAt: new Date().toISOString(),
       summary: {
-        totalHours: Number(totalHours.toFixed(1)),
+        totalHours: Number(totalHours.toFixed(2)),
         totalFte: Number(totalFte.toFixed(2)),
         baselineHours: STANDARD_MONTHLY_HOURS,
         totalActivities: rows.length,
@@ -431,22 +608,38 @@ async function getFteConsolidationSummaryReport(req, res) {
     const requestUser = await resolveRequestUser(req);
     if (!ensureManager(requestUser.role, res)) return;
 
+    const efficiencyFactor = Number(req.query.efficiencyFactor) || 0.35;
+    const costPerFteLakhs = Number(req.query.costPerFteLakhs) || 10;
+    const costPerFteCr = costPerFteLakhs / 100;
+
     const submissions = await getScopedSubmissions(req);
     const rows = flattenRows(submissions);
 
+    let highVolumeCount = 0;
+    let keywordCount = 0;
+    let overlapCount = 0;
+
     const candidateRows = rows.map((row) => {
-      const consolidate = buildConsolidationSignal(row);
+      const signals = classifyScreeningSignals(row);
       const fte = row.monthlyHours / STANDARD_MONTHLY_HOURS;
+
+      if (signals.isHighVolume && signals.hasKeyword) overlapCount++;
+      else if (signals.isHighVolume) highVolumeCount++;
+      else if (signals.hasKeyword) keywordCount++;
+
       return {
         ...row,
-        consolidate,
+        ...signals,
+        consolidate: signals.isScreened,
         fte,
       };
     });
 
     const consolidateActivities = candidateRows.filter((row) => row.consolidate);
-    const savedFte = consolidateActivities.reduce((sum, row) => sum + row.fte * 0.35, 0);
-    const estimatedSavingsCr = savedFte * 0.1;
+    const candidateHours = consolidateActivities.reduce((sum, row) => sum + row.monthlyHours, 0);
+    const candidateFte = candidateHours / STANDARD_MONTHLY_HOURS;
+    const savedFte = candidateFte * efficiencyFactor;
+    const estimatedSavingsCr = savedFte * costPerFteCr;
 
     const byDepartmentMap = new Map();
     candidateRows.forEach((row) => {
@@ -454,12 +647,16 @@ async function getFteConsolidationSummaryReport(req, res) {
         department: row.department,
         totalActivities: 0,
         consolidateActivities: 0,
+        candidateHours: 0,
+        candidateFte: 0,
         savedFte: 0,
       };
       current.totalActivities += 1;
       if (row.consolidate) {
         current.consolidateActivities += 1;
-        current.savedFte += row.fte * 0.35;
+        current.candidateHours += row.monthlyHours;
+        current.candidateFte += row.fte;
+        current.savedFte += row.fte * efficiencyFactor;
       }
       byDepartmentMap.set(row.department, current);
     });
@@ -470,7 +667,10 @@ async function getFteConsolidationSummaryReport(req, res) {
         totalActivities: item.totalActivities,
         consolidateActivities: item.consolidateActivities,
         consolidationRatePct: Number(toPercent(item.consolidateActivities, item.totalActivities).toFixed(1)),
+        candidateHours: Number(item.candidateHours.toFixed(1)),
+        candidateFte: Number(item.candidateFte.toFixed(2)),
         savedFte: Number(item.savedFte.toFixed(2)),
+        estimatedSavingsCr: Number((item.savedFte * costPerFteCr).toFixed(2)),
       }))
       .sort((a, b) => b.savedFte - a.savedFte);
 
@@ -481,10 +681,11 @@ async function getFteConsolidationSummaryReport(req, res) {
         department: row.department,
         monthlyHours: Number(row.monthlyHours.toFixed(1)),
         fte: Number(row.fte.toFixed(2)),
-        savedFte: Number((row.fte * 0.35).toFixed(2)),
+        screeningSignal: row.screeningSignal,
+        savedFte: Number((row.fte * efficiencyFactor).toFixed(2)),
         trend: buildTrend(row),
       }))
-      .sort((a, b) => b.savedFte - a.savedFte)
+      .sort((a, b) => b.monthlyHours - a.monthlyHours)
       .slice(0, 10);
 
     res.json({
@@ -493,8 +694,22 @@ async function getFteConsolidationSummaryReport(req, res) {
         totalActivities: candidateRows.length,
         consolidateActivities: consolidateActivities.length,
         consolidationRatePct: Number(toPercent(consolidateActivities.length, candidateRows.length).toFixed(1)),
+        candidateHours: Number(candidateHours.toFixed(2)),
+        candidateFte: Number(candidateFte.toFixed(2)),
         savedFte: Number(savedFte.toFixed(2)),
         estimatedSavingsCr: Number(estimatedSavingsCr.toFixed(2)),
+        screeningCriteria: {
+          highVolumeOnlyCount: highVolumeCount,
+          keywordOnlyCount: keywordCount,
+          overlapCount: overlapCount,
+          totalUniqueScreened: consolidateActivities.length,
+        },
+        scenarioParameters: {
+          efficiencyFactor,
+          costPerFteLakhs,
+          isScenarioModel: true,
+          notice: 'Screened candidate activities and efficiency figures represent hypothetical planning scenarios, not audited realized savings.'
+        }
       },
       charts: {
         byDepartment,
@@ -529,7 +744,7 @@ async function getFitmentSummaryReport(req, res) {
     if (employeeIdsScope) {
       totalEmployees = employeeIdsScope.length;
     } else {
-      totalEmployees = await User.countDocuments({ role: 'employee', isActive: true });
+      totalEmployees = await User.countDocuments({ role: 'employee', isActive: true, isArchivedDemo: { $ne: true } });
     }
 
     const userMap = new Map(
@@ -676,7 +891,7 @@ async function getFteAnalysisReport(req, res) {
     res.json({
       generatedAt: new Date().toISOString(),
       summary: {
-        totalHours: Number(totalHours.toFixed(1)),
+        totalHours: Number(totalHours.toFixed(2)),
         totalFte: Number(totalFte.toFixed(2)),
         baselineHours: STANDARD_MONTHLY_HOURS,
         totalActivities: rows.length,
@@ -698,22 +913,38 @@ async function getConsolidationAnalysisReport(req, res) {
     const requestUser = await resolveRequestUser(req);
     if (!ensureManager(requestUser.role, res)) return;
 
+    const efficiencyFactor = Number(req.query.efficiencyFactor) || 0.35;
+    const costPerFteLakhs = Number(req.query.costPerFteLakhs) || 10;
+    const costPerFteCr = costPerFteLakhs / 100;
+
     const submissions = await getScopedSubmissions(req);
     const rows = flattenRows(submissions);
 
+    let highVolumeCount = 0;
+    let keywordCount = 0;
+    let overlapCount = 0;
+
     const candidateRows = rows.map((row) => {
-      const consolidate = buildConsolidationSignal(row);
+      const signals = classifyScreeningSignals(row);
       const fte = row.monthlyHours / STANDARD_MONTHLY_HOURS;
+
+      if (signals.isHighVolume && signals.hasKeyword) overlapCount++;
+      else if (signals.isHighVolume) highVolumeCount++;
+      else if (signals.hasKeyword) keywordCount++;
+
       return {
         ...row,
-        consolidate,
+        ...signals,
+        consolidate: signals.isScreened,
         fte,
       };
     });
 
     const consolidateActivities = candidateRows.filter((row) => row.consolidate);
-    const savedFte = consolidateActivities.reduce((sum, row) => sum + row.fte * 0.35, 0);
-    const estimatedSavingsCr = savedFte * 0.1;
+    const candidateHours = consolidateActivities.reduce((sum, row) => sum + row.monthlyHours, 0);
+    const candidateFte = candidateHours / STANDARD_MONTHLY_HOURS;
+    const savedFte = candidateFte * efficiencyFactor;
+    const estimatedSavingsCr = savedFte * costPerFteCr;
 
     // By Department Detail
     const byDeptMap = new Map();
@@ -722,12 +953,16 @@ async function getConsolidationAnalysisReport(req, res) {
         department: row.department,
         totalActivities: 0,
         consolidateActivities: 0,
+        candidateHours: 0,
+        candidateFte: 0,
         savedFte: 0,
       };
       current.totalActivities += 1;
       if (row.consolidate) {
         current.consolidateActivities += 1;
-        current.savedFte += row.fte * 0.35;
+        current.candidateHours += row.monthlyHours;
+        current.candidateFte += row.fte;
+        current.savedFte += row.fte * efficiencyFactor;
       }
       byDeptMap.set(row.department, current);
     });
@@ -736,10 +971,12 @@ async function getConsolidationAnalysisReport(req, res) {
       .map((item) => ({
         department: item.department,
         totalActivities: item.totalActivities,
-        consolidateActivities: item.consolidateActivities,
+        consolidationCandidates: item.consolidateActivities,
         consolidationRatePct: Number(toPercent(item.consolidateActivities, item.totalActivities).toFixed(1)),
+        candidateHours: Number(item.candidateHours.toFixed(1)),
+        candidateFte: Number(item.candidateFte.toFixed(2)),
         savedFte: Number(item.savedFte.toFixed(2)),
-        estimatedSavingsCr: Number((item.savedFte * 0.1).toFixed(2)),
+        estimatedSavingsCr: Number((item.savedFte * costPerFteCr).toFixed(2)),
       }))
       .sort((a, b) => b.savedFte - a.savedFte);
 
@@ -753,12 +990,14 @@ async function getConsolidationAnalysisReport(req, res) {
         frequency: row.frequency,
         monthlyHours: Number(row.monthlyHours.toFixed(1)),
         fte: Number(row.fte.toFixed(2)),
-        savedFte: Number((row.fte * 0.35).toFixed(2)),
-        estimatedSavingsCr: Number((row.fte * 0.35 * 0.1).toFixed(2)),
-        consolidationSignal: row.consolidate ? 'Yes' : 'No',
+        savedFte: Number((row.fte * efficiencyFactor).toFixed(2)),
+        estimatedSavingsCr: Number((row.fte * efficiencyFactor * costPerFteCr).toFixed(2)),
+        consolidationSignal: row.screeningSignal,
+        isHighVolume: row.isHighVolume,
+        hasKeyword: row.hasKeyword,
         comment: row.comments,
       }))
-      .sort((a, b) => b.savedFte - a.savedFte);
+      .sort((a, b) => b.monthlyHours - a.monthlyHours);
 
     res.json({
       generatedAt: new Date().toISOString(),
@@ -766,8 +1005,22 @@ async function getConsolidationAnalysisReport(req, res) {
         totalActivities: candidateRows.length,
         consolidateActivities: consolidateActivities.length,
         consolidationRatePct: Number(toPercent(consolidateActivities.length, candidateRows.length).toFixed(1)),
+        candidateHours: Number(candidateHours.toFixed(2)),
+        candidateFte: Number(candidateFte.toFixed(2)),
         savedFte: Number(savedFte.toFixed(2)),
         estimatedSavingsCr: Number(estimatedSavingsCr.toFixed(2)),
+        screeningCriteria: {
+          highVolumeOnlyCount: highVolumeCount,
+          keywordOnlyCount: keywordCount,
+          overlapCount: overlapCount,
+          totalUniqueScreened: consolidateActivities.length,
+        },
+        scenarioParameters: {
+          efficiencyFactor,
+          costPerFteLakhs,
+          isScenarioModel: true,
+          notice: 'Screened candidate activities and efficiency figures represent hypothetical planning scenarios, not audited realized savings.'
+        }
       },
       tabs: {
         byDepartment: byDepartmentDetail,
@@ -786,7 +1039,7 @@ async function getFitmentAnalysisReport(req, res) {
 
     const [fitments, totalEmployees] = await Promise.all([
       Fitment.find({}).sort({ weightedScore: -1 }).lean(),
-      User.countDocuments({ role: 'employee', isActive: true }),
+      User.countDocuments({ role: 'employee', isActive: true, isArchivedDemo: { $ne: true } }),
     ]);
 
     const userMap = new Map(
@@ -859,6 +1112,8 @@ async function getFitmentAnalysisReport(req, res) {
         coveragePct: Number(toPercent(profiles, totalEmployees).toFixed(1)),
         avgWeightedScore,
         labelBreakdown,
+        evaluationStatus: profiles === 0 ? 'Pending Institutional Evaluation' : (profiles < totalEmployees ? 'Partial Assessment in Progress' : 'Fully Evaluated'),
+        dataNotice: profiles <= 1 ? 'Institutional competency assessment is pending for active staff roster. Figures reflect verified assessment documents only.' : null,
       },
       charts: {
         scoreDistribution,
@@ -968,7 +1223,7 @@ async function getUtilizationAnalysisReport(req, res) {
     res.json({
       generatedAt: new Date().toISOString(),
       summary: {
-        totalHours: Number(totalHours.toFixed(1)),
+        totalHours: Number(totalHours.toFixed(2)),
         totalSubmissions,
         totalFte: Number((totalHours / STANDARD_MONTHLY_HOURS).toFixed(2)),
         departments: byDepartmentDetail.length,
@@ -1011,4 +1266,6 @@ module.exports = {
   getFitmentAnalysisReport,
   getUtilizationAnalysisReport,
   getAuditLogs,
+  flattenRows,
+  safeNumber,
 };

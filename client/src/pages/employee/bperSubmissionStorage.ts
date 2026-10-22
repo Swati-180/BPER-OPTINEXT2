@@ -1,5 +1,4 @@
 import type { EmployeeSnapshot, WdtPayload } from "./formTypes";
-import { demoEmployeeProfile } from "./demoEmployeeData";
 import { API_BASE_URL } from "../../lib/config";
 
 export type BperSubmissionStatus = "Under Review" | "Approved" | "Changes Requested";
@@ -61,55 +60,7 @@ export function loadBperDraft(): WdtPayload | null {
   }
 }
 
-const DEFAULT_MANAGER_NAME = "QG User2";
-
-const seededRecords: BperSubmissionRecord[] = [
-  {
-    referenceId: "BPER-1004-6AGZI",
-    submittedAt: "2025-10-20T09:00:00.000Z",
-    month: 10,
-    year: 2025,
-    status: "Changes Requested",
-    employee: {
-      ...demoEmployeeProfile,
-      supervisorName: DEFAULT_MANAGER_NAME,
-      supervisorTitle: "Manager",
-    },
-    payload: {
-      employee: {
-        ...demoEmployeeProfile,
-        supervisorName: DEFAULT_MANAGER_NAME,
-        supervisorTitle: "Manager",
-      },
-      rows: [
-        {
-          activityCategory: "core",
-          majorProcess: "Accounts Payable",
-          process: "Invoice Processing",
-          subProcess: "Validation and Posting",
-          frequency: "Daily",
-          volumesMonthly: 840,
-          timePerTransactionMinutes: 2.57,
-          timeTakenHoursPerMonth: 36,
-          applicationsUsed: "SAP",
-          comments: "Existing baseline submission used for demo workflow.",
-        },
-      ],
-    },
-    totalHours: 36,
-    coreCount: 1,
-    supportCount: 0,
-    pendingFrom: DEFAULT_MANAGER_NAME,
-    reviewHistory: [
-      {
-        reviewedAt: "2025-10-20T15:10:00.000Z",
-        managerName: DEFAULT_MANAGER_NAME,
-        status: "Changes Requested",
-        comment: "Please refine the time split for invoice validation and add clearer process-control comments before resubmission.",
-      },
-    ],
-  },
-];
+const DEFAULT_MANAGER_NAME = "Manager";
 
 export function buildBperSubmission(payload: WdtPayload, profile?: EmployeeSnapshot, existingRefId?: string): BperSubmissionRecord {
   const emp = profile || payload.employee;

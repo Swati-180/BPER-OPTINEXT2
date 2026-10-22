@@ -29,6 +29,12 @@ type UtilizationReport = {
     byProcess?: Array<{ label: string; hours: number }>;
     byEmployee?: Array<{ label: string; hours: number }>;
     byDepartment?: Array<{ label: string; hours: number; fte: number; utilizationPct: number; submissionCount: number }>;
+    employeeFteData?: Array<{ label: string; fte: number }>;
+  };
+  vacancySummary?: {
+    positionsCount?: number;
+    totalHours?: number;
+    fte?: number;
   };
   tables?: {
     recentSubmissions?: Array<{
@@ -123,8 +129,10 @@ export default function WDTAnalyticsPage() {
   const supportPercent = coreSupportTotal === 0 ? 0 : (supportHours / coreSupportTotal) * 100;
   const totalFte = coreSupportTotal / 160;
 
-  // Build per-employee FTE data for band chart
-  const employeeFteData = byEmployee.map(item => ({ label: item.label, fte: safeNumber(item.hours) / 160 }));
+  // Build per-employee FTE data for band chart (using full named employee population if provided by API)
+  const employeeFteData = Array.isArray(report?.charts?.employeeFteData) && report!.charts!.employeeFteData!.length > 0
+    ? report!.charts!.employeeFteData!
+    : byEmployee.map(item => ({ label: item.label, fte: safeNumber(item.hours) / 160 }));
 
   async function handleExcelDownload() {
     setIsDownloading(true);
@@ -202,7 +210,7 @@ export default function WDTAnalyticsPage() {
         </div>
 
         <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5">
-          <KpiCard icon={Clock3} label="Total Hours" value={safeNumber(summary.totalHours).toFixed(1)} helper="Tracked WDT hours" />
+          <KpiCard icon={Clock3} label="Total Hours" value={safeNumber(summary.totalHours).toFixed(2)} helper="Tracked WDT hours" />
           <KpiCard icon={TrendingUp} label="Total FTE" value={totalFte.toFixed(2)} helper="Hours ÷ 160 baseline" />
           <KpiCard icon={BriefcaseBusiness} label="Submissions" value={String(safeNumber(summary.totalSubmissions))} helper="Department-filtered records" />
           <KpiCard icon={BarChart3} label="Avg Hours / Submission" value={safeNumber(summary.avgHoursPerSubmission).toFixed(1)} helper="Operational workload average" />
@@ -228,8 +236,8 @@ export default function WDTAnalyticsPage() {
             </div>
 
             <div className="space-y-2.5">
-              <LegendRow label="Core Activities" value={safeNumber(coreSupport.coreHours).toFixed(1)} colorClass="bg-[#1E5EA9]" />
-              <LegendRow label="Support Activities" value={safeNumber(coreSupport.supportHours).toFixed(1)} colorClass="bg-[#61A5FA]" />
+              <LegendRow label="Core Activities" value={safeNumber(coreSupport.coreHours).toFixed(2)} colorClass="bg-[#1E5EA9]" />
+              <LegendRow label="Support Activities" value={safeNumber(coreSupport.supportHours).toFixed(2)} colorClass="bg-[#61A5FA]" />
             </div>
           </div>
         </article>
@@ -261,7 +269,17 @@ export default function WDTAnalyticsPage() {
 
       <section className="grid grid-cols-1 gap-4 xl:grid-cols-2">
         <article className="rounded-2xl border border-[#D9E4F2] bg-white p-4 shadow-[0_6px_16px_rgba(16,42,80,0.06)]">
-          <h3 className="text-lg font-bold text-[#102846]">Top Employees by Hours</h3>
+          <div className="flex items-start justify-between">
+            <div>
+              <h3 className="text-lg font-bold text-[#102846]">Top Employees by Hours</h3>
+              <p className="text-xs text-[#6E86A3]">Ranked by active named operational staff</p>
+            </div>
+            {report?.vacancySummary && (
+              <span className="inline-flex items-center rounded-lg bg-blue-50 border border-blue-200 px-2.5 py-1 text-xs font-semibold text-blue-700">
+                {report.vacancySummary.positionsCount || 0} Vacancies ({safeNumber(report.vacancySummary.totalHours).toFixed(2)} hrs)
+              </span>
+            )}
+          </div>
           <div className="mt-4 space-y-3">
             {byEmployee.length === 0 ? (
               <EmptyChartState />
