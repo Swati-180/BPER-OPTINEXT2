@@ -52,10 +52,13 @@ async function resolveManager(req) {
 }
 
 async function getScopedSubmissions(req) {
-  const dept = req.query.department;
-  const match = { batchId: 'PFA-DEMO-OCT-2026' };
-  if (dept && dept !== 'All Departments') {
-    match['employee.department'] = dept;
+  const { department, month, year } = req.query;
+  const match = {
+    month: month != null ? Number(month) : 10,
+    year: year != null ? Number(year) : 2026,
+  };
+  if (department && department !== 'All Departments') {
+    match['employee.department'] = department;
   }
   return WDTSubmission.find(match).sort({ submittedAt: -1 }).lean();
 }
