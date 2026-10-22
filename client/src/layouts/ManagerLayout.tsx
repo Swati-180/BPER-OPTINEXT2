@@ -14,7 +14,8 @@ import {
   BarChart,
   Activity,
   Layers,
-  Grid3X3
+  Grid3X3,
+  Calculator
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { motion } from 'motion/react';
@@ -65,6 +66,7 @@ export default function ManagerLayout({ children, user, onLogout }: ManagerLayou
         { name: '6x6 Analysis', path: `${basePath}/6x6-analysis`, icon: Grid3X3 },
         { name: 'Deep Analysis', path: `${basePath}/deep-analysis`, icon: Activity },
         { name: 'Process Operations', path: `${basePath}/process-operations`, icon: Layers },
+        { name: 'Calculation Center', path: `${basePath}/calculation-center`, icon: Calculator },
       ]
     : [
         { name: 'Forms', path: `${basePath}/forms`, icon: FileText },

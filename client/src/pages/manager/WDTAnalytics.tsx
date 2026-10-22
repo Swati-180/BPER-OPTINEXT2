@@ -111,7 +111,38 @@ export default function WDTAnalyticsPage() {
   const statusCounts = report?.statusCounts || {};
   const coreSupport = report?.coreSupport || {};
 
-  const byFrequency = Array.isArray(report?.charts?.byFrequency) ? report!.charts!.byFrequency! : [];
+  const rawByFrequency = Array.isArray(report?.charts?.byFrequency) ? report!.charts!.byFrequency! : [];
+
+  const FREQUENCY_ORDER_MAP: Record<string, number> = {
+    'daily': 1,
+    'weekly': 2,
+    'fortnightly': 3,
+    'monthly': 4,
+    'quarterly': 5,
+    'half yearly': 6,
+    'half-yearly': 6,
+    'annual': 7,
+    'annually': 7,
+    'yearly': 7,
+    'as and when required': 8,
+    'ad hoc': 8,
+    'adhoc': 8,
+  };
+
+  const byFrequency = useMemo(() => {
+    return [...rawByFrequency].sort((a, b) => {
+      const keyA = (a.label || '').trim().toLowerCase();
+      const keyB = (b.label || '').trim().toLowerCase();
+      const rankA = FREQUENCY_ORDER_MAP[keyA] ?? 999;
+      const rankB = FREQUENCY_ORDER_MAP[keyB] ?? 999;
+      return rankA - rankB;
+    });
+  }, [rawByFrequency]);
+
+  const maxFrequencyHours = useMemo(() => {
+    return Math.max(...byFrequency.map((item) => safeNumber(item.hours)), 1);
+  }, [byFrequency]);
+
   const byProcess = Array.isArray(report?.charts?.byProcess) ? report!.charts!.byProcess! : [];
   const byEmployee = Array.isArray(report?.charts?.byEmployee) ? report!.charts!.byEmployee! : [];
   const byDepartment = Array.isArray(report?.charts?.byDepartment) ? report!.charts!.byDepartment! : [];
@@ -251,13 +282,12 @@ export default function WDTAnalyticsPage() {
               <EmptyChartState />
             ) : (
               byFrequency.map((item, idx) => {
-                const max = byFrequency[0]?.hours || 1;
                 return (
                   <BarRow
                     key={item.label || idx}
                     label={item.label}
                     value={safeNumber(item.hours)}
-                    widthPercent={(safeNumber(item.hours) / max) * 100}
+                    widthPercent={(safeNumber(item.hours) / maxFrequencyHours) * 100}
                     colorClass="bg-[#2F6DB5]"
                   />
                 );

@@ -38,6 +38,7 @@ import PersonalProfile from './pages/manager/PersonalProfile';
 import APIDebug from './pages/manager/APIDebug';
 import EmployeeInvites from './pages/manager/EmployeeInvites';
 import InviteRegistration from './pages/InviteRegistration';
+import CalculationCenter from './pages/manager/CalculationCenter';
 
 import Unauthorized from './pages/Unauthorized';
 import { clearActiveUnderReviewReferenceId } from './pages/employee/bperSubmissionStorage';
@@ -407,6 +408,7 @@ export default function App() {
                   <Route path="fitment-scorer" element={<DeepAnalysis />} />
                   <Route path="process-analytics" element={<ProcessOperationsHub />} />
                   <Route path="employee-360" element={<PersonalProfile />} />
+                  <Route path="calculation-center" element={<CalculationCenter />} />
                   <Route path="*" element={<Navigate to="/admin/dashboard" replace />} />
                 </Routes>
               </ManagerLayout>
