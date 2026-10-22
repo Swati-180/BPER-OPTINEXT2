@@ -14,8 +14,11 @@ function toPercent(value, total) {
   return Number(((value / total) * 100).toFixed(1));
 }
 
-function buildScopeMatch(department) {
-  const match = { batchId: 'PFA-DEMO-OCT-2026' };
+function buildScopeMatch(department, month, year) {
+  const match = {
+    month: month != null ? Number(month) : 10,
+    year: year != null ? Number(year) : 2026,
+  };
   if (department && department !== 'All Departments') {
     match['employee.department'] = department;
   }
@@ -183,8 +186,8 @@ function getSubmissionWindowStatus() {
 }
 
 async function getScopedSubmissions(req) {
-  const { department } = req.query;
-  const match = buildScopeMatch(department);
+  const { department, month, year } = req.query;
+  const match = buildScopeMatch(department, month, year);
   return WDTSubmission.find(match).sort({ submittedAt: -1 }).lean();
 }
 
