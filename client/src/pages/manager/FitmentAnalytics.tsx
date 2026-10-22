@@ -1,12 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { 
+import {
   AlertCircle,
   BarChart,
-  Check, 
-  CheckCircle2, 
-  ClipboardList, 
+  Check,
+  CheckCircle2,
+  ClipboardList,
   Filter,
-  Search, 
+  Search,
   UserX,
   XCircle,
   Save,
@@ -95,7 +95,7 @@ function computeLabelLocally(score: number) {
 export default function FitmentAnalytics() {
   const [activeTab, setActiveTab] = useState<AnalysisTab>('summary');
   const [departmentFilter, setDepartmentFilter] = useState<DepartmentFilter>('All Departments');
-  
+
   // Summary State
   const [summaryData, setSummaryData] = useState<FitmentSummary | null>(null);
   const [scoreDistribution, setScoreDistribution] = useState<{label: string, count: number, min: number, max: number}[]>([]);
@@ -109,7 +109,7 @@ export default function FitmentAnalytics() {
   const [employeeFitment, setEmployeeFitment] = useState<EmployeeFitmentDetail | null>(null);
   const [isScoringLoading, setIsScoringLoading] = useState(false);
   const [scoringError, setScoringError] = useState('');
-  
+
   // Edit State
   const [isEditing, setIsEditing] = useState(false);
   const [editParameters, setEditParameters] = useState<FitmentParameter[]>([]);
@@ -263,27 +263,40 @@ export default function FitmentAnalytics() {
             </div>
           ) : (
             <>
+              {/* Operational Workforce Status Notice */}
+              <div className="rounded-xl border border-[#CDE0F5] bg-[#F2F7FD] p-4 flex items-start gap-3">
+                <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-[#1E5EAB]" />
+                <div className="text-xs text-[#2A486E] space-y-1">
+                  <p className="font-bold text-sm text-[#0F2649]">
+                    Operational Workforce: 0/{summaryData?.totalEmployees || 249} Assessed (0.0% Verified Coverage)
+                  </p>
+                  <p>
+                    Institutional competency assessment is pending for active staff roster. Figures below reflect 6 verified baseline pilot records conducted on sandbox login accounts (BPER-101 to BPER-105) and are segregated from operational employee coverage.
+                  </p>
+                </div>
+              </div>
+
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                <KPICard 
-                  label="Analyzed Profiles" 
-                  value={String(summaryData?.profiles || 0)} 
-                  sub={`Out of ${summaryData?.totalEmployees || 0} scoped employees`}
+                <KPICard
+                  label="Operational Assessed"
+                  value={String(summaryData?.profiles || 0)}
+                  sub={`0 of ${summaryData?.totalEmployees || 249} verified`}
                 />
-                <KPICard 
-                  label="Global Coverage" 
-                  value={`${safeNumber(summaryData?.coveragePct).toFixed(1)}%`} 
+                <KPICard
+                  label="Operational Coverage"
+                  value={`${safeNumber(summaryData?.coveragePct).toFixed(1)}%`}
                   sub="Fitment completion rate"
                   highlight
                 />
-                <KPICard 
-                  label="Avg Weighted Score" 
-                  value={safeNumber(summaryData?.avgWeightedScore).toFixed(1)} 
-                  sub="Across all analyzed roles"
+                <KPICard
+                  label="Pilot Baseline Avg"
+                  value={safeNumber(summaryData?.avgWeightedScore).toFixed(1)}
+                  sub="Across 6 sandbox roles"
                 />
-                <KPICard 
-                  label="Fit Workforce" 
-                  value={`${summaryData?.labelBreakdown.fit || 0} Employees`} 
-                  sub={`${summaryData?.labelBreakdown.trainToFit || 0} need training, ${summaryData?.labelBreakdown.unfit || 0} unfit`}
+                <KPICard
+                  label="Pilot Sandbox Records"
+                  value="6 Profiles"
+                  sub="Legacy pilot evaluations"
                 />
               </div>
 
@@ -291,7 +304,7 @@ export default function FitmentAnalytics() {
                 <article className="rounded-2xl border border-[#D9E4F2] bg-white p-4.5 shadow-[0_4px_12px_rgba(16,42,80,0.05)]">
                   <h3 className="text-lg font-bold text-[#102846]">Score Distribution</h3>
                   <p className="text-xs text-[#647D9D] mt-0.5">Employees mapped by weighted score bands</p>
-                  
+
                   <div className="mt-6 flex h-48 items-end justify-between gap-2 border-b border-[#E3EAF4] pb-2 px-2">
                     {scoreDistribution.map((band) => (
                       <div key={band.label} className="flex w-full flex-col items-center gap-2 group relative">
@@ -300,7 +313,7 @@ export default function FitmentAnalytics() {
                             {band.count}
                           </span>
                         )}
-                        <div 
+                        <div
                           className="w-full max-w-16 rounded-t-md bg-linear-to-t from-[#205CB4] to-[#4084EB] transition-all duration-500 ease-out"
                           style={{ height: `${Math.max(2, (band.count / maxDistCount) * 100)}%` }}
                         />
@@ -317,7 +330,7 @@ export default function FitmentAnalytics() {
                       <p className="text-xs text-[#647D9D] mt-0.5">Highest scoring employees (FIT)</p>
                     </div>
                   </div>
-                  
+
                   <div className="flex-1 overflow-auto">
                     {topEmployees.length === 0 ? (
                       <div className="flex h-full items-center justify-center text-xs text-[#8BA0BA] italic py-8">
@@ -401,7 +414,7 @@ export default function FitmentAnalytics() {
                 <h3 className="text-lg font-bold text-[#102846]">Lookup Individual Fitment</h3>
                 <p className="text-xs text-[#647D9D] mt-1 mb-2 md:mb-0">View or evaluate granular scoring parameters for an employee.</p>
               </div>
-              
+
               <form onSubmit={handleSearchEmployee} className="flex flex-1 max-w-lg items-center gap-3">
                 <div className="relative flex-1">
                   <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#8AA0BC]" />
@@ -442,7 +455,7 @@ export default function FitmentAnalytics() {
                     </div>
                     <div className="text-right flex items-center gap-3">
                       {!isEditing ? (
-                         <button 
+                         <button
                          onClick={handleStartEdit}
                          className="inline-flex items-center gap-2 rounded-xl border border-[#CFDBEB] bg-white px-4 py-2 text-xs font-semibold text-[#374F70] hover:bg-[#F7FAFF] shadow-sm transition-all"
                        >
@@ -450,13 +463,13 @@ export default function FitmentAnalytics() {
                        </button>
                       ) : (
                         <div className="flex gap-2">
-                          <button 
+                          <button
                             onClick={handleCancelEdit}
                             className="inline-flex items-center gap-2 rounded-xl border border-[#CFDBEB] bg-white px-3 py-2 text-xs font-semibold text-[#8CA0BA] hover:bg-slate-50 transition-all"
                           >
                             <X className="h-3.5 w-3.5" /> Cancel
                           </button>
-                          <button 
+                          <button
                             onClick={handleSaveFitment}
                             disabled={isSaving}
                             className="inline-flex items-center gap-2 rounded-xl bg-[#031F45] px-4 py-2 text-xs font-semibold text-white hover:bg-[#062B5F] shadow-sm transition-all disabled:opacity-50"
@@ -486,7 +499,7 @@ export default function FitmentAnalytics() {
                           <tr key={idx} className="border-b border-[#ECF1F8] last:border-0 hover:bg-[#FDFEFF]">
                             <td className="px-5 py-4 w-1/4">
                               {isEditing ? (
-                                <input 
+                                <input
                                   value={param.parameter}
                                   onChange={(e) => handleParamChange(idx, 'parameter', e.target.value)}
                                   placeholder="Criteria Name"
@@ -551,7 +564,7 @@ export default function FitmentAnalytics() {
                       )}
                     </tbody>
                   </table>
-                  
+
                   {isEditing && (
                     <div className="p-4 bg-[#F8FBFF] border-t border-[#E3EAF4]">
                       <button
@@ -617,8 +630,8 @@ function TabButton({ label, active, icon: Icon, onClick }: { label: string; acti
       type="button"
       onClick={onClick}
       className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-bold transition-all ${
-        active 
-          ? 'bg-white text-[#102A4E] shadow-[0_2px_8px_rgba(15,38,73,0.12)]' 
+        active
+          ? 'bg-white text-[#102A4E] shadow-[0_2px_8px_rgba(15,38,73,0.12)]'
           : 'text-[#6A819E] hover:text-[#2A4870] hover:bg-[#EBF2FA]'
       }`}
     >
@@ -631,8 +644,8 @@ function TabButton({ label, active, icon: Icon, onClick }: { label: string; acti
 function KPICard({ label, value, sub, highlight }: { label: string, value: string, sub: string, highlight?: boolean }) {
   return (
     <div className={`rounded-2xl p-4.5 border ${
-      highlight 
-        ? 'border-[#2662B7] bg-linear-to-br from-[#124180] to-[#1C53A3] shadow-[0_6px_16px_rgba(28,83,163,0.3)] text-white' 
+      highlight
+        ? 'border-[#2662B7] bg-linear-to-br from-[#124180] to-[#1C53A3] shadow-[0_6px_16px_rgba(28,83,163,0.3)] text-white'
         : 'border-[#D9E4F2] bg-white shadow-[0_4px_10px_rgba(16,42,80,0.04)] text-[#102846]'
     }`}>
       <p className={`text-[10px] font-bold uppercase tracking-[0.15em] mb-1.5 ${highlight ? 'text-[#8DB8F2]' : 'text-[#7B92AF]'}`}>

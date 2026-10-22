@@ -183,35 +183,48 @@ export default function FitmentAnalysisPage() {
       <section className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <KpiCard
           icon={Users}
-          label="Profiles Analyzed"
+          label="Operational Assessed"
           value={String(safeNumber(summary.profiles))}
-          helper="Total employees evaluated"
-        />
-        <KpiCard
-          icon={TrendingUp}
-          label="Avg Score"
-          value={safeNumber(summary.avgWeightedScore).toFixed(1)}
-          helper="Out of 100"
+          helper={`0 of ${summary.totalEmployees || 249} verified`}
         />
         <KpiCard
           icon={Award}
-          label="Coverage"
+          label="Operational Coverage"
           value={`${safeNumber(summary.coveragePct).toFixed(1)}%`}
-          helper="Of total employees"
+          helper="Verified workforce coverage"
+        />
+        <KpiCard
+          icon={TrendingUp}
+          label="Pilot Baseline Avg"
+          value={safeNumber(summary.avgWeightedScore).toFixed(1)}
+          helper="From 6 sandbox evaluations"
         />
         <KpiCard
           icon={BarChart3}
-          label="FIT Profiles"
-          value={String(safeNumber(summary.labelBreakdown?.fit))}
-          helper="Ready role fit"
+          label="Pilot Sandbox Records"
+          value="6 Profiles"
+          helper="Legacy pilot evaluations"
         />
+      </section>
+
+      {/* Operational Assessment Pending Notice */}
+      <section className="rounded-xl border border-[#CDE0F5] bg-[#F2F7FD] p-4 flex items-start gap-3">
+        <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-[#1E5EAB]" />
+        <div className="text-xs text-[#2A486E] space-y-1">
+          <p className="font-bold text-sm text-[#0F2649]">
+            Operational Workforce: 0/{summary.totalEmployees || 249} Assessed (0.0% Verified Coverage)
+          </p>
+          <p>
+            Institutional competency assessments are pending rollout for the active operational staff roster. The 6 assessment profiles displayed below represent verified baseline evaluation records conducted on sandbox login accounts (BPER-101 to BPER-105) and are segregated from operational employee coverage.
+          </p>
+        </div>
       </section>
 
       <section className="rounded-2xl border border-[#D9E4F2] bg-white p-5 shadow-[0_6px_18px_rgba(16,42,80,0.08)]">
         <div className="inline-flex rounded-xl border border-[#DDE7F3] bg-[#F8FBFF] p-1 mb-5">
           <TabButton label="Overview" active={activeTab === 'overview'} onClick={() => setActiveTab('overview')} />
           <TabButton label="By Label" active={activeTab === 'byLabel'} onClick={() => setActiveTab('byLabel')} />
-          <TabButton label="All Profiles" active={activeTab === 'allProfiles'} onClick={() => setActiveTab('allProfiles')} />
+          <TabButton label="Pilot Evaluations (6)" active={activeTab === 'allProfiles'} onClick={() => setActiveTab('allProfiles')} />
         </div>
 
         {activeTab === 'overview' && (
@@ -319,7 +332,10 @@ export default function FitmentAnalysisPage() {
         {activeTab === 'allProfiles' && (
           <div className="space-y-3">
             <div className="flex justify-between items-center">
-              <h3 className="font-semibold text-[#0F2649]">All Fitment Profiles ({allProfiles.length})</h3>
+              <div>
+                <h3 className="font-semibold text-[#0F2649]">Pilot Sandbox Assessments ({allProfiles.length})</h3>
+                <p className="text-xs text-[#6A85A4]">Baseline pilot records conducted on sandbox login accounts. Kept segregated from operational workforce.</p>
+              </div>
               <button
                 type="button"
                 onClick={handleExportAllProfiles}

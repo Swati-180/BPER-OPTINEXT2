@@ -731,7 +731,7 @@ async function getFitmentSummaryReport(req, res) {
 
     const { department } = req.query;
     let employeeIdsScope = null;
-    
+
     if (department && department !== 'All Departments') {
       employeeIdsScope = await WDTSubmission.distinct('employee.employeeId', { 'employee.department': department });
     }
@@ -742,18 +742,24 @@ async function getFitmentSummaryReport(req, res) {
     }
 
     const fitments = await Fitment.find(fitmentQuery).sort({ weightedScore: -1 }).lean();
-    
+
+    // Determine the true operational workforce scope (named staff only, excluding vacancies)
     let totalEmployees = 0;
+    let operationalEmpIdSet = new Set();
     if (employeeIdsScope) {
       totalEmployees = employeeIdsScope.length;
+      operationalEmpIdSet = new Set(employeeIdsScope.map(String));
     } else {
       const authoritativeRosterCount = await User.countDocuments({ role: 'employee', isActive: true, isRosterOnly: true, isArchivedDemo: { $ne: true } });
       if (authoritativeRosterCount > 0) {
         totalEmployees = await User.countDocuments({ role: 'employee', isActive: true, isArchivedDemo: { $ne: true } });
+        const rosterUsers = await User.find({ role: 'employee', isActive: true, isArchivedDemo: { $ne: true } }).select('employeeId').lean();
+        operationalEmpIdSet = new Set(rosterUsers.map(u => String(u.employeeId || '').trim()).filter(Boolean));
       } else {
         // Fallback to active named staff in WDT submissions
         const wdtNamed = await WDTSubmission.distinct('employee.employeeId', { 'employee.name': { $not: /^vacant$/i } });
         totalEmployees = wdtNamed.length > 0 ? wdtNamed.length : await User.countDocuments({ role: 'employee', isActive: true, isArchivedDemo: { $ne: true } });
+        operationalEmpIdSet = new Set(wdtNamed.map(String));
       }
     }
 
@@ -765,15 +771,39 @@ async function getFitmentSummaryReport(req, res) {
       ).map((u) => [u.employeeId, u])
     );
 
-    const profiles = fitments.length;
-    const avgWeightedScore = profiles
-      ? Number((fitments.reduce((sum, item) => sum + safeNumber(item.weightedScore), 0) / profiles).toFixed(1))
-      : 0;
+    const profilesWithUser = fitments.map((item) => {
+      const user = userMap.get(item.employeeId) || {};
+      const isOperational = operationalEmpIdSet.has(String(item.employeeId || '').trim());
+      return {
+        employeeId: item.employeeId,
+        name: user.name || item.employeeId,
+        designation: user.designation || '',
+        band: user.band || '',
+        weightedScore: safeNumber(item.weightedScore),
+        fitmentLabel: item.fitmentLabel || 'UNFIT',
+        lastEvaluatedAt: item.lastEvaluatedAt || item.updatedAt || item.createdAt,
+        isPilotAssessment: !isOperational,
+        assessmentCategory: isOperational ? 'Operational Workforce' : 'Pilot Evaluation Record'
+      };
+    });
+
+    // Segregate operational vs pilot records
+    const operationalProfiles = profilesWithUser.filter(p => !p.isPilotAssessment);
+    const pilotProfiles = profilesWithUser.filter(p => p.isPilotAssessment);
+
+    const operationalAssessedCount = operationalProfiles.length;
+    const operationalCoveragePct = Number(toPercent(operationalAssessedCount, totalEmployees).toFixed(1));
+
+    const avgWeightedScore = operationalAssessedCount
+      ? Number((operationalProfiles.reduce((sum, item) => sum + safeNumber(item.weightedScore), 0) / operationalAssessedCount).toFixed(1))
+      : (pilotProfiles.length ? Number((pilotProfiles.reduce((sum, item) => sum + safeNumber(item.weightedScore), 0) / pilotProfiles.length).toFixed(1)) : 0);
+
+    const activeListForCharts = operationalAssessedCount > 0 ? operationalProfiles : pilotProfiles;
 
     const labelBreakdown = {
-      fit: fitments.filter((item) => item.fitmentLabel === 'FIT').length,
-      trainToFit: fitments.filter((item) => item.fitmentLabel === 'TRAIN TO FIT').length,
-      unfit: fitments.filter((item) => item.fitmentLabel === 'UNFIT').length,
+      fit: activeListForCharts.filter((item) => item.fitmentLabel === 'FIT').length,
+      trainToFit: activeListForCharts.filter((item) => item.fitmentLabel === 'TRAIN TO FIT').length,
+      unfit: activeListForCharts.filter((item) => item.fitmentLabel === 'UNFIT').length,
     };
 
     const scoreDistribution = [
@@ -783,46 +813,45 @@ async function getFitmentSummaryReport(req, res) {
       { label: '80-100', min: 80, max: 100 },
     ].map((bucket) => ({
       label: bucket.label,
-      count: fitments.filter((item) => {
+      count: activeListForCharts.filter((item) => {
         const score = safeNumber(item.weightedScore);
         return score >= bucket.min && score <= bucket.max;
       }).length,
     }));
 
-    const profilesWithUser = fitments.map((item) => {
-      const user = userMap.get(item.employeeId) || {};
-      return {
-        employeeId: item.employeeId,
-        name: user.name || item.employeeId,
-        designation: user.designation || '',
-        band: user.band || '',
-        weightedScore: safeNumber(item.weightedScore),
-        fitmentLabel: item.fitmentLabel || 'UNFIT',
-        lastEvaluatedAt: item.lastEvaluatedAt || item.updatedAt || item.createdAt,
-      };
-    });
-
     res.json({
       generatedAt: new Date().toISOString(),
       summary: {
-        profiles,
+        profiles: operationalAssessedCount,
         totalEmployees,
-        coveragePct: Number(toPercent(profiles, totalEmployees).toFixed(1)),
+        coveragePct: operationalCoveragePct,
         avgWeightedScore,
         labelBreakdown,
+        operationalWorkforce: {
+          totalEmployees,
+          assessed: operationalAssessedCount,
+          coveragePct: operationalCoveragePct,
+          status: operationalAssessedCount === 0 ? 'Assessment Phase Pending (0% Verified Coverage)' : `${operationalCoveragePct}% Verified Coverage`
+        },
+        pilotAssessments: {
+          totalCount: pilotProfiles.length,
+          label: 'Sandbox / Pilot Baseline Records',
+          notice: 'Historical pilot assessments performed during initial setup on sandbox accounts; kept separate from operational staff.'
+        }
       },
       charts: {
         scoreDistribution,
       },
       tables: {
-        topFitEmployees: profilesWithUser
+        topFitEmployees: activeListForCharts
           .filter((item) => item.fitmentLabel === 'FIT')
           .sort((a, b) => b.weightedScore - a.weightedScore)
           .slice(0, 10),
-        lowFitEmployees: profilesWithUser
+        lowFitEmployees: activeListForCharts
           .filter((item) => item.fitmentLabel !== 'FIT')
           .sort((a, b) => a.weightedScore - b.weightedScore)
           .slice(0, 10),
+        pilotEvaluationRecords: pilotProfiles
       },
     });
   } catch (err) {
@@ -1049,11 +1078,15 @@ async function getFitmentAnalysisReport(req, res) {
 
     const authoritativeRosterCount = await User.countDocuments({ role: 'employee', isActive: true, isRosterOnly: true, isArchivedDemo: { $ne: true } });
     let totalEmployees = 0;
+    let operationalEmpIdSet = new Set();
     if (authoritativeRosterCount > 0) {
       totalEmployees = await User.countDocuments({ role: 'employee', isActive: true, isArchivedDemo: { $ne: true } });
+      const rosterUsers = await User.find({ role: 'employee', isActive: true, isArchivedDemo: { $ne: true } }).select('employeeId').lean();
+      operationalEmpIdSet = new Set(rosterUsers.map(u => String(u.employeeId || '').trim()).filter(Boolean));
     } else {
       const wdtNamed = await WDTSubmission.distinct('employee.employeeId', { 'employee.name': { $not: /^vacant$/i } });
       totalEmployees = wdtNamed.length > 0 ? wdtNamed.length : await User.countDocuments({ role: 'employee', isActive: true, isArchivedDemo: { $ne: true } });
+      operationalEmpIdSet = new Set(wdtNamed.map(String));
     }
 
     const fitments = await Fitment.find({}).sort({ weightedScore: -1 }).lean();
@@ -1066,32 +1099,9 @@ async function getFitmentAnalysisReport(req, res) {
       ).map((u) => [u.employeeId, u])
     );
 
-    const profiles = fitments.length;
-    const avgWeightedScore = profiles
-      ? Number((fitments.reduce((sum, item) => sum + safeNumber(item.weightedScore), 0) / profiles).toFixed(1))
-      : 0;
-
-    const labelBreakdown = {
-      fit: fitments.filter((item) => item.fitmentLabel === 'FIT').length,
-      trainToFit: fitments.filter((item) => item.fitmentLabel === 'TRAIN TO FIT').length,
-      unfit: fitments.filter((item) => item.fitmentLabel === 'UNFIT').length,
-    };
-
-    const scoreDistribution = [
-      { label: '0-39', min: 0, max: 39 },
-      { label: '40-64', min: 40, max: 64 },
-      { label: '65-79', min: 65, max: 79 },
-      { label: '80-100', min: 80, max: 100 },
-    ].map((bucket) => ({
-      label: bucket.label,
-      count: fitments.filter((item) => {
-        const score = safeNumber(item.weightedScore);
-        return score >= bucket.min && score <= bucket.max;
-      }).length,
-    }));
-
     const profilesWithUser = fitments.map((item) => {
       const user = userMap.get(item.employeeId) || {};
+      const isOperational = operationalEmpIdSet.has(String(item.employeeId || '').trim());
       return {
         employeeId: item.employeeId,
         name: user.name || item.employeeId,
@@ -1101,42 +1111,92 @@ async function getFitmentAnalysisReport(req, res) {
         weightedScore: safeNumber(item.weightedScore),
         fitmentLabel: item.fitmentLabel || 'UNFIT',
         lastEvaluatedAt: item.lastEvaluatedAt || item.updatedAt || item.createdAt,
+        isPilotAssessment: !isOperational,
+        assessmentCategory: isOperational ? 'Operational Workforce' : 'Pilot Evaluation Record'
       };
     });
+
+    const operationalProfiles = profilesWithUser.filter(p => !p.isPilotAssessment);
+    const pilotProfiles = profilesWithUser.filter(p => p.isPilotAssessment);
+
+    const operationalAssessedCount = operationalProfiles.length;
+    const operationalCoveragePct = Number(toPercent(operationalAssessedCount, totalEmployees).toFixed(1));
+
+    const activeListForCharts = operationalAssessedCount > 0 ? operationalProfiles : pilotProfiles;
+
+    const avgWeightedScore = operationalAssessedCount
+      ? Number((operationalProfiles.reduce((sum, item) => sum + safeNumber(item.weightedScore), 0) / operationalAssessedCount).toFixed(1))
+      : (pilotProfiles.length ? Number((pilotProfiles.reduce((sum, item) => sum + safeNumber(item.weightedScore), 0) / pilotProfiles.length).toFixed(1)) : 0);
+
+    const labelBreakdown = {
+      fit: activeListForCharts.filter((item) => item.fitmentLabel === 'FIT').length,
+      trainToFit: activeListForCharts.filter((item) => item.fitmentLabel === 'TRAIN TO FIT').length,
+      unfit: activeListForCharts.filter((item) => item.fitmentLabel === 'UNFIT').length,
+    };
+
+    const scoreDistribution = [
+      { label: '0-39', min: 0, max: 39 },
+      { label: '40-64', min: 40, max: 64 },
+      { label: '65-79', min: 65, max: 79 },
+      { label: '80-100', min: 80, max: 100 },
+    ].map((bucket) => ({
+      label: bucket.label,
+      count: activeListForCharts.filter((item) => {
+        const score = safeNumber(item.weightedScore);
+        return score >= bucket.min && score <= bucket.max;
+      }).length,
+    }));
 
     // By Label Detail
     const byLabelDetail = [
       {
         label: 'FIT',
-        profiles: profilesWithUser.filter((item) => item.fitmentLabel === 'FIT'),
+        profiles: activeListForCharts.filter((item) => item.fitmentLabel === 'FIT'),
       },
       {
         label: 'TRAIN TO FIT',
-        profiles: profilesWithUser.filter((item) => item.fitmentLabel === 'TRAIN TO FIT'),
+        profiles: activeListForCharts.filter((item) => item.fitmentLabel === 'TRAIN TO FIT'),
       },
       {
         label: 'UNFIT',
-        profiles: profilesWithUser.filter((item) => item.fitmentLabel === 'UNFIT'),
+        profiles: activeListForCharts.filter((item) => item.fitmentLabel === 'UNFIT'),
       },
     ];
 
     res.json({
       generatedAt: new Date().toISOString(),
       summary: {
-        profiles,
+        profiles: operationalAssessedCount,
         totalEmployees,
-        coveragePct: Number(toPercent(profiles, totalEmployees).toFixed(1)),
+        coveragePct: operationalCoveragePct,
         avgWeightedScore,
         labelBreakdown,
-        evaluationStatus: profiles === 0 ? 'Pending Institutional Evaluation' : (profiles < totalEmployees ? 'Partial Assessment in Progress' : 'Fully Evaluated'),
-        dataNotice: profiles <= 1 ? 'Institutional competency assessment is pending for active staff roster. Figures reflect verified assessment documents only.' : null,
+        operationalWorkforce: {
+          totalEmployees,
+          assessed: operationalAssessedCount,
+          coveragePct: operationalCoveragePct,
+          status: operationalAssessedCount === 0 ? 'Assessment Phase Pending (0% Verified Coverage)' : `${operationalCoveragePct}% Verified Coverage`
+        },
+        pilotAssessments: {
+          totalCount: pilotProfiles.length,
+          label: 'Sandbox / Pilot Baseline Records',
+          notice: 'Historical pilot assessments performed during initial setup on sandbox accounts; kept separate from operational staff.'
+        },
+        evaluationStatus: operationalAssessedCount === 0
+          ? 'Operational Assessment Phase Pending (0% Verified Coverage)'
+          : (operationalAssessedCount < totalEmployees ? 'Partial Assessment in Progress' : 'Fully Evaluated'),
+        dataNotice: operationalAssessedCount === 0
+          ? `Institutional competency assessment is pending for active staff roster (0/${totalEmployees} evaluated). Displaying ${pilotProfiles.length} verified pilot baseline records separately.`
+          : null,
       },
       charts: {
         scoreDistribution,
       },
       tabs: {
         byLabel: byLabelDetail,
-        allProfiles: profilesWithUser.sort((a, b) => b.weightedScore - a.weightedScore),
+        allProfiles: activeListForCharts.sort((a, b) => b.weightedScore - a.weightedScore),
+        operationalProfiles: operationalProfiles.sort((a, b) => b.weightedScore - a.weightedScore),
+        pilotProfiles: pilotProfiles.sort((a, b) => b.weightedScore - a.weightedScore),
       },
     });
   } catch (err) {
