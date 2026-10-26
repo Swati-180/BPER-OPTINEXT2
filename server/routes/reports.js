@@ -10,6 +10,7 @@ const {
   getConsolidationAnalysisReport,
   getFitmentAnalysisReport,
   getUtilizationAnalysisReport,
+  getWorkforceCapacityReport,
   getAuditLogs,
 } = require('../controllers/reportsController');
 
@@ -27,6 +28,9 @@ router.get('/fte-analysis', verifyToken, getFteAnalysisReport);
 router.get('/consolidation-analysis', verifyToken, getConsolidationAnalysisReport);
 router.get('/fitment-analysis', verifyToken, getFitmentAnalysisReport);
 router.get('/utilization-analysis', verifyToken, getUtilizationAnalysisReport);
+
+// Workforce & Capacity Planning (Views A, B, C)
+router.get('/workforce-capacity', verifyToken, getWorkforceCapacityReport);
 router.get('/audit-logs', verifyToken, getAuditLogs);
 
 module.exports = router;

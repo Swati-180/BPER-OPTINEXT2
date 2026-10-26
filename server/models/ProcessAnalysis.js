@@ -43,17 +43,22 @@ function applyComputedFields(record) {
     return; // Explicitly set to null (unassessed/N/A)
   }
 
-  // Check exception rules (TC1-TC4)
-  // Index: 6:Sensitivity, 8:Controls, 9:Proximity, 10:Regulatory, 11:Skill
+  // Check exception rules from Process Assessment Matrix (PAM™) Framework (Slide 7):
+  // Checkpoint A: Shortlisted processes scoring high on "Proximity" are excluded.
+  // Checkpoint B: Shortlisted processes scoring jointly high on "Sensitivity" and "Criticality" are excluded.
+  // Indices: 6:Sensitivity, 7:Criticality, 8:Controls, 9:Proximity, 10:Regulatory, 11:Skill
   let hasException = false;
   if (criteria.length >= 12) {
     const proximity = criteria[9];
     const sensitivity = criteria[6];
-    const controls = criteria[8];
-    const regulatory = criteria[10];
-    const skill = criteria[11];
+    const criticality = criteria[7];
     
-    if (proximity === 'H' && (sensitivity === 'H' || controls === 'H' || regulatory === 'H' || skill === 'H')) {
+    // Checkpoint A: High Proximity
+    if (proximity === 'H') {
+      hasException = true;
+    }
+    // Checkpoint B: Jointly High Sensitivity and Criticality
+    if (sensitivity === 'H' && criticality === 'H') {
       hasException = true;
     }
   }
@@ -61,7 +66,7 @@ function applyComputedFields(record) {
   if (hasException) {
     record.consolidated = false;
   } else {
-    // PRD: Score >= 7 is flagging as Consolidatable
+    // Score >= 7 is shortlisted as Consolidatable
     record.consolidated = Number(record.score || 0) >= 7;
   }
 }

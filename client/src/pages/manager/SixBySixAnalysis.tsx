@@ -1,6 +1,6 @@
 import { useMemo, useState, useEffect } from 'react';
 import { apiFetch, exportToExcelClient } from '../../lib/api';
-import { Download } from 'lucide-react';
+import { Download, ChevronLeft, ChevronRight } from 'lucide-react';
 
 type Department = 'Finance & Accounting' | 'HR' | 'Logistics' | 'SCM';
 type CriteriaValue = 'H' | 'M' | 'L';
@@ -60,10 +60,8 @@ function normalizeRow(raw: any): ProcessRow {
 	} else {
 		const proximity = criteria[9];
 		const sensitivity = criteria[6];
-		const controls = criteria[8];
-		const regulatory = criteria[10];
-		const skill = criteria[11];
-		const hasException = proximity === 'H' && (sensitivity === 'H' || controls === 'H' || regulatory === 'H' || skill === 'H');
+		const criticality = criteria[7];
+		const hasException = proximity === 'H' || (sensitivity === 'H' && criticality === 'H');
 		consolidated = hasException ? false : score >= 7;
 	}
 
@@ -118,6 +116,8 @@ export default function SixBySixAnalysisPage() {
 	const [typeFilter, setTypeFilter] = useState<string>('All');
 	const [scoreRangeFilter, setScoreRangeFilter] = useState<'All' | '0-4' | '5-6' | '7-8' | '9-12'>('All');
 	const [consolidationFilter, setConsolidationFilter] = useState<'All' | 'consolidate' | 'not' | 'pending'>('All');
+	const [currentPage, setCurrentPage] = useState<number>(1);
+	const [pageSize, setPageSize] = useState<number>(50);
 	const [processData, setProcessData] = useState<ProcessRow[]>([]);
 	const [draftRows, setDraftRows] = useState<ProcessRow[]>([]);
 	const [isLoading, setIsLoading] = useState(true);
@@ -169,6 +169,11 @@ export default function SixBySixAnalysisPage() {
 		setTowerFilter('All');
 	}, [departmentFilter]);
 
+	// Reset to page 1 whenever any filter changes
+	useEffect(() => {
+		setCurrentPage(1);
+	}, [departmentFilter, towerFilter, processFilter, typeFilter, scoreRangeFilter, consolidationFilter]);
+
 	const filteredRows = useMemo(() => {
 		let rows = draftRows;
 		if (towerFilter !== 'All') rows = rows.filter(r => r.tower === towerFilter);
@@ -183,6 +188,22 @@ export default function SixBySixAnalysisPage() {
 		if (consolidationFilter === 'pending') rows = rows.filter(r => r.consolidated === null);
 		return rows;
 	}, [draftRows, towerFilter, processFilter, typeFilter, scoreRangeFilter, consolidationFilter]);
+
+	// Pagination calculations for 6x6 Matrix tab
+	const totalFilteredRows = filteredRows.length;
+	const totalPages = Math.max(1, Math.ceil(totalFilteredRows / pageSize));
+
+	// Prevent empty pages if filter reduces row count below current page
+	useEffect(() => {
+		if (currentPage > totalPages) {
+			setCurrentPage(totalPages);
+		}
+	}, [currentPage, totalPages]);
+
+	const paginatedRows = useMemo(() => {
+		const startIdx = (currentPage - 1) * pageSize;
+		return filteredRows.slice(startIdx, startIdx + pageSize);
+	}, [filteredRows, currentPage, pageSize]);
 
 	const handleCriteriaToggle = (processId: string, colIndex: number) => {
 		setDraftRows(prev => prev.map(row => {
@@ -204,10 +225,8 @@ export default function SixBySixAnalysisPage() {
 			} else {
 				const proximity = newCriteria[9];
 				const sensitivity = newCriteria[6];
-				const controls = newCriteria[8];
-				const regulatory = newCriteria[10];
-				const skill = newCriteria[11];
-				const hasException = proximity === 'H' && (sensitivity === 'H' || controls === 'H' || regulatory === 'H' || skill === 'H');
+				const criticality = newCriteria[7];
+				const hasException = proximity === 'H' || (sensitivity === 'H' && criticality === 'H');
 				newConsolidated = hasException ? false : (newScore >= 7);
 			}
 			
@@ -278,7 +297,7 @@ export default function SixBySixAnalysisPage() {
 				};
 				Object.keys(PERFORMANCE_LABELS).forEach((label, i) => out[label] = row.criteria[i]);
 				Object.keys(CHARACTERISTIC_LABELS).forEach((label, i) => out[label] = row.criteria[i + 6]);
-				out['Score'] = row.score;
+				out['Score'] = row.consolidated === null ? 'Pending Assessment' : row.score;
 				const fteVal = typeof (row as any).fte === 'number' ? (row as any).fte : 0;
 				out['FTE'] = fteVal;
 				out['Consolidated'] = row.consolidated === null ? 'Pending Assessment' : (row.consolidated ? 'Yes' : 'No');
@@ -329,7 +348,7 @@ export default function SixBySixAnalysisPage() {
 			'Sub Process': row.subProcessGroup || '-',
 			Tower: row.tower || 'Unknown',
 			Department: row.department,
-			Score: row.score,
+			Score: 'Pending Assessment',
 			FTE: row.fte || 0
 		}));
 		exportToExcelClient(data, 'PendingAssessment-Processes');
@@ -752,7 +771,7 @@ export default function SixBySixAnalysisPage() {
 												<td className="px-4 py-3 text-xs text-[#314E72]">{item.subProcessGroup || '-'}</td>
 												<td className="px-4 py-3 text-xs text-[#314E72]">{item.tower && item.tower !== 'Unknown' ? item.tower : '-'}</td>
 												<td className="px-4 py-3 text-xs text-[#314E72]">{item.department}</td>
-												<td className="px-4 py-3 text-xs font-semibold text-[#64748B] text-right">{item.score}</td>
+												<td className="px-4 py-3 text-xs font-semibold text-[#64748B] text-right" title="Pending Assessment (Score not yet calculated)">—</td>
 												<td className="px-4 py-3 text-xs text-[#314E72] text-right">{typeof item.fte === 'number' ? item.fte.toFixed(2) : '0.00'}</td>
 											</tr>
 										))
@@ -766,7 +785,7 @@ export default function SixBySixAnalysisPage() {
 
 			{activeTab === 'matrix' && (
 				<section className="rounded-2xl border border-[#D9E4F2] bg-white shadow-[0_5px_14px_rgba(16,42,80,0.05)] overflow-hidden">
-					<div className="border-b border-[#E4ECF7] px-4 py-3.5 flex items-center justify-between">
+					<div className="border-b border-[#E4ECF7] px-4 py-3.5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
 						<div>
 							<h3 className="text-xl font-bold text-[#102846]">6x6 Process Matrix</h3>
 							<p className="mt-0.5 text-xs text-[#647D9D]">
@@ -777,39 +796,65 @@ export default function SixBySixAnalysisPage() {
 							type="button"
 							onClick={exportMatrix}
 							disabled={isExportingMatrix}
-							className="inline-flex items-center gap-2 h-10 rounded-xl border border-[#D6E2F0] bg-white px-4 text-sm font-semibold text-[#243A59] hover:bg-[#F4F8FF] disabled:opacity-60 transition-colors"
+							className="inline-flex items-center gap-2 h-10 rounded-xl border border-[#D6E2F0] bg-white px-4 text-sm font-semibold text-[#243A59] hover:bg-[#F4F8FF] disabled:opacity-60 transition-colors self-start sm:self-auto"
 						>
 							<Download className="h-4 w-4" />
 							{isExportingMatrix ? 'Exporting...' : 'Excel'}
 						</button>
 					</div>
 
-					<div className="overflow-x-auto relative shadow-md sm:rounded-lg">
-						<table className="w-full border-collapse text-left min-w-max">
+					{/* Accessible Criteria Legend */}
+					<div className="bg-[#F8FBFE] border-b border-[#E4ECF7] px-4 py-3">
+						<div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+							<div className="space-y-1">
+								<span className="font-bold text-[#2860D3] uppercase tracking-wider text-[10px]">Performance Criteria (+1 for High):</span>
+								<div className="flex flex-wrap gap-x-3 gap-y-1 text-[#475569]">
+									{Object.entries(PERFORMANCE_LABELS).map(([k, v]) => (
+										<span key={k} className="inline-flex items-center gap-1">
+											<strong className="text-[#2860D3]">{k}:</strong> {v}
+										</span>
+									))}
+								</div>
+							</div>
+							<div className="space-y-1">
+								<span className="font-bold text-[#7A39DB] uppercase tracking-wider text-[10px]">Characteristic Criteria (+1 for Low):</span>
+								<div className="flex flex-wrap gap-x-3 gap-y-1 text-[#475569]">
+									{Object.entries(CHARACTERISTIC_LABELS).map(([k, v]) => (
+										<span key={k} className="inline-flex items-center gap-1">
+											<strong className="text-[#7A39DB]">{k}:</strong> {v}
+										</span>
+									))}
+								</div>
+							</div>
+						</div>
+					</div>
+
+					<div className="overflow-x-auto relative shadow-sm">
+						<table className="w-full border-collapse text-left min-w-[1100px]">
 							<thead>
 								<tr className="bg-[#F5F8FD] text-xs font-bold text-[#617289] border-b border-[#E3EAF4]">
-									<th className="px-3 py-2.5 sticky left-0 z-20 bg-[#F5F8FD] shadow-[1px_0_0_#E3EAF4] w-64 min-w-[16rem]">Process / Activity</th>
-									<th className="px-3 py-2.5 bg-[#F5F8FD] border-r border-[#E3EAF4]">Sub Process</th>
+									<th className="px-3 py-2.5 sticky left-0 z-20 bg-[#F5F8FD] shadow-[1px_0_0_#E3EAF4] w-72 min-w-[18rem]">Process / Activity</th>
+									<th className="px-3 py-2.5 bg-[#F5F8FD] border-r border-[#E3EAF4] min-w-[14rem]">Sub Process</th>
 									{Object.entries(PERFORMANCE_LABELS).map(([label, fullName]) => (
-										<th key={`p-${label}`} title={fullName} className="px-2 py-2.5 text-center text-[#2860D3] cursor-help border-x border-[#F0F4F9]">{label}</th>
+										<th key={`p-${label}`} title={`${label}: ${fullName}`} className="px-2 py-2.5 text-center text-[#2860D3] cursor-help border-x border-[#F0F4F9] min-w-[2.25rem]">{label}</th>
 									))}
 									{Object.entries(CHARACTERISTIC_LABELS).map(([label, fullName], index) => (
-										<th key={`c-${label}-${index}`} title={fullName} className="px-2 py-2.5 text-center text-[#7A39DB] cursor-help border-x border-[#F0F4F9]">{label}</th>
+										<th key={`c-${label}-${index}`} title={`${label}: ${fullName}`} className="px-2 py-2.5 text-center text-[#7A39DB] cursor-help border-x border-[#F0F4F9] min-w-[2.25rem]">{label}</th>
 									))}
-									<th className="px-3 py-2.5 text-center">Score</th>
-									<th className="px-3 py-2.5 text-center">FTE</th>
-									<th className="px-3 py-2.5 text-center">Cons</th>
+									<th className="px-3 py-2.5 text-center min-w-[4rem]">Score</th>
+									<th className="px-3 py-2.5 text-center min-w-[4rem]">FTE</th>
+									<th className="px-3 py-2.5 text-center min-w-[5.5rem]">Cons</th>
 								</tr>
 							</thead>
 							<tbody>
-								{filteredRows.length === 0 ? (
+								{paginatedRows.length === 0 ? (
 									<tr>
 										<td colSpan={15} className="px-4 py-7 text-center text-xs text-[#7086A1]">
 											No process rows available for this department.
 										</td>
 									</tr>
 								) : (
-									filteredRows.map((item) => {
+									paginatedRows.map((item) => {
 										const fte = typeof (item as any).fte === 'number' ? (item as any).fte as number : 0;
 										const fteColor = fte >= 1.0 ? 'text-red-600' : fte >= 0.75 ? 'text-amber-600' : fte > 0 ? 'text-emerald-700' : 'text-slate-400';
 										const rowBg = item.consolidated === true 
@@ -817,14 +862,15 @@ export default function SixBySixAnalysisPage() {
 											: item.consolidated === false 
 												? 'bg-red-50/20' 
 												: 'bg-white hover:bg-slate-50/50';
+										const isPending = item.consolidated === null;
 										return (
 										<tr key={item._id || `${item.process}-${item.department}`} className={`border-b border-[#E8EEF7] last:border-b-0 ${rowBg}`}>
-											<td className="px-3 py-3 sticky left-0 z-10 bg-white shadow-[1px_0_0_#E3EAF4] w-64 min-w-[16rem] whitespace-normal break-words">
-												<p className="text-xs font-semibold text-[#1E304B]">{item.displayProcess}</p>
+											<td className="px-3.5 py-3 sticky left-0 z-10 bg-white shadow-[1px_0_0_#E3EAF4] w-72 min-w-[18rem] whitespace-normal break-words">
+												<p className="text-xs font-semibold text-[#1E304B] leading-snug">{item.displayProcess}</p>
 												<p className="text-[10px] text-[#7086A1] mt-0.5">{item.tower && item.tower !== 'Unknown' ? `${item.department} • ${item.tower}` : item.department}</p>
 											</td>
-											<td className="px-3 py-3 bg-white border-r border-[#E8EEF7] w-48 min-w-[12rem] whitespace-normal break-words">
-												<p className="text-xs font-medium text-[#4A6482]">{item.subProcessGroup || '-'}</p>
+											<td className="px-3.5 py-3 bg-white border-r border-[#E8EEF7] min-w-[16rem] max-w-[24rem] whitespace-normal break-words">
+												<p className="text-xs font-medium text-[#4A6482] leading-snug">{item.subProcessGroup || '-'}</p>
 											</td>
 
 											{item.criteria.map((value, index) => (
@@ -847,7 +893,13 @@ export default function SixBySixAnalysisPage() {
 												</td>
 											))}
 
-											<td className="px-3 py-2.5 text-center text-xl font-bold text-[#1A2E4D]">{item.score}</td>
+											<td className="px-3 py-2.5 text-center text-sm font-bold text-[#1A2E4D]">
+												{isPending ? (
+													<span className="text-xs font-semibold text-[#64748B]" title="Pending Assessment (Score not yet calculated)">—</span>
+												) : (
+													<span className="text-lg">{item.score}</span>
+												)}
+											</td>
 											<td className={`px-3 py-2.5 text-center text-sm font-bold tabular-nums ${fteColor}`}>{fte.toFixed(2)}</td>
 											<td className="px-3 py-2.5 text-center">
 												<span
@@ -856,10 +908,11 @@ export default function SixBySixAnalysisPage() {
 															? 'bg-emerald-100 text-emerald-700'
 															: item.consolidated === false
 																? 'bg-red-100 text-red-700'
-																: 'bg-slate-100 text-slate-500'
+																: 'bg-amber-100 text-amber-800'
 													}`}
+													title={item.consolidated === null ? 'Pending Assessment (Criteria unpopulated)' : item.consolidated ? 'Consolidatable' : 'Retained'}
 												>
-													{item.consolidated === true ? 'Y' : item.consolidated === false ? 'N' : '-'}
+													{item.consolidated === true ? 'Y' : item.consolidated === false ? 'N' : 'Pending'}
 												</span>
 											</td>
 										</tr>
@@ -870,6 +923,99 @@ export default function SixBySixAnalysisPage() {
 							</tbody>
 						</table>
 					</div>
+
+					{/* Pagination Footer */}
+					{totalFilteredRows > 0 && (
+						<div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-t border-[#E4ECF7] bg-[#F8FBFE] px-4 py-3 text-xs">
+							<div className="flex items-center gap-3">
+								<span className="text-[#5A7697]">
+									Showing <strong className="text-[#102846]">{(currentPage - 1) * pageSize + 1}</strong>–<strong className="text-[#102846]">{Math.min(currentPage * pageSize, totalFilteredRows)}</strong> of <strong className="text-[#102846]">{totalFilteredRows}</strong> processes
+								</span>
+								<div className="flex items-center gap-1.5 pl-2 border-l border-[#D6E2F0]">
+									<span className="text-[#647D9D]">Rows per page:</span>
+									<select
+										value={pageSize}
+										onChange={(e) => {
+											setPageSize(Number(e.target.value));
+											setCurrentPage(1);
+										}}
+										className="h-7 rounded-lg border border-[#CBD5E1] bg-white px-2 text-xs font-semibold text-[#102846] outline-none focus:border-[#165BAA]"
+									>
+										<option value={25}>25</option>
+										<option value={50}>50</option>
+										<option value={100}>100</option>
+									</select>
+								</div>
+							</div>
+
+							<div className="flex items-center gap-1.5 self-center sm:self-auto">
+								<button
+									type="button"
+									onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+									disabled={currentPage <= 1}
+									className="inline-flex items-center gap-1 h-8 px-2.5 rounded-lg border border-[#D6E2F0] bg-white font-medium text-[#243A59] hover:bg-[#EEF4FC] disabled:opacity-40 disabled:hover:bg-white transition-colors"
+									aria-label="Previous page"
+								>
+									<ChevronLeft className="h-4 w-4" />
+									<span className="hidden sm:inline">Prev</span>
+								</button>
+
+								<div className="flex items-center gap-1 px-1">
+									{Array.from({ length: totalPages }, (_, i) => i + 1)
+										.filter((p) => {
+											// Show first, last, current, and adjacent pages
+											return (
+												p === 1 ||
+												p === totalPages ||
+												Math.abs(p - currentPage) <= 1
+											);
+										})
+										.reduce<(number | string)[]>((acc, p, idx, arr) => {
+											if (idx > 0 && (p as number) - (arr[idx - 1] as number) > 1) {
+												acc.push('...');
+											}
+											acc.push(p);
+											return acc;
+										}, [])
+										.map((p, idx) => {
+											if (p === '...') {
+												return (
+													<span key={`dots-${idx}`} className="px-1.5 text-xs text-[#94A3B8]">
+														…
+													</span>
+												);
+											}
+											const isCurrent = p === currentPage;
+											return (
+												<button
+													key={`page-${p}`}
+													type="button"
+													onClick={() => setCurrentPage(p as number)}
+													className={`h-8 min-w-[2rem] px-2 rounded-lg text-xs font-bold transition-all ${
+														isCurrent
+															? 'bg-[#165BAA] text-white shadow-sm'
+															: 'bg-white border border-[#D6E2F0] text-[#243A59] hover:bg-[#EEF4FC]'
+													}`}
+												>
+													{p}
+												</button>
+											);
+										})}
+								</div>
+
+								<button
+									type="button"
+									onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+									disabled={currentPage >= totalPages}
+									className="inline-flex items-center gap-1 h-8 px-2.5 rounded-lg border border-[#D6E2F0] bg-white font-medium text-[#243A59] hover:bg-[#EEF4FC] disabled:opacity-40 disabled:hover:bg-white transition-colors"
+									aria-label="Next page"
+								>
+									<span className="hidden sm:inline">Next</span>
+									<ChevronRight className="h-4 w-4" />
+								</button>
+							</div>
+						</div>
+					)}
 				</section>
 			)}
 

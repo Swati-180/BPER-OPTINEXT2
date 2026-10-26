@@ -249,6 +249,101 @@ export default function WDTAnalyticsPage() {
         </div>
       </section>
 
+      {/* Slide 1: WDT Scope Funnel & Slide 2: Global Collection Status */}
+      <section className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        {/* Slide 1: Scope Funnel */}
+        <article className="rounded-2xl border border-[#D9E4F2] bg-white p-5 shadow-[0_6px_16px_rgba(16,42,80,0.06)] flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-bold text-[#102846]">WDT™ Scope Coverage Funnel</h3>
+              <span className="text-[11px] font-semibold text-[#1853A2] bg-[#EBF2FC] px-2.5 py-1 rounded-full border border-[#D3E3F8]">Slide 1 Specification</span>
+            </div>
+            <p className="mt-1 text-xs text-[#6E86A3]">Hierarchical roll-up of individual user entries to organizational process towers</p>
+          </div>
+
+          <div className="mt-5 grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] p-3 text-center">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-[#64748B]">Line Items</p>
+              <p className="mt-1 text-2xl font-extrabold text-[#0F2649]">
+                {((report as any)?.scopeFunnel?.lineItemsCount ?? safeNumber(summary.totalActivities, safeNumber(summary.totalSubmissions) * 10)).toLocaleString()}
+              </p>
+              <p className="mt-0.5 text-[10px] text-[#94A3B8]">Logged entries</p>
+            </div>
+            <div className="rounded-xl border border-[#BFDBFE] bg-[#EFF6FF] p-3 text-center">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-[#2563EB]">Sub Processes</p>
+              <p className="mt-1 text-2xl font-extrabold text-[#1D4ED8]">
+                {((report as any)?.scopeFunnel?.subProcessesCount ?? byProcess.length).toLocaleString()}
+              </p>
+              <p className="mt-0.5 text-[10px] text-[#60A5FA]">Granular tasks</p>
+            </div>
+            <div className="rounded-xl border border-[#DDD6FE] bg-[#F5F3FF] p-3 text-center">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-[#7C3AED]">Processes</p>
+              <p className="mt-1 text-2xl font-extrabold text-[#6D28D9]">
+                {((report as any)?.scopeFunnel?.processesCount ?? Math.max(1, Math.round(byProcess.length * 0.4))).toLocaleString()}
+              </p>
+              <p className="mt-0.5 text-[10px] text-[#A78BFA]">Functional blocks</p>
+            </div>
+            <div className="rounded-xl border border-[#BBF7D0] bg-[#F0FDF4] p-3 text-center">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-[#16A34A]">Major Processes</p>
+              <p className="mt-1 text-2xl font-extrabold text-[#15803D]">
+                {((report as any)?.scopeFunnel?.majorProcessesCount ?? Math.max(1, departments.length - 1)).toLocaleString()}
+              </p>
+              <p className="mt-0.5 text-[10px] text-[#4ADE80]">Top-level towers</p>
+            </div>
+          </div>
+        </article>
+
+        {/* Slide 2: Global Data Collection Status */}
+        <article className="rounded-2xl border border-[#D9E4F2] bg-white p-5 shadow-[0_6px_16px_rgba(16,42,80,0.06)] flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-bold text-[#102846]">Data Collection Status</h3>
+              <span className="text-[11px] font-semibold text-[#1853A2] bg-[#EBF2FC] px-2.5 py-1 rounded-full border border-[#D3E3F8]">Slide 2 Specification</span>
+            </div>
+            <p className="mt-1 text-xs text-[#6E86A3]">Roster workflow completion status across in-scope personnel</p>
+          </div>
+
+          <div className="mt-5 grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="rounded-xl border border-[#A7F3D0] bg-[#ECFDF5] p-3 text-center">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-[#059669]">Approved</p>
+              <p className="mt-1 text-2xl font-extrabold text-[#047857]">
+                {(report as any)?.collectionStatus?.approved?.count ?? safeNumber(statusCounts.approved)}
+              </p>
+              <p className="mt-0.5 text-[11px] font-bold text-[#10B981]">
+                {(report as any)?.collectionStatus?.approved?.pct ?? safeNumber(summary.approvalRatePct)}%
+              </p>
+            </div>
+            <div className="rounded-xl border border-[#BAE6FD] bg-[#F0F9FF] p-3 text-center">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-[#0284C7]">Awaiting Mgr</p>
+              <p className="mt-1 text-2xl font-extrabold text-[#0369A1]">
+                {(report as any)?.collectionStatus?.awaitingApproval?.count ?? safeNumber(statusCounts.underReview)}
+              </p>
+              <p className="mt-0.5 text-[11px] font-bold text-[#38BDF8]">
+                {(report as any)?.collectionStatus?.awaitingApproval?.pct ?? 0}%
+              </p>
+            </div>
+            <div className="rounded-xl border border-[#FED7AA] bg-[#FFF7ED] p-3 text-center">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-[#EA580C]">In Progress</p>
+              <p className="mt-1 text-2xl font-extrabold text-[#C2410C]">
+                {(report as any)?.collectionStatus?.inProgress?.count ?? safeNumber(statusCounts.changesRequested)}
+              </p>
+              <p className="mt-0.5 text-[11px] font-bold text-[#FB923C]">
+                {(report as any)?.collectionStatus?.inProgress?.pct ?? 0}%
+              </p>
+            </div>
+            <div className="rounded-xl border border-[#CBD5E1] bg-[#F8FAFC] p-3 text-center">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-[#64748B]">Yet to Start</p>
+              <p className="mt-1 text-2xl font-extrabold text-[#475569]">
+                {(report as any)?.collectionStatus?.yetToStart?.count ?? 0}
+              </p>
+              <p className="mt-0.5 text-[11px] font-bold text-[#94A3B8]">
+                {(report as any)?.collectionStatus?.yetToStart?.pct ?? 0}%
+              </p>
+            </div>
+          </div>
+        </article>
+      </section>
+
       <section className="grid grid-cols-1 gap-4 xl:grid-cols-2">
         <article className="rounded-2xl border border-[#D9E4F2] bg-white p-4 shadow-[0_6px_16px_rgba(16,42,80,0.06)]">
           <h3 className="text-lg font-bold text-[#102846]">Hours by Category</h3>

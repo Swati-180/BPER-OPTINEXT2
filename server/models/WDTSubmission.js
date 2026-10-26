@@ -3,6 +3,10 @@ const mongoose = require('mongoose');
 const wdtSubmissionSchema = new mongoose.Schema({
   referenceId: { type: String, required: true, unique: true },
   batchId: { type: String, index: true },
+  reportingPeriod: { type: String, index: true }, // e.g. '2026-10'
+  importedAt: { type: Date, default: Date.now },
+  sourceExtractionDate: { type: Date, default: null },
+  isHistoricalSnapshot: { type: Boolean, default: true },
   submittedAt: { type: Date, default: Date.now },
   month: { type: Number, required: true },
   year: { type: Number, required: true },
@@ -14,7 +18,12 @@ const wdtSubmissionSchema = new mongoose.Schema({
     department: String,
     designation: String,
     tower: String,
-    grade: String,
+    grade: String, // Original grade preserved
+    originalGradeAtSubmission: String, // Grade at submission time (Option A)
+    standardizedGradeAtSubmission: String, // Standardized 6-band grade at submission time
+    employeeType: String,
+    occupancyStatus: { type: String, enum: ['Occupied', 'Vacant'], default: 'Occupied' },
+    isVacant: { type: Boolean, default: false },
     organization: String,
     location: String
   },
@@ -86,6 +95,24 @@ wdtSubmissionSchema.pre('save', function(next) {
       row.processShare = 0;
     }
   });
+
+  // 4. Populate Historical Grade & Occupancy metadata
+  if (this.month && this.year && !this.reportingPeriod) {
+    this.reportingPeriod = `${this.year}-${String(this.month).padStart(2, '0')}`;
+  }
+  if (this.employee) {
+    const isVacant = String(this.employee.name || '').trim().toLowerCase() === 'vacant' || this.employee.isVacant === true;
+    this.employee.isVacant = isVacant;
+    this.employee.occupancyStatus = isVacant ? 'Vacant' : 'Occupied';
+    if (!this.employee.originalGradeAtSubmission && this.employee.grade) {
+      this.employee.originalGradeAtSubmission = this.employee.grade;
+    }
+    const { standardizeGrade } = require('../utils/gradeStandardizer');
+    this.employee.standardizedGradeAtSubmission = standardizeGrade(
+      this.employee.originalGradeAtSubmission || this.employee.grade,
+      this.employee.employeeType
+    );
+  }
 
   next();
 });

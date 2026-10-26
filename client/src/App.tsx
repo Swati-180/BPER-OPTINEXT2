@@ -39,6 +39,7 @@ import APIDebug from './pages/manager/APIDebug';
 import EmployeeInvites from './pages/manager/EmployeeInvites';
 import InviteRegistration from './pages/InviteRegistration';
 import CalculationCenter from './pages/manager/CalculationCenter';
+import WorkforceCapacityPlanning from './pages/manager/WorkforceCapacityPlanning';
 
 import Unauthorized from './pages/Unauthorized';
 import { clearActiveUnderReviewReferenceId } from './pages/employee/bperSubmissionStorage';
@@ -395,6 +396,7 @@ export default function App() {
                   <Route path="users" element={<ManagerUsers />} />
                   <Route path="forms" element={<ManagerForms />} />
                   <Route path="wdt-analytics" element={<ManagerWDTAnalytics />} />
+                  <Route path="workforce-capacity" element={<WorkforceCapacityPlanning />} />
                   <Route path="6x6-analysis" element={<ManagerSixBySixAnalysis />} />
                   <Route path="deep-analysis" element={<DeepAnalysis />} />
                   <Route path="process-operations" element={<ProcessOperationsHub />} />

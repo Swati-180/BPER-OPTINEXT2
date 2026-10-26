@@ -1,6 +1,8 @@
 const User = require('../models/User');
 const WDTSubmission = require('../models/WDTSubmission');
 const Fitment = require('../models/Fitment');
+const ProcessAnalysis = require('../models/ProcessAnalysis');
+const Taxonomy = require('../models/Taxonomy');
 
 const STANDARD_MONTHLY_HOURS = 160;
 
@@ -57,9 +59,17 @@ function flattenRows(submissions) {
     const defaultEmpName = submission.employee?.name || 'Unknown Employee';
     const defaultDept = submission.employee?.department || 'Unassigned';
 
-    // 1. Check for standard payload.rows representation
+    // 1. Check for standard payload.rows representation (excluding rejected custom activities)
     const payloadRows = Array.isArray(submission?.payload?.rows) ? submission.payload.rows : [];
-    const validPayloadRows = payloadRows.filter(r => r && typeof r === 'object');
+    const validPayloadRows = payloadRows.filter(r => r && typeof r === 'object' && r.approvalStatus !== 'Rejected');
+
+    const { standardizeGrade } = require('../utils/gradeStandardizer');
+    const rawGrade = submission.employee?.grade || '';
+    const originalGradeAtSubmission = submission.employee?.originalGradeAtSubmission || rawGrade;
+    const employeeType = submission.employee?.employeeType || '';
+    const standardizedGrade = submission.employee?.standardizedGradeAtSubmission || standardizeGrade(originalGradeAtSubmission, employeeType);
+    const isVacant = String(defaultEmpName).toLowerCase() === 'vacant' || submission.employee?.isVacant === true;
+    const occupancyStatus = isVacant ? 'Vacant' : 'Occupied';
 
     if (validPayloadRows.length > 0) {
       return validPayloadRows.map((row) => {
@@ -67,11 +77,20 @@ function flattenRows(submissions) {
         const tower = row.tower || row.majorProcess || defaultDept;
         return {
           referenceId: submission.referenceId,
+          batchId: submission.batchId,
+          reportingPeriod: submission.reportingPeriod || `${submission.year || 2026}-${String(submission.month || 10).padStart(2, '0')}`,
           submittedAt: submission.submittedAt,
           status: submission.status,
           employeeId: row.employeeId || defaultEmpId,
           employeeName: row.employeeName || defaultEmpName,
           department: row.department || defaultDept,
+          designation: submission.employee?.designation || '',
+          grade: rawGrade,
+          originalGradeAtSubmission,
+          standardizedGrade,
+          employeeType,
+          occupancyStatus,
+          isVacant,
           tower,
           majorProcess: row.majorProcess || tower,
           process: row.process || 'Unspecified Process',
@@ -209,7 +228,7 @@ async function getScopedSubmissions(req) {
   }
 
   const queryPromise = WDTSubmission.find(match)
-    .select('referenceId batchId submittedAt month year status totalHours pendingFrom employee.employeeId employee.name employee.email employee.department employee.designation employee.tower payload.rows activities')
+    .select('referenceId batchId reportingPeriod importedAt submittedAt month year status totalHours pendingFrom employee.employeeId employee.name employee.email employee.department employee.designation employee.tower employee.grade employee.originalGradeAtSubmission employee.standardizedGradeAtSubmission employee.employeeType employee.occupancyStatus employee.isVacant payload.rows activities')
     .sort({ submittedAt: -1 })
     .lean()
     .then((docs) => {
@@ -243,7 +262,18 @@ async function getDashboardReport(req, res) {
     ]);
 
     const rows = flattenRows(submissions);
-    const totalHours = rows.reduce((sum, row) => sum + row.monthlyHours, 0);
+    
+    // Sir's Rule: Exclude vacant positions from actual employee-level workload & utilization
+    const staffedRows = rows.filter((row) => !row.isVacant);
+    const vacantRows = rows.filter((row) => row.isVacant);
+
+    const staffedHours = staffedRows.reduce((sum, row) => sum + row.monthlyHours, 0);
+    const staffedFte = staffedHours / STANDARD_MONTHLY_HOURS;
+
+    const vacantHours = vacantRows.reduce((sum, row) => sum + row.monthlyHours, 0);
+    const vacantFte = vacantHours / STANDARD_MONTHLY_HOURS;
+
+    const totalHours = staffedHours + vacantHours;
     const totalFte = totalHours / STANDARD_MONTHLY_HOURS;
 
     const approved = submissions.filter((item) => item.status === 'Approved').length;
@@ -357,9 +387,14 @@ async function getDashboardReport(req, res) {
       pendingReview: pending,
       approved,
       changesRequested,
+      // Staffed vs Vacant Workload Breakdown (Sir's Approved OptiNXT Rules)
+      staffedHours: Number(staffedHours.toFixed(2)),
+      staffedFte: Number(staffedFte.toFixed(2)),
+      vacantHours: Number(vacantHours.toFixed(2)),
+      vacantFte: Number(vacantFte.toFixed(2)),
       totalHours: Number(totalHours.toFixed(2)),
       totalFte: Number(totalFte.toFixed(2)),
-      avgUtilizationPct: Number(Math.min(100, totalFte * 100).toFixed(1)),
+      avgUtilizationPct: Number(Math.min(100, (submissionNamedCount > 0 ? (staffedHours / (submissionNamedCount * STANDARD_MONTHLY_HOURS)) : (staffedFte)) * 100).toFixed(1)),
     };
 
     const totalSubmissionCount = submissions.length;
@@ -446,9 +481,80 @@ async function getUtilizationReport(req, res) {
 
     const totalHours = rows.reduce((sum, row) => sum + row.monthlyHours, 0);
     const totalSubmissions = submissions.length;
-    const approved = submissions.filter((item) => item.status === 'Approved').length;
-    const underReview = submissions.filter((item) => item.status === 'Under Review').length;
-    const changesRequested = submissions.filter((item) => item.status === 'Changes Requested').length;
+    // Track unique employee statuses for collection status (mutually exclusive per employee)
+    const empStatusMap = new Map();
+    submissions.forEach(sub => {
+      const empId = sub.employee?.employeeId || sub.employee?.email || sub.referenceId;
+      if (!empStatusMap.has(empId)) {
+        empStatusMap.set(empId, sub.status);
+      } else {
+        // Prioritize Approved > Under Review > Changes Requested
+        const existingStatus = empStatusMap.get(empId);
+        if (sub.status === 'Approved') {
+          empStatusMap.set(empId, 'Approved');
+        } else if (sub.status === 'Under Review' && existingStatus !== 'Approved') {
+          empStatusMap.set(empId, 'Under Review');
+        }
+      }
+    });
+
+    let approved = 0;
+    let underReview = 0;
+    let changesRequested = 0;
+    empStatusMap.forEach(status => {
+      if (status === 'Approved') approved++;
+      else if (status === 'Under Review') underReview++;
+      else if (status === 'Changes Requested') changesRequested++;
+    });
+
+    // Slide 1: WDT Scope Funnel Calculation
+    const uniqueSubProcesses = new Set();
+    const uniqueProcesses = new Set();
+    const uniqueMajorProcesses = new Set();
+    rows.forEach(r => {
+      if (r.subProcess && r.subProcess !== 'Unspecified Activity') uniqueSubProcesses.add(r.subProcess);
+      if (r.process && r.process !== 'Unspecified Process') uniqueProcesses.add(r.process);
+      const major = r.majorProcess || r.tower;
+      if (major && major !== 'Unassigned') uniqueMajorProcesses.add(major);
+    });
+    const scopeFunnel = {
+      lineItemsCount: rows.length,
+      subProcessesCount: uniqueSubProcesses.size,
+      processesCount: uniqueProcesses.size,
+      majorProcessesCount: uniqueMajorProcesses.size
+    };
+
+    // Slide 2: Global Collection Status Calculation
+    const { department } = req.query;
+    let userFilter = { role: 'employee', isActive: true, isArchivedDemo: { $ne: true } };
+    if (department && department !== 'All Departments') {
+      userFilter.department = department;
+    }
+    const rolesInScope = await User.countDocuments(userFilter);
+    // When submissions exist (e.g. imported WDT submissions), the in-scope roster is at least the total submissions/employees in that scope
+    const effectiveRolesInScope = Math.max(rolesInScope, totalSubmissions);
+    const inProgressCount = changesRequested; // Submissions requiring revision or in active progress
+    const yetToStartCount = Math.max(0, effectiveRolesInScope - (approved + underReview + inProgressCount));
+
+    const collectionStatus = {
+      rolesInScope: effectiveRolesInScope,
+      approved: {
+        count: approved,
+        pct: Number(toPercent(approved, effectiveRolesInScope).toFixed(1))
+      },
+      awaitingApproval: {
+        count: underReview,
+        pct: Number(toPercent(underReview, effectiveRolesInScope).toFixed(1))
+      },
+      inProgress: {
+        count: inProgressCount,
+        pct: Number(toPercent(inProgressCount, effectiveRolesInScope).toFixed(1))
+      },
+      yetToStart: {
+        count: yetToStartCount,
+        pct: Number(toPercent(yetToStartCount, effectiveRolesInScope).toFixed(1))
+      }
+    };
 
     const groupAndSort = (items, keyBuilder, valueSelector, limit = 10) => {
       const map = new Map();
@@ -552,6 +658,10 @@ async function getUtilizationReport(req, res) {
     res.json({
       generatedAt: new Date().toISOString(),
       summary: {
+        staffedHours: Number(namedRows.reduce((sum, r) => sum + r.monthlyHours, 0).toFixed(2)),
+        staffedFte: Number((namedRows.reduce((sum, r) => sum + r.monthlyHours, 0) / STANDARD_MONTHLY_HOURS).toFixed(2)),
+        vacantHours: Number(vacantTotalHours.toFixed(2)),
+        vacantFte: Number((vacantTotalHours / STANDARD_MONTHLY_HOURS).toFixed(2)),
         totalHours: Number(totalHours.toFixed(2)),
         totalSubmissions,
         totalFte: Number((totalHours / STANDARD_MONTHLY_HOURS).toFixed(2)),
@@ -579,6 +689,8 @@ async function getUtilizationReport(req, res) {
       tables: {
         recentSubmissions,
       },
+      collectionStatus,
+      scopeFunnel,
     });
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -1092,6 +1204,182 @@ async function getConsolidationAnalysisReport(req, res) {
       }))
       .sort((a, b) => b.monthlyHours - a.monthlyHours);
 
+    // 6x6 PAM Integration for Official Consolidation (Phase 1 verified rules)
+    const pamRecords = await ProcessAnalysis.find({}).lean();
+    const pamMap = new Map();
+    pamRecords.forEach(p => {
+      const pKey = `${p.department || ''}:::${p.process || ''}`;
+      pamMap.set(pKey, p.consolidated);
+      // also fallback by process name
+      if (!pamMap.has(p.process)) pamMap.set(p.process, p.consolidated);
+    });
+
+    // Build Slide 10: Consolidation potential by Major Process
+    // and Slides 32, 34, 36, 38, 40, 42, 44, 46, 48: Effort splits with cumulative Pareto
+    const majorProcessMap = new Map();
+    const processSubMap = new Map(); // key: majorProcess ::: process
+    const empMajorHoursMap = new Map(); // key: employeeId ::: majorProcess
+    const empMajorConsolHoursMap = new Map(); // key: employeeId ::: majorProcess
+
+    rows.forEach((row) => {
+      const major = row.majorProcess || row.tower || 'Unspecified';
+      const proc = row.process && row.process !== 'Unspecified Process' ? row.process : (row.subProcess || 'Unspecified');
+      const isPamConsolidated = pamMap.get(`${row.department}:::${row.subProcess}`) ?? pamMap.get(row.subProcess) ?? false;
+      const hours = row.monthlyHours || 0;
+      const fte = hours / STANDARD_MONTHLY_HOURS;
+
+      // Track by Major Process
+      const currentMajor = majorProcessMap.get(major) || {
+        majorProcess: major,
+        totalHours: 0,
+        totalFte: 0,
+        consolidatableHours: 0,
+        consolidatableFte: 0,
+        retainedHours: 0,
+        retainedFte: 0,
+        activityCount: 0,
+        consolidatableActivitiesCount: 0,
+      };
+      currentMajor.totalHours += hours;
+      currentMajor.totalFte += fte;
+      currentMajor.activityCount += 1;
+      if (isPamConsolidated) {
+        currentMajor.consolidatableHours += hours;
+        currentMajor.consolidatableFte += fte;
+        currentMajor.consolidatableActivitiesCount += 1;
+      } else {
+        currentMajor.retainedHours += hours;
+        currentMajor.retainedFte += fte;
+      }
+      majorProcessMap.set(major, currentMajor);
+
+      // Track process-level within Major Process (Slides 11, 13, 15, etc.)
+      const procKey = `${major}:::${proc}`;
+      const currentProc = processSubMap.get(procKey) || {
+        majorProcess: major,
+        process: proc,
+        totalHours: 0,
+        totalFte: 0,
+        consolidatableFte: 0,
+        retainedFte: 0,
+      };
+      currentProc.totalHours += hours;
+      currentProc.totalFte += fte;
+      if (isPamConsolidated) {
+        currentProc.consolidatableFte += fte;
+      } else {
+        currentProc.retainedFte += fte;
+      }
+      processSubMap.set(procKey, currentProc);
+
+      // Track per-employee major process dedication (Slides 12, 14, 16, etc.)
+      const empId = row.employeeId || 'NA';
+      const empMajorKey = `${empId}:::${major}`;
+      empMajorHoursMap.set(empMajorKey, (empMajorHoursMap.get(empMajorKey) || 0) + hours);
+      if (isPamConsolidated) {
+        empMajorConsolHoursMap.set(empMajorKey, (empMajorConsolHoursMap.get(empMajorKey) || 0) + hours);
+      }
+    });
+
+    // Total employee hours lookup across all activities
+    const empTotalHoursMap = new Map();
+    rows.forEach(r => {
+      const empId = r.employeeId || 'NA';
+      empTotalHoursMap.set(empId, (empTotalHoursMap.get(empId) || 0) + r.monthlyHours);
+    });
+
+    // Format Slide 10: Major Process Consolidation View
+    const majorProcessConsolidation = Array.from(majorProcessMap.values())
+      .map((item) => {
+        const consolPct = item.totalFte > 0 ? Number(((item.consolidatableFte / item.totalFte) * 100).toFixed(1)) : 0;
+        return {
+          majorProcess: item.majorProcess,
+          totalHours: Number(item.totalHours.toFixed(2)),
+          totalFte: Number(item.totalFte.toFixed(2)),
+          consolidatableFte: Number(item.consolidatableFte.toFixed(2)),
+          retainedFte: Number(item.retainedFte.toFixed(2)),
+          consolidationPct: consolPct,
+          activityCount: item.activityCount,
+          consolidatableActivitiesCount: item.consolidatableActivitiesCount,
+        };
+      })
+      .sort((a, b) => b.totalFte - a.totalFte);
+
+    // Format Slides 11-30: Process Consolidation & Lift vs KT by Major Process
+    const majorProcessLiftVsKt = {};
+    const majorProcessDetail = {};
+
+    Array.from(majorProcessMap.keys()).forEach(major => {
+      // 1. Process-level drilldown (Slides 11, 13, 15, etc.)
+      const procs = Array.from(processSubMap.values())
+        .filter(p => p.majorProcess === major)
+        .map(p => ({
+          process: p.process,
+          totalFte: Number(p.totalFte.toFixed(2)),
+          consolidationPotential: Number(p.consolidatableFte.toFixed(2)),
+          retained: Number(p.retainedFte.toFixed(2)),
+          consolidationPct: p.totalFte > 0 ? Number(((p.consolidatableFte / p.totalFte) * 100).toFixed(1)) : 0
+        }))
+        .sort((a, b) => b.totalFte - a.totalFte);
+
+      // Cumulative Pareto for Major Process (Slides 32, 34, 36, etc.)
+      const totalMajorHours = procs.reduce((sum, p) => sum + p.totalFte, 0);
+      let runningSum = 0;
+      const procsWithPareto = procs.map(p => {
+        runningSum += p.totalFte;
+        const cumulativePct = totalMajorHours > 0 ? Number(((runningSum / totalMajorHours) * 100).toFixed(1)) : 0;
+        return {
+          ...p,
+          cumulativePct,
+          isTop80: cumulativePct <= 80 || (cumulativePct > 80 && runningSum - p.totalFte < totalMajorHours * 0.8)
+        };
+      });
+
+      majorProcessDetail[major] = procsWithPareto;
+
+      // 2. Lift & Shift vs KT Calculation (Slides 12, 14, 16, etc.)
+      // Threshold: dedication >= 70% -> Lift & Shift, < 70% -> KT Required
+      let liftAndShiftCount = 0;
+      let ktRequiredCount = 0;
+      let liftAndShiftFte = 0;
+      let ktRequiredFte = 0;
+
+      empTotalHoursMap.forEach((totalEmpHours, empId) => {
+        const consolMajorHours = empMajorConsolHoursMap.get(`${empId}:::${major}`) || 0;
+        const totalMajorHours = empMajorHoursMap.get(`${empId}:::${major}`) || 0;
+        if (consolMajorHours > 0 && totalEmpHours > 0) {
+          const dedicationRatio = consolMajorHours / totalEmpHours;
+          const consolFte = consolMajorHours / STANDARD_MONTHLY_HOURS;
+          if (dedicationRatio >= 0.70) {
+            liftAndShiftCount += 1;
+            liftAndShiftFte += consolFte;
+          } else {
+            ktRequiredCount += 1;
+            ktRequiredFte += consolFte;
+          }
+        }
+      });
+
+      const totalEmployeesInMajor = liftAndShiftCount + ktRequiredCount;
+      const liftPct = totalEmployeesInMajor > 0 ? Number(((liftAndShiftCount / totalEmployeesInMajor) * 100).toFixed(1)) : 0;
+      const ktPct = totalEmployeesInMajor > 0 ? Number(((ktRequiredCount / totalEmployeesInMajor) * 100).toFixed(1)) : 0;
+
+      majorProcessLiftVsKt[major] = {
+        majorProcess: major,
+        totalEmployees: totalEmployeesInMajor,
+        liftAndShift: {
+          count: liftAndShiftCount,
+          pct: liftPct,
+          fte: Number(liftAndShiftFte.toFixed(2))
+        },
+        ktRequired: {
+          count: ktRequiredCount,
+          pct: ktPct,
+          fte: Number(ktRequiredFte.toFixed(2))
+        }
+      };
+    });
+
     res.json({
       generatedAt: new Date().toISOString(),
       summary: {
@@ -1119,6 +1407,12 @@ async function getConsolidationAnalysisReport(req, res) {
         byDepartment: byDepartmentDetail,
         allCandidates,
       },
+      // Slide 10: Consolidation potential by major process
+      majorProcessConsolidation,
+      // Slides 11-30: Paired process consolidation & Lift vs KT analysis
+      majorProcessLiftVsKt,
+      // Slides 32-48: Process-level effort splits with Pareto cumulative tracking
+      majorProcessDetail,
     });
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -1385,6 +1679,275 @@ async function getAuditLogs(req, res) {
   }
 }
 
+async function getWorkforceCapacityReport(req, res) {
+  try {
+    const requestUser = await resolveRequestUser(req);
+    if (!ensureManager(requestUser.role, res)) return;
+
+    const { gradePerspective = 'historical' } = req.query; // 'historical' (default) or 'current'
+    const submissions = await getScopedSubmissions(req);
+    const rows = flattenRows(submissions);
+
+    // Fetch user map for live current grades if requested
+    const userMap = new Map(
+      (
+        await User.find({ role: { $in: ['employee', 'position'] } })
+          .select('employeeId name designation band department isVacant')
+          .lean()
+      ).map((u) => [String(u.employeeId || '').trim(), u])
+    );
+
+    const { standardizeGrade, ORDERED_GRADE_BANDS } = require('../utils/gradeStandardizer');
+
+    // Verified October 2026 source contract resources whose employeeType was omitted in historical DB import
+    const OCT_2026_VERIFIED_CONTRACT_IDS = new Set(['14406', '35781', '67815', '85047']);
+
+    // Categorize rows into Staffed (Occupied) vs Vacant
+    const staffedRows = [];
+    const vacantRows = [];
+
+    rows.forEach((r) => {
+      const cleanEmpId = String(r.employeeId || '').trim();
+      const cleanEmpName = String(r.employeeName || '').trim().toLowerCase();
+      const liveUser = userMap.get(cleanEmpId);
+
+      // Exclude admin/seed test submissions from workforce capacity reporting (e.g. QG Admin / BPER-000)
+      if (cleanEmpId === 'BPER-000' || cleanEmpName === 'qg admin') {
+        return;
+      }
+      
+      // Reporting-layer reconciliation: For verified October 2026 source contractors, supply 'Contract'
+      // if and only if employeeType is missing in the database document. All other NA grades without
+      // explicit contract type remain strictly 'Unmapped'.
+      const isOct2026Dataset = r.reportingPeriod === '2026-10' || (r.referenceId && r.referenceId.startsWith('WDT-2026-10-EMP'));
+      let effectiveEmployeeType = r.employeeType;
+      if (!effectiveEmployeeType && isOct2026Dataset && OCT_2026_VERIFIED_CONTRACT_IDS.has(cleanEmpId)) {
+        effectiveEmployeeType = 'Contract';
+      }
+
+      // Determine effective grade based on requested perspective (Default = Option A: submission-time grade)
+      let effectiveGrade = r.originalGradeAtSubmission || r.grade;
+      let effectiveStandardizedBand = standardizeGrade(effectiveGrade, effectiveEmployeeType);
+      
+      if (gradePerspective === 'current' && liveUser && liveUser.band) {
+        effectiveGrade = liveUser.band;
+        effectiveStandardizedBand = standardizeGrade(liveUser.band, effectiveEmployeeType);
+      }
+
+      const enhancedRow = {
+        ...r,
+        employeeType: effectiveEmployeeType,
+        effectiveGrade,
+        effectiveStandardizedBand,
+        currentGrade: liveUser ? liveUser.band : null,
+      };
+
+      if (r.isVacant) {
+        vacantRows.push(enhancedRow);
+      } else {
+        staffedRows.push(enhancedRow);
+      }
+    });
+
+    // Helper: Aggregate by Standardized Grade Band
+    const buildBandDistribution = (itemRows) => {
+      const bandMap = new Map();
+      ORDERED_GRADE_BANDS.forEach((band) => {
+        bandMap.set(band, { band, hours: 0, fte: 0, headcount: new Set() });
+      });
+
+      itemRows.forEach((r) => {
+        const bandKey = r.effectiveStandardizedBand || 'Unmapped';
+        const current = bandMap.get(bandKey) || { band: bandKey, hours: 0, fte: 0, headcount: new Set() };
+        current.hours += r.monthlyHours;
+        if (r.employeeId && r.employeeId !== 'NA') current.headcount.add(r.employeeId);
+        bandMap.set(bandKey, current);
+      });
+
+      return Array.from(bandMap.values()).map((b) => ({
+        band: b.band,
+        hours: Number(b.hours.toFixed(1)),
+        fte: Number((b.hours / STANDARD_MONTHLY_HOURS).toFixed(2)),
+        headcount: b.headcount.size,
+      }));
+    };
+
+    // Helper: Aggregate by Department
+    const buildDeptDistribution = (itemRows) => {
+      const deptMap = new Map();
+      itemRows.forEach((r) => {
+        const dept = r.department || 'Unassigned';
+        const current = deptMap.get(dept) || { department: dept, hours: 0, fte: 0, headcount: new Set() };
+        current.hours += r.monthlyHours;
+        if (r.employeeId && r.employeeId !== 'NA') current.headcount.add(r.employeeId);
+        deptMap.set(dept, current);
+      });
+
+      return Array.from(deptMap.values()).map((d) => ({
+        department: d.department,
+        hours: Number(d.hours.toFixed(1)),
+        fte: Number((d.hours / STANDARD_MONTHLY_HOURS).toFixed(2)),
+        headcount: d.headcount.size,
+      })).sort((a, b) => b.hours - a.hours);
+    };
+
+    // VIEW A: Actual Workforce (Occupied positions only, staffed workload & FTE contribution)
+    const staffedEmpMap = new Map();
+    staffedRows.forEach((r) => {
+      const empKey = r.employeeId || r.employeeName;
+      const current = staffedEmpMap.get(empKey) || {
+        employeeId: r.employeeId,
+        name: r.employeeName,
+        department: r.department,
+        designation: r.designation,
+        originalGradeAtSubmission: r.originalGradeAtSubmission,
+        standardizedGrade: r.effectiveStandardizedBand,
+        currentGrade: r.currentGrade,
+        monthlyHours: 0,
+        activityCount: 0,
+      };
+      current.monthlyHours += r.monthlyHours;
+      current.activityCount += 1;
+      staffedEmpMap.set(empKey, current);
+    });
+
+    const staffedEmployees = Array.from(staffedEmpMap.values()).map((e) => ({
+      ...e,
+      monthlyHours: Number(e.monthlyHours.toFixed(1)),
+      fte: Number((e.monthlyHours / STANDARD_MONTHLY_HOURS).toFixed(2)),
+      utilizationPct: Number(Math.min(100, (e.monthlyHours / STANDARD_MONTHLY_HOURS) * 100).toFixed(1)),
+    })).sort((a, b) => b.monthlyHours - a.monthlyHours);
+
+    const totalStaffedHours = staffedRows.reduce((sum, r) => sum + r.monthlyHours, 0);
+    const viewA_ActualWorkforce = {
+      summary: {
+        occupiedHeadcount: staffedEmployees.length,
+        staffedHours: Number(totalStaffedHours.toFixed(2)),
+        staffedFte: Number((totalStaffedHours / STANDARD_MONTHLY_HOURS).toFixed(2)),
+        avgUtilizationPct: Number(
+          (staffedEmployees.length > 0 ? (totalStaffedHours / (staffedEmployees.length * STANDARD_MONTHLY_HOURS)) * 100 : 0).toFixed(1)
+        ),
+      },
+      byGradeBand: buildBandDistribution(staffedRows),
+      byDepartment: buildDeptDistribution(staffedRows),
+      employees: staffedEmployees,
+    };
+
+    // VIEW B: Vacancy & Capacity Planning (Vacant positions, grade bands, departments, planned FTE requirements)
+    const vacantPosMap = new Map();
+    vacantRows.forEach((r) => {
+      const posKey = r.employeeId || `VAC-${vacantPosMap.size + 1}`;
+      const current = vacantPosMap.get(posKey) || {
+        positionId: r.employeeId,
+        title: r.designation || 'Vacant Position',
+        department: r.department,
+        grade: r.originalGradeAtSubmission || r.grade,
+        standardizedGradeBand: r.effectiveStandardizedBand,
+        plannedHours: 0,
+        activityCount: 0,
+      };
+      current.plannedHours += r.monthlyHours;
+      current.activityCount += 1;
+      vacantPosMap.set(posKey, current);
+    });
+
+    const vacantPositionsList = Array.from(vacantPosMap.values()).map((p) => ({
+      ...p,
+      plannedHours: Number(p.plannedHours.toFixed(1)),
+      plannedFte: Number((p.plannedHours / STANDARD_MONTHLY_HOURS).toFixed(2)),
+    })).sort((a, b) => b.plannedHours - a.plannedHours);
+
+    const totalVacantHours = vacantRows.reduce((sum, r) => sum + r.monthlyHours, 0);
+    const viewB_VacancyCapacityPlanning = {
+      summary: {
+        vacantPositionsCount: vacantPositionsList.length,
+        plannedWorkloadHours: Number(totalVacantHours.toFixed(2)),
+        plannedCapacityFte: Number((totalVacantHours / STANDARD_MONTHLY_HOURS).toFixed(2)),
+      },
+      byGradeBand: buildBandDistribution(vacantRows),
+      byDepartment: buildDeptDistribution(vacantRows),
+      positions: vacantPositionsList,
+    };
+
+    // VIEW C: Workforce Gap Analysis (Compare current staffed capacity with required capacity)
+    const availableStaffedCapacityHours = staffedEmployees.length * STANDARD_MONTHLY_HOURS;
+    const availableStaffedCapacityFte = staffedEmployees.length;
+    const requiredCapacityHours = totalStaffedHours + totalVacantHours;
+    const requiredCapacityFte = Number((requiredCapacityHours / STANDARD_MONTHLY_HOURS).toFixed(2));
+    const netGapHours = Number((requiredCapacityHours - availableStaffedCapacityHours).toFixed(2));
+    const netGapFte = Number((netGapHours / STANDARD_MONTHLY_HOURS).toFixed(2));
+
+    // Department level Gap Matrix
+    const allDepts = Array.from(new Set([...rows.map((r) => r.department || 'Unassigned')]));
+    const departmentGapMatrix = allDepts.map((dept) => {
+      const deptStaffed = staffedRows.filter((r) => (r.department || 'Unassigned') === dept);
+      const deptVacant = vacantRows.filter((r) => (r.department || 'Unassigned') === dept);
+
+      const deptStaffedEmps = new Set(deptStaffed.map((r) => r.employeeId)).size;
+      const deptStaffedHours = deptStaffed.reduce((sum, r) => sum + r.monthlyHours, 0);
+      const deptVacantHours = deptVacant.reduce((sum, r) => sum + r.monthlyHours, 0);
+      const deptAvailableHours = deptStaffedEmps * STANDARD_MONTHLY_HOURS;
+      const deptRequiredHours = deptStaffedHours + deptVacantHours;
+
+      return {
+        department: dept,
+        staffedHeadcount: deptStaffedEmps,
+        availableCapacityFte: deptStaffedEmps,
+        staffedWorkloadFte: Number((deptStaffedHours / STANDARD_MONTHLY_HOURS).toFixed(2)),
+        vacantPlannedFte: Number((deptVacantHours / STANDARD_MONTHLY_HOURS).toFixed(2)),
+        requiredTotalFte: Number((deptRequiredHours / STANDARD_MONTHLY_HOURS).toFixed(2)),
+        gapFte: Number(((deptRequiredHours - deptAvailableHours) / STANDARD_MONTHLY_HOURS).toFixed(2)),
+        status: deptRequiredHours > deptAvailableHours ? 'Capacity Deficit' : 'Balanced / Surplus',
+      };
+    }).sort((a, b) => b.gapFte - a.gapFte);
+
+    // Grade Band level Gap Matrix
+    const gradeBandGapMatrix = ORDERED_GRADE_BANDS.map((band) => {
+      const bandStaffed = staffedRows.filter((r) => r.effectiveStandardizedBand === band);
+      const bandVacant = vacantRows.filter((r) => r.effectiveStandardizedBand === band);
+
+      const bandStaffedEmps = new Set(bandStaffed.map((r) => r.employeeId)).size;
+      const bandStaffedHours = bandStaffed.reduce((sum, r) => sum + r.monthlyHours, 0);
+      const bandVacantHours = bandVacant.reduce((sum, r) => sum + r.monthlyHours, 0);
+      const bandAvailableHours = bandStaffedEmps * STANDARD_MONTHLY_HOURS;
+      const bandRequiredHours = bandStaffedHours + bandVacantHours;
+
+      return {
+        gradeBand: band,
+        staffedHeadcount: bandStaffedEmps,
+        availableCapacityFte: bandStaffedEmps,
+        staffedWorkloadFte: Number((bandStaffedHours / STANDARD_MONTHLY_HOURS).toFixed(2)),
+        vacantPlannedFte: Number((bandVacantHours / STANDARD_MONTHLY_HOURS).toFixed(2)),
+        requiredTotalFte: Number((bandRequiredHours / STANDARD_MONTHLY_HOURS).toFixed(2)),
+        gapFte: Number(((bandRequiredHours - bandAvailableHours) / STANDARD_MONTHLY_HOURS).toFixed(2)),
+        status: bandRequiredHours > bandAvailableHours ? 'Capacity Deficit' : 'Balanced / Surplus',
+      };
+    });
+
+    const viewC_WorkforceGapAnalysis = {
+      summary: {
+        occupiedHeadcount: staffedEmployees.length,
+        availableStaffedCapacityFte,
+        requiredCapacityFte,
+        netGapFte,
+        deficitNotice: netGapFte > 0 ? 'Deficit indicates unassigned vacancy workload requiring redistribution, automation, or staffing' : 'Workforce capacity is sufficient',
+      },
+      departmentGapMatrix,
+      gradeBandGapMatrix,
+    };
+
+    res.json({
+      generatedAt: new Date().toISOString(),
+      gradePerspective,
+      actualWorkforce: viewA_ActualWorkforce,
+      vacancyCapacityPlanning: viewB_VacancyCapacityPlanning,
+      workforceGapAnalysis: viewC_WorkforceGapAnalysis,
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+}
+
 module.exports = {
   getDashboardReport,
   getUtilizationReport,
@@ -1395,6 +1958,7 @@ module.exports = {
   getConsolidationAnalysisReport,
   getFitmentAnalysisReport,
   getUtilizationAnalysisReport,
+  getWorkforceCapacityReport,
   getAuditLogs,
   flattenRows,
   safeNumber,

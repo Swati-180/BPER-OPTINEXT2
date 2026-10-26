@@ -141,6 +141,14 @@ export function getFitmentAnalysisReport() {
   return apiGetJson<any>('/reports/fitment-analysis');
 }
 
+export function getWorkforceCapacityReport(department?: string, gradePerspective: 'historical' | 'current' = 'historical') {
+  const params = new URLSearchParams();
+  if (department && department !== 'All Departments') params.set('department', department);
+  if (gradePerspective) params.set('gradePerspective', gradePerspective);
+  const query = params.toString() ? `?${params.toString()}` : '';
+  return apiGetJson<any>(`/reports/workforce-capacity${query}`);
+}
+
 export function getUtilizationAnalysisReport(department?: string) {
   const query = department && department !== 'All Departments'
     ? `?department=${encodeURIComponent(department)}`

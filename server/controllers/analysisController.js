@@ -31,10 +31,8 @@ function normalizeAnalysisRecord(record) {
     if (criteria.length >= 12) {
       const proximity = criteria[9];
       const sensitivity = criteria[6];
-      const controls = criteria[8];
-      const regulatory = criteria[10];
-      const skill = criteria[11];
-      if (proximity === 'H' && (sensitivity === 'H' || controls === 'H' || regulatory === 'H' || skill === 'H')) {
+      const criticality = criteria[7];
+      if (proximity === 'H' || (sensitivity === 'H' && criticality === 'H')) {
         hasException = true;
       }
     }
@@ -188,8 +186,14 @@ const getSixBySixData = async (req, res) => {
         displayProcess = displayProcess.replace(subPrefix, '');
       }
 
+      // 6x6 Scoring & Consolidation status resolution
+      const isAllPending = !Array.isArray(normalized.criteria) || normalized.criteria.length === 0 || normalized.criteria.every(c => c === '-');
+      const assessmentStatus = isAllPending ? 'Pending Assessment' : (normalized.consolidated ? 'Consolidatable' : 'Retained');
+
       return {
         ...normalized,
+        assessmentStatus,
+        isPendingAssessment: isAllPending,
         tower: tax ? tax.majorProcess : 'Unknown',
         subProcessGroup,
         displayProcess,

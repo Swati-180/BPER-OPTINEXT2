@@ -11,7 +11,35 @@ import {
 import { getConsolidationAnalysisReport, exportToCSV } from '../../lib/api';
 import { DashboardSkeleton } from '../../components/PortalSkeletons';
 
-type TabType = 'overview' | 'byDepartment' | 'candidates';
+type TabType = 'overview' | 'majorProcess' | 'liftVsKt' | 'byDepartment' | 'candidates';
+
+type MajorProcessConsolidationItem = {
+  majorProcess: string;
+  totalHours: number;
+  totalFte: number;
+  consolidatableFte: number;
+  retainedFte: number;
+  consolidationPct: number;
+  activityCount: number;
+  consolidatableActivitiesCount: number;
+};
+
+type LiftVsKtItem = {
+  majorProcess: string;
+  totalEmployees: number;
+  liftAndShift: { count: number; pct: number; fte: number };
+  ktRequired: { count: number; pct: number; fte: number };
+};
+
+type ProcessDetailItem = {
+  process: string;
+  totalFte: number;
+  consolidationPotential: number;
+  retained: number;
+  consolidationPct: number;
+  cumulativePct: number;
+  isTop80: boolean;
+};
 
 type ConsolidationAnalysisReport = {
   generatedAt?: string;
@@ -22,6 +50,9 @@ type ConsolidationAnalysisReport = {
     savedFte?: number;
     estimatedSavingsCr?: number;
   };
+  majorProcessConsolidation?: MajorProcessConsolidationItem[];
+  majorProcessLiftVsKt?: Record<string, LiftVsKtItem>;
+  majorProcessDetail?: Record<string, ProcessDetailItem[]>;
   tabs?: {
     byDepartment?: Array<{
       department: string;
@@ -217,8 +248,10 @@ export default function ConsolidationAnalysisPage() {
       </section>
 
       <section className="rounded-2xl border border-[#D9E4F2] bg-white p-5 shadow-[0_6px_18px_rgba(16,42,80,0.08)]">
-        <div className="inline-flex rounded-xl border border-[#DDE7F3] bg-[#F8FBFF] p-1 mb-5">
+        <div className="inline-flex rounded-xl border border-[#DDE7F3] bg-[#F8FBFF] p-1 mb-5 flex-wrap gap-1">
           <TabButton label="Overview" active={activeTab === 'overview'} onClick={() => setActiveTab('overview')} />
+          <TabButton label="Major Process (Slide 10)" active={activeTab === 'majorProcess'} onClick={() => setActiveTab('majorProcess')} />
+          <TabButton label="Lift & Shift vs. KT (Slides 11-30)" active={activeTab === 'liftVsKt'} onClick={() => setActiveTab('liftVsKt')} />
           <TabButton label="By Department" active={activeTab === 'byDepartment'} onClick={() => setActiveTab('byDepartment')} />
           <TabButton label="Candidates" active={activeTab === 'candidates'} onClick={() => setActiveTab('candidates')} />
         </div>
@@ -232,6 +265,146 @@ export default function ConsolidationAnalysisPage() {
               <p className="mt-2 pt-2 border-t border-[#E3EAF4]" style={{color: '#1E5EAB'}}>Potential savings: <strong>₹{safeNumber(summary.estimatedSavingsCr).toFixed(2)} Cr</strong></p>
               <p className="mt-1 text-xs text-[#8AA0BA]">Based on 35% FTE reduction per consolidated activity</p>
             </div>
+          </div>
+        )}
+
+        {/* Slide 10: Consolidation Potential by Major Process */}
+        {activeTab === 'majorProcess' && (
+          <div className="space-y-4">
+            <div className="flex justify-between items-center">
+              <div>
+                <h3 className="text-lg font-bold text-[#102846]">Overall Consolidation Potential: Major Process View</h3>
+                <p className="text-xs text-[#6E86A3]">Slide 10 Specification: Consolidatable vs. Retained FTE across major functional towers</p>
+              </div>
+            </div>
+
+            <div className="overflow-x-auto rounded-xl border border-[#E2E8F0]">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-[#F8FAFC] text-[11px] font-bold uppercase tracking-wider text-[#64748B] border-b border-[#E2E8F0]">
+                    <th className="px-4 py-3">Major Process</th>
+                    <th className="px-4 py-3 text-right">Consolidation Potential (FTE)</th>
+                    <th className="px-4 py-3 text-right">Retained (FTE)</th>
+                    <th className="px-4 py-3 text-right">Total FTE</th>
+                    <th className="px-4 py-3 text-right">% Consolidation</th>
+                    <th className="px-4 py-3 text-center">Visual Split</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#E2E8F0] text-sm">
+                  {(!report?.majorProcessConsolidation || report.majorProcessConsolidation.length === 0) ? (
+                    <tr>
+                      <td colSpan={6} className="px-4 py-6 text-center text-xs text-[#94A3B8]">
+                        No major process consolidation records found.
+                      </td>
+                    </tr>
+                  ) : (
+                    report.majorProcessConsolidation.map((item) => (
+                      <tr key={item.majorProcess} className="hover:bg-[#F8FAFC]">
+                        <td className="px-4 py-3 font-semibold text-[#1E293B]">{item.majorProcess}</td>
+                        <td className="px-4 py-3 text-right font-bold text-[#059669]">{item.consolidatableFte.toFixed(2)}</td>
+                        <td className="px-4 py-3 text-right text-[#64748B]">{item.retainedFte.toFixed(2)}</td>
+                        <td className="px-4 py-3 text-right font-bold text-[#0F172A]">{item.totalFte.toFixed(2)}</td>
+                        <td className="px-4 py-3 text-right">
+                          <span className={`inline-flex px-2 py-0.5 rounded text-xs font-bold ${
+                            item.consolidationPct >= 70 ? 'bg-[#ECFDF5] text-[#047857]' : 'bg-[#EFF6FF] text-[#1D4ED8]'
+                          }`}>
+                            {item.consolidationPct.toFixed(1)}%
+                          </span>
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="w-32 mx-auto h-3 bg-[#E2E8F0] rounded-full overflow-hidden flex">
+                            <div className="bg-[#10B981] h-full" style={{ width: `${item.consolidationPct}%` }} title={`Consolidation: ${item.consolidationPct}%`} />
+                            <div className="bg-[#94A3B8] h-full" style={{ width: `${100 - item.consolidationPct}%` }} title={`Retained: ${(100 - item.consolidationPct).toFixed(1)}%`} />
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* Slides 11-30 & 32-48: Lift & Shift vs KT & Pareto Process Breakdown */}
+        {activeTab === 'liftVsKt' && (
+          <div className="space-y-6">
+            <div>
+              <h3 className="text-lg font-bold text-[#102846]">Consolidation Analysis: Lift & Shift vs. Knowledge Transfer</h3>
+              <p className="text-xs text-[#6E86A3]">
+                Slides 11–30 Specification: Employees with $\ge 70\%$ workload in a process qualify for Lift & Shift; otherwise fractional time requires KT. Slides 32–48: Cumulative Pareto splits.
+              </p>
+            </div>
+
+            {(!report?.majorProcessLiftVsKt || Object.keys(report.majorProcessLiftVsKt).length === 0) ? (
+              <div className="p-8 text-center text-sm text-[#94A3B8] border rounded-xl">
+                No major process Lift & Shift records available for this filter.
+              </div>
+            ) : (
+              <div className="space-y-6">
+                {Object.entries(report.majorProcessLiftVsKt).map(([major, lkt]) => {
+                  const procs = report.majorProcessDetail?.[major] || [];
+                  return (
+                    <div key={major} className="rounded-xl border border-[#D9E4F2] p-4 bg-[#F8FAFC]">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-[#E2E8F0] gap-2">
+                        <div>
+                          <h4 className="text-base font-bold text-[#0F2649]">{major}</h4>
+                          <p className="text-xs text-[#64748B]">Workforce Scope: {lkt.totalEmployees} employees contributing workload</p>
+                        </div>
+                        {/* Lift & Shift vs KT Summary Chips */}
+                        <div className="flex items-center gap-2">
+                          <div className="rounded-lg bg-[#EFF6FF] border border-[#BFDBFE] px-3 py-1.5 text-center">
+                            <span className="text-[10px] uppercase font-bold text-[#1D4ED8]">Lift & Shift (≥70%)</span>
+                            <p className="text-sm font-extrabold text-[#1E40AF]">
+                              {lkt.liftAndShift.count} ({lkt.liftAndShift.pct}%) • {lkt.liftAndShift.fte} FTE
+                            </p>
+                          </div>
+                          <div className="rounded-lg bg-[#FFF7ED] border border-[#FED7AA] px-3 py-1.5 text-center">
+                            <span className="text-[10px] uppercase font-bold text-[#C2410C]">KT Required (&lt;70%)</span>
+                            <p className="text-sm font-extrabold text-[#9A3412]">
+                              {lkt.ktRequired.count} ({lkt.ktRequired.pct}%) • {lkt.ktRequired.fte} FTE
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Process-Level Pareto Split Table (Slides 32, 34, 36, etc.) */}
+                      {procs.length > 0 && (
+                        <div className="mt-3 overflow-x-auto rounded-lg border border-[#E2E8F0] bg-white">
+                          <table className="w-full text-left text-xs border-collapse">
+                            <thead>
+                              <tr className="bg-[#F1F5F9] text-[10px] font-bold uppercase tracking-wider text-[#475569] border-b border-[#E2E8F0]">
+                                <th className="px-3 py-2">Process / Activity</th>
+                                <th className="px-3 py-2 text-right">Consolidation Potential</th>
+                                <th className="px-3 py-2 text-right">Retained</th>
+                                <th className="px-3 py-2 text-right">Total FTE</th>
+                                <th className="px-3 py-2 text-right">% Consolidation</th>
+                                <th className="px-3 py-2 text-right">Cumulative %</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-[#E2E8F0]">
+                              {procs.map((p) => (
+                                <tr key={p.process} className={`hover:bg-[#F8FAFC] ${p.isTop80 ? 'bg-[#F0FDF4]/40 font-medium' : ''}`}>
+                                  <td className="px-3 py-2 text-[#1E293B]">
+                                    {p.process}
+                                    {p.isTop80 && <span className="ml-2 text-[9px] bg-[#DCFCE7] text-[#15803D] px-1.5 py-0.5 rounded font-bold">Top 80%</span>}
+                                  </td>
+                                  <td className="px-3 py-2 text-right font-semibold text-[#059669]">{p.consolidationPotential.toFixed(2)}</td>
+                                  <td className="px-3 py-2 text-right text-[#64748B]">{p.retained.toFixed(2)}</td>
+                                  <td className="px-3 py-2 text-right font-bold text-[#0F172A]">{p.totalFte.toFixed(2)}</td>
+                                  <td className="px-3 py-2 text-right font-semibold text-[#2563EB]">{p.consolidationPct.toFixed(1)}%</td>
+                                  <td className="px-3 py-2 text-right font-mono text-[#475569]">{p.cumulativePct.toFixed(1)}%</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
 
