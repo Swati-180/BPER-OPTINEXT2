@@ -268,19 +268,22 @@ export const CALCULATION_REGISTRY: CalculationDoc[] = [
       'Excludes auto-generated mock standard operating procedures from production reporting'
     ],
     thresholdsAndRules: [
-      'Score >= 7: Eligible for Consolidation (consolidated = true)',
-      'Exception Rule: If criteria[9] (Proximity) is "H" AND any of Sensitivity[6], Controls[8], Regulatory[10], or Skill[11] is "H", consolidated is overridden to FALSE regardless of total score'
+      'Score >= 7: Shortlisted for Process Consolidation (evaluated on scale of 12 points: 6 Performance High + 6 Characteristic Low)',
+      'Checkpoint A Exception: Shortlisted processes scoring High ("H") on "Proximity" are excluded from consolidation (consolidated = false)',
+      'Checkpoint B Exception: Shortlisted processes scoring jointly High ("H") on both "Sensitivity" AND "Criticality" are excluded from consolidation (consolidated = false)',
+      'Pending Assessment: If all 12 criteria are unassessed ("-"), the process remains strictly Pending Assessment (consolidated = null)'
     ],
     downstreamConsumers: [
       '6x6 Analysis Process Matrix & Quadrant charts',
-      'Process Operations Hub consolidation backlog',
-      'Deep Analysis transformation candidates'
+      'Consolidation Analysis official PAM baseline cards',
+      'Deep Analysis transformation candidates',
+      'WDT Submissions Excel Export (6x6 Process Assessment sheet)'
     ],
     implementationRef: {
       file: 'server/controllers/analysisController.js',
-      functionOrLine: 'computeScore, normalizeAnalysisRecord (lines 5-49)'
+      functionOrLine: 'computeScore, normalizeAnalysisRecord (lines 5-47) & models/ProcessAnalysis.js'
     },
-    notes: 'The Proximity Exception prevents processes requiring intense local physical presence or strict on-site regulatory compliance from being prematurely flagged for remote consolidation.'
+    notes: 'Approved PAM™ 6x6 Framework (Slide 7): Performance parameters are objective/hard elements requiring "High" to consolidate. Characteristic parameters are soft/subjective elements requiring "Low" to consolidate. Processes passing the >=7 threshold undergo Checkpoint A (Proximity) and Checkpoint B (joint Sensitivity & Criticality) exclusion filters.'
   },
   {
     id: 'vacancy-impact',

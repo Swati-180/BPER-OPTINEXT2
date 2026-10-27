@@ -1212,6 +1212,7 @@ async function getConsolidationAnalysisReport(req, res) {
     const pamMap = new Map();
     pamRecords.forEach(p => {
       const pKey = `${p.department || ''}:::${p.process || ''}`;
+      // p.consolidated is boolean or null (Pending Assessment)
       pamMap.set(pKey, p.consolidated);
       // also fallback by process name
       if (!pamMap.has(p.process)) pamMap.set(p.process, p.consolidated);
@@ -1224,10 +1225,17 @@ async function getConsolidationAnalysisReport(req, res) {
     const empMajorHoursMap = new Map(); // key: employeeId ::: majorProcess
     const empMajorConsolHoursMap = new Map(); // key: employeeId ::: majorProcess
 
+    let totalPamConsolidatableHours = 0;
+    let totalPamRetainedHours = 0;
+    let totalPamPendingHours = 0;
+    let totalPamConsolidatableCount = 0;
+    let totalPamRetainedCount = 0;
+    let totalPamPendingCount = 0;
+
     rows.forEach((row) => {
       const major = row.majorProcess || row.tower || 'Unspecified';
       const proc = row.process && row.process !== 'Unspecified Process' ? row.process : (row.subProcess || 'Unspecified');
-      const isPamConsolidated = pamMap.get(`${row.department}:::${row.subProcess}`) ?? pamMap.get(row.subProcess) ?? false;
+      const pamStatus = pamMap.get(`${row.department}:::${row.subProcess}`) ?? pamMap.get(row.subProcess) ?? null;
       const hours = row.monthlyHours || 0;
       const fte = hours / STANDARD_MONTHLY_HOURS;
 
@@ -1240,19 +1248,36 @@ async function getConsolidationAnalysisReport(req, res) {
         consolidatableFte: 0,
         retainedHours: 0,
         retainedFte: 0,
+        pendingAssessmentHours: 0,
+        pendingAssessmentFte: 0,
         activityCount: 0,
         consolidatableActivitiesCount: 0,
+        retainedActivitiesCount: 0,
+        pendingActivitiesCount: 0,
       };
       currentMajor.totalHours += hours;
       currentMajor.totalFte += fte;
       currentMajor.activityCount += 1;
-      if (isPamConsolidated) {
+
+      if (pamStatus === true) {
         currentMajor.consolidatableHours += hours;
         currentMajor.consolidatableFte += fte;
         currentMajor.consolidatableActivitiesCount += 1;
-      } else {
+        totalPamConsolidatableHours += hours;
+        totalPamConsolidatableCount += 1;
+      } else if (pamStatus === false) {
         currentMajor.retainedHours += hours;
         currentMajor.retainedFte += fte;
+        currentMajor.retainedActivitiesCount += 1;
+        totalPamRetainedHours += hours;
+        totalPamRetainedCount += 1;
+      } else {
+        // Explicitly Pending Assessment - do NOT classify as retained!
+        currentMajor.pendingAssessmentHours += hours;
+        currentMajor.pendingAssessmentFte += fte;
+        currentMajor.pendingActivitiesCount += 1;
+        totalPamPendingHours += hours;
+        totalPamPendingCount += 1;
       }
       majorProcessMap.set(major, currentMajor);
 
@@ -1265,13 +1290,16 @@ async function getConsolidationAnalysisReport(req, res) {
         totalFte: 0,
         consolidatableFte: 0,
         retainedFte: 0,
+        pendingFte: 0,
       };
       currentProc.totalHours += hours;
       currentProc.totalFte += fte;
-      if (isPamConsolidated) {
+      if (pamStatus === true) {
         currentProc.consolidatableFte += fte;
-      } else {
+      } else if (pamStatus === false) {
         currentProc.retainedFte += fte;
+      } else {
+        currentProc.pendingFte += fte;
       }
       processSubMap.set(procKey, currentProc);
 
@@ -1279,7 +1307,7 @@ async function getConsolidationAnalysisReport(req, res) {
       const empId = row.employeeId || 'NA';
       const empMajorKey = `${empId}:::${major}`;
       empMajorHoursMap.set(empMajorKey, (empMajorHoursMap.get(empMajorKey) || 0) + hours);
-      if (isPamConsolidated) {
+      if (pamStatus === true) {
         empMajorConsolHoursMap.set(empMajorKey, (empMajorConsolHoursMap.get(empMajorKey) || 0) + hours);
       }
     });
@@ -1294,16 +1322,20 @@ async function getConsolidationAnalysisReport(req, res) {
     // Format Slide 10: Major Process Consolidation View
     const majorProcessConsolidation = Array.from(majorProcessMap.values())
       .map((item) => {
-        const consolPct = item.totalFte > 0 ? Number(((item.consolidatableFte / item.totalFte) * 100).toFixed(1)) : 0;
+        const assessedFte = item.consolidatableFte + item.retainedFte;
+        const consolPct = assessedFte > 0 ? Number(((item.consolidatableFte / assessedFte) * 100).toFixed(1)) : 0;
         return {
           majorProcess: item.majorProcess,
           totalHours: Number(item.totalHours.toFixed(2)),
           totalFte: Number(item.totalFte.toFixed(2)),
           consolidatableFte: Number(item.consolidatableFte.toFixed(2)),
           retainedFte: Number(item.retainedFte.toFixed(2)),
+          pendingAssessmentFte: Number(item.pendingAssessmentFte.toFixed(2)),
           consolidationPct: consolPct,
           activityCount: item.activityCount,
           consolidatableActivitiesCount: item.consolidatableActivitiesCount,
+          retainedActivitiesCount: item.retainedActivitiesCount,
+          pendingActivitiesCount: item.pendingActivitiesCount,
         };
       })
       .sort((a, b) => b.totalFte - a.totalFte);
@@ -1383,6 +1415,25 @@ async function getConsolidationAnalysisReport(req, res) {
       };
     });
 
+    const totalPamAssessedHours = totalPamConsolidatableHours + totalPamRetainedHours;
+    const officialPamSummary = {
+      isAuditedPamBaseline: true,
+      totalHours: Number((totalPamConsolidatableHours + totalPamRetainedHours + totalPamPendingHours).toFixed(2)),
+      totalFte: Number(((totalPamConsolidatableHours + totalPamRetainedHours + totalPamPendingHours) / STANDARD_MONTHLY_HOURS).toFixed(2)),
+      consolidatableHours: Number(totalPamConsolidatableHours.toFixed(2)),
+      consolidatableFte: Number((totalPamConsolidatableHours / STANDARD_MONTHLY_HOURS).toFixed(2)),
+      consolidatableCount: totalPamConsolidatableCount,
+      retainedHours: Number(totalPamRetainedHours.toFixed(2)),
+      retainedFte: Number((totalPamRetainedHours / STANDARD_MONTHLY_HOURS).toFixed(2)),
+      retainedCount: totalPamRetainedCount,
+      pendingAssessmentHours: Number(totalPamPendingHours.toFixed(2)),
+      pendingAssessmentFte: Number((totalPamPendingHours / STANDARD_MONTHLY_HOURS).toFixed(2)),
+      pendingAssessmentCount: totalPamPendingCount,
+      assessedConsolidationRatePct: totalPamAssessedHours > 0
+        ? Number(((totalPamConsolidatableHours / totalPamAssessedHours) * 100).toFixed(1))
+        : 0
+    };
+
     res.json({
       generatedAt: new Date().toISOString(),
       summary: {
@@ -1406,6 +1457,7 @@ async function getConsolidationAnalysisReport(req, res) {
           notice: 'Screened candidate activities and efficiency figures represent hypothetical planning scenarios, not audited realized savings.'
         }
       },
+      officialPamSummary,
       tabs: {
         byDepartment: byDepartmentDetail,
         allCandidates,

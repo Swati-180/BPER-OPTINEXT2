@@ -251,7 +251,137 @@ async function exportWDTSubmissionsExcel(req, res) {
           util: Number(Math.min(100, fte * 100).toFixed(1)),
         });
       });
-    autoWidth(fteSheet);
+    // ─── Sheet 4: 6x6 Process Assessment ──────────────────────────────────────
+    const ProcessAnalysis = require('../models/ProcessAnalysis');
+    const Taxonomy = require('../models/Taxonomy');
+    const pamSheet = workbook.addWorksheet('6x6 Process Assessment');
+    pamSheet.columns = [
+      { header: 'Department', key: 'department' },
+      { header: 'Major Process / Tower', key: 'tower' },
+      { header: 'Process Group', key: 'subProcessGroup' },
+      { header: 'Process / Activity Name', key: 'process' },
+      { header: 'Type', key: 'type' },
+      { header: 'Multiple Locns', key: 'c0' },
+      { header: 'Routine', key: 'c1' },
+      { header: 'Volumes', key: 'c2' },
+      { header: 'Manpower', key: 'c3' },
+      { header: 'SOPs', key: 'c4' },
+      { header: 'ERP / Technology', key: 'c5' },
+      { header: 'Sensitivity', key: 'c6' },
+      { header: 'Criticality', key: 'c7' },
+      { header: 'Controls', key: 'c8' },
+      { header: 'Proximity', key: 'c9' },
+      { header: 'Regulatory', key: 'c10' },
+      { header: 'Skill', key: 'c11' },
+      { header: 'Score (Max 12)', key: 'score' },
+      { header: 'Assessment Status', key: 'status' },
+      { header: 'Operational FTE', key: 'fte' },
+    ];
+    pamSheet.getRow(1).eachCell(cell => Object.assign(cell, headerStyle(true, 'FF0F3860')));
+    pamSheet.getRow(1).height = 30;
+
+    // Load PAM records scoped by department
+    let pamQuery = {};
+    if (req.query.department && req.query.department !== 'All Departments') {
+      pamQuery.department = req.query.department;
+    }
+    const pamRecords = await ProcessAnalysis.find(pamQuery).sort({ department: 1, process: 1 }).lean();
+    const taxonomyList = await Taxonomy.find({}).lean();
+    const taxMap = new Map();
+    taxonomyList.forEach(t => {
+      if (Array.isArray(t.subProcesses)) {
+        t.subProcesses.forEach(sp => taxMap.set(`${t.department}:::${sp}`, t));
+      }
+      taxMap.set(`${t.department}:::${t.process}`, t);
+    });
+
+    // Compute operational FTE per activity from current scoped submissions
+    // Rules:
+    // 1. Strictly department-scoped (no global fallback to prevent cross-department leakage).
+    // 2. Prefer granular activity identity (r.subProcess || r.name). Fallback to r.process ONLY if granular identity is absent.
+    // 3. Each WDT row contributes to exactly one identity, preventing double-counting across parent/child PAM rows.
+    // 4. Multiple submissions for the same activity aggregate correctly.
+    // 5. If no reliable match exists, report 'Unavailable'.
+    const activityFteMap = new Map(); // key: normDept:::normActivityName -> number
+    const activityOccurredMap = new Map(); // key: normDept:::normActivityName -> boolean
+    const normalizeKey = (str) => String(str || '').trim().toLowerCase();
+
+    submissions.forEach(sub => {
+      const dept = sub.employee?.department || 'Unassigned';
+      const normDept = normalizeKey(dept);
+      const payloadRows = Array.isArray(sub.payload?.rows) ? sub.payload.rows.filter(r => r && typeof r === 'object') : [];
+      const actList = payloadRows.length > 0 ? payloadRows : (Array.isArray(sub.activities) ? sub.activities.filter(a => a && typeof a === 'object') : []);
+
+      actList.forEach(r => {
+        const hours = safeNumber(r.timeTakenHoursPerMonth != null ? r.timeTakenHoursPerMonth : (r.monthlyHours != null ? r.monthlyHours : r.hours));
+        const fteContribution = hours / STANDARD_MONTHLY_HOURS;
+
+        // Prefer granular subProcess or name; fall back to process only if granular name is missing/unspecified
+        const granularName = r.subProcess || r.name;
+        const fallbackName = (r.process && r.process !== 'Unspecified Process') ? r.process : null;
+        const matchedName = granularName ? normalizeKey(granularName) : (fallbackName ? normalizeKey(fallbackName) : null);
+
+        if (matchedName) {
+          const keyWithDept = `${normDept}:::${matchedName}`;
+          activityFteMap.set(keyWithDept, (activityFteMap.get(keyWithDept) || 0) + fteContribution);
+          activityOccurredMap.set(keyWithDept, true);
+        }
+      });
+    });
+
+    pamRecords.forEach(rec => {
+      const criteria = Array.isArray(rec.criteria) ? rec.criteria : Array(12).fill('-');
+      const isAllPending = criteria.every(c => c === '-');
+      const statusLabel = isAllPending ? 'Pending Assessment' : (rec.consolidated ? 'Consolidatable' : 'Retained');
+      const taxKey = `${rec.department}:::${rec.process}`;
+      const tax = taxMap.get(taxKey);
+
+      const normDept = normalizeKey(rec.department);
+      const normProc = normalizeKey(rec.process);
+      const specificKey = `${normDept}:::${normProc}`;
+
+      let fteDisplay = 'Unavailable';
+      if (activityOccurredMap.has(specificKey)) {
+        fteDisplay = Number((activityFteMap.get(specificKey) || 0).toFixed(3));
+      }
+
+      const row = pamSheet.addRow({
+        department: rec.department,
+        tower: tax?.majorProcess || 'General',
+        subProcessGroup: tax?.process || '-',
+        process: rec.process,
+        type: rec.type || 'core',
+        c0: criteria[0] || '-',
+        c1: criteria[1] || '-',
+        c2: criteria[2] || '-',
+        c3: criteria[3] || '-',
+        c4: criteria[4] || '-',
+        c5: criteria[5] || '-',
+        c6: criteria[6] || '-',
+        c7: criteria[7] || '-',
+        c8: criteria[8] || '-',
+        c9: criteria[9] || '-',
+        c10: criteria[10] || '-',
+        c11: criteria[11] || '-',
+        score: isAllPending ? 'Pending' : (rec.score != null ? rec.score : 0),
+        status: statusLabel,
+        fte: fteDisplay,
+      });
+
+      // Highlight status cell
+      const statusCell = row.getCell('status');
+      if (statusLabel === 'Consolidatable') {
+        statusCell.font = { color: { argb: 'FF166534' }, bold: true };
+        statusCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD1FAE5' } };
+      } else if (statusLabel === 'Retained') {
+        statusCell.font = { color: { argb: 'FF92400E' }, bold: true };
+        statusCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEF3C7' } };
+      } else {
+        statusCell.font = { color: { argb: 'FF4B5563' }, bold: false };
+        statusCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF3F4F6' } };
+      }
+    });
+    autoWidth(pamSheet);
 
     // ─── Output ────────────────────────────────────────────────────────────────
     const dateStr = new Date().toISOString().slice(0, 10);
