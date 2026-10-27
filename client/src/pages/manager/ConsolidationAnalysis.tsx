@@ -19,9 +19,12 @@ type MajorProcessConsolidationItem = {
   totalFte: number;
   consolidatableFte: number;
   retainedFte: number;
+  pendingAssessmentFte?: number;
   consolidationPct: number;
   activityCount: number;
   consolidatableActivitiesCount: number;
+  retainedActivitiesCount?: number;
+  pendingActivitiesCount?: number;
 };
 
 type LiftVsKtItem = {
@@ -41,6 +44,22 @@ type ProcessDetailItem = {
   isTop80: boolean;
 };
 
+type OfficialPamSummary = {
+  isAuditedPamBaseline?: boolean;
+  totalHours?: number;
+  totalFte?: number;
+  consolidatableHours?: number;
+  consolidatableFte?: number;
+  consolidatableCount?: number;
+  retainedHours?: number;
+  retainedFte?: number;
+  retainedCount?: number;
+  pendingAssessmentHours?: number;
+  pendingAssessmentFte?: number;
+  pendingAssessmentCount?: number;
+  assessedConsolidationRatePct?: number;
+};
+
 type ConsolidationAnalysisReport = {
   generatedAt?: string;
   summary?: {
@@ -50,6 +69,7 @@ type ConsolidationAnalysisReport = {
     savedFte?: number;
     estimatedSavingsCr?: number;
   };
+  officialPamSummary?: OfficialPamSummary;
   majorProcessConsolidation?: MajorProcessConsolidationItem[];
   majorProcessLiftVsKt?: Record<string, LiftVsKtItem>;
   majorProcessDetail?: Record<string, ProcessDetailItem[]>;
@@ -220,31 +240,121 @@ export default function ConsolidationAnalysisPage() {
         </div>
       </section>
 
-      <section className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <KpiCard
-          icon={Target}
-          label="Consolidation Rate"
-          value={`${safeNumber(summary.consolidationRatePct).toFixed(1)}%`}
-          helper="Activities to consolidate"
-        />
-        <KpiCard
-          icon={TrendingDown}
-          label="Saved FTE"
-          value={safeNumber(summary.savedFte).toFixed(2)}
-          helper="From consolidation"
-        />
-        <KpiCard
-          icon={DollarSign}
-          label="Est. Savings"
-          value={`₹${safeNumber(summary.estimatedSavingsCr).toFixed(2)}Cr`}
-          helper="Annual estimate"
-        />
-        <KpiCard
-          icon={Building2}
-          label="Candidates"
-          value={String(safeNumber(summary.consolidateActivities))}
-          helper="Activities to review"
-        />
+      {/* Section 1: Official PAM 6x6 Audited Baseline (Slide 7 & 10 Rules) */}
+      <section className="rounded-2xl border border-[#C5D9F2] bg-gradient-to-r from-[#F0F6FD] to-[#FFFFFF] p-5 shadow-[0_4px_16px_rgba(16,42,80,0.06)]">
+        <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider bg-[#103058] text-white">
+                Official PAM™ 6×6 Audited Baseline
+              </span>
+              <span className="text-xs text-[#5D789A]">
+                Evaluated against Slide 7 PAM Framework (Score ≥ 7 & Checkpoints A/B)
+              </span>
+            </div>
+            <p className="mt-1 text-xs text-[#6B85A6]">
+              Workload classified deterministically from verified Process Assessment records. Pending activities are tracked explicitly.
+            </p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="rounded-xl border border-[#D0E2F5] bg-white p-4">
+            <span className="text-xs font-semibold text-[#5D789A]">Consolidatable Workload</span>
+            <div className="mt-1 flex items-baseline gap-2">
+              <span className="text-2xl font-bold text-[#166534]">
+                {safeNumber(report?.officialPamSummary?.consolidatableFte).toFixed(2)} FTE
+              </span>
+              <span className="text-xs text-[#166534] font-medium">
+                ({safeNumber(report?.officialPamSummary?.consolidatableCount)} activities)
+              </span>
+            </div>
+            <p className="mt-1 text-[11px] text-[#6B85A6]">
+              {safeNumber(report?.officialPamSummary?.consolidatableHours).toFixed(1)} hrs/month
+            </p>
+          </div>
+
+          <div className="rounded-xl border border-[#D0E2F5] bg-white p-4">
+            <span className="text-xs font-semibold text-[#5D789A]">Retained Workload</span>
+            <div className="mt-1 flex items-baseline gap-2">
+              <span className="text-2xl font-bold text-[#92400E]">
+                {safeNumber(report?.officialPamSummary?.retainedFte).toFixed(2)} FTE
+              </span>
+              <span className="text-xs text-[#92400E] font-medium">
+                ({safeNumber(report?.officialPamSummary?.retainedCount)} activities)
+              </span>
+            </div>
+            <p className="mt-1 text-[11px] text-[#6B85A6]">
+              {safeNumber(report?.officialPamSummary?.retainedHours).toFixed(1)} hrs/month (Excluded by score/exceptions)
+            </p>
+          </div>
+
+          <div className="rounded-xl border border-[#D0E2F5] bg-white p-4">
+            <span className="text-xs font-semibold text-[#5D789A]">Pending Assessment</span>
+            <div className="mt-1 flex items-baseline gap-2">
+              <span className="text-2xl font-bold text-[#4B5563]">
+                {safeNumber(report?.officialPamSummary?.pendingAssessmentFte).toFixed(2)} FTE
+              </span>
+              <span className="text-xs text-[#4B5563] font-medium">
+                ({safeNumber(report?.officialPamSummary?.pendingAssessmentCount)} activities)
+              </span>
+            </div>
+            <p className="mt-1 text-[11px] text-[#6B85A6]">
+              {safeNumber(report?.officialPamSummary?.pendingAssessmentHours).toFixed(1)} hrs/month (Awaiting criteria rating)
+            </p>
+          </div>
+
+          <div className="rounded-xl border border-[#D0E2F5] bg-white p-4">
+            <span className="text-xs font-semibold text-[#5D789A]">Assessed Consolidation Rate</span>
+            <div className="mt-1 flex items-baseline gap-2">
+              <span className="text-2xl font-bold text-[#0F2649]">
+                {safeNumber(report?.officialPamSummary?.assessedConsolidationRatePct).toFixed(1)}%
+              </span>
+            </div>
+            <p className="mt-1 text-[11px] text-[#6B85A6]">
+              Consolidatable ÷ Assessed workload (excluding pending)
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* Section 2: Heuristic Screening & Scenario Planning (Volume/Keywords) */}
+      <section className="space-y-3">
+        <div className="flex items-center gap-2">
+          <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider bg-[#5D789A] text-white">
+            Heuristic Scenario Screening
+          </span>
+          <span className="text-xs text-[#5D789A]">
+            Hypothetical planning model based on screening rules (Volume &gt; 100 hrs or repetitive keywords)
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <KpiCard
+            icon={Target}
+            label="Screening Rate"
+            value={`${safeNumber(summary.consolidationRatePct).toFixed(1)}%`}
+            helper="Screened candidate activities"
+          />
+          <KpiCard
+            icon={TrendingDown}
+            label="Estimated Saved FTE"
+            value={safeNumber(summary.savedFte).toFixed(2)}
+            helper="At 35% efficiency factor"
+          />
+          <KpiCard
+            icon={DollarSign}
+            label="Scenario Savings"
+            value={`₹${safeNumber(summary.estimatedSavingsCr).toFixed(2)}Cr`}
+            helper="Annual planning estimate"
+          />
+          <KpiCard
+            icon={Building2}
+            label="Screened Candidates"
+            value={String(safeNumber(summary.consolidateActivities))}
+            helper="Activities meeting screening threshold"
+          />
+        </div>
       </section>
 
       <section className="rounded-2xl border border-[#D9E4F2] bg-white p-5 shadow-[0_6px_18px_rgba(16,42,80,0.08)]">
@@ -283,8 +393,9 @@ export default function ConsolidationAnalysisPage() {
                 <thead>
                   <tr className="bg-[#F8FAFC] text-[11px] font-bold uppercase tracking-wider text-[#64748B] border-b border-[#E2E8F0]">
                     <th className="px-4 py-3">Major Process</th>
-                    <th className="px-4 py-3 text-right">Consolidation Potential (FTE)</th>
+                    <th className="px-4 py-3 text-right">Consolidatable (FTE)</th>
                     <th className="px-4 py-3 text-right">Retained (FTE)</th>
+                    <th className="px-4 py-3 text-right">Pending Assessment (FTE)</th>
                     <th className="px-4 py-3 text-right">Total FTE</th>
                     <th className="px-4 py-3 text-right">% Consolidation</th>
                     <th className="px-4 py-3 text-center">Visual Split</th>
@@ -293,7 +404,7 @@ export default function ConsolidationAnalysisPage() {
                 <tbody className="divide-y divide-[#E2E8F0] text-sm">
                   {(!report?.majorProcessConsolidation || report.majorProcessConsolidation.length === 0) ? (
                     <tr>
-                      <td colSpan={6} className="px-4 py-6 text-center text-xs text-[#94A3B8]">
+                      <td colSpan={7} className="px-4 py-6 text-center text-xs text-[#94A3B8]">
                         No major process consolidation records found.
                       </td>
                     </tr>
@@ -302,7 +413,8 @@ export default function ConsolidationAnalysisPage() {
                       <tr key={item.majorProcess} className="hover:bg-[#F8FAFC]">
                         <td className="px-4 py-3 font-semibold text-[#1E293B]">{item.majorProcess}</td>
                         <td className="px-4 py-3 text-right font-bold text-[#059669]">{item.consolidatableFte.toFixed(2)}</td>
-                        <td className="px-4 py-3 text-right text-[#64748B]">{item.retainedFte.toFixed(2)}</td>
+                        <td className="px-4 py-3 text-right text-[#92400E] font-medium">{item.retainedFte.toFixed(2)}</td>
+                        <td className="px-4 py-3 text-right text-[#64748B]">{safeNumber(item.pendingAssessmentFte).toFixed(2)}</td>
                         <td className="px-4 py-3 text-right font-bold text-[#0F172A]">{item.totalFte.toFixed(2)}</td>
                         <td className="px-4 py-3 text-right">
                           <span className={`inline-flex px-2 py-0.5 rounded text-xs font-bold ${

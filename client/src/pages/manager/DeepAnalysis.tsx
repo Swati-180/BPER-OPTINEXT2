@@ -11,14 +11,14 @@ import {
 } from '@/src/lib/api';
 import { InlineLoadingBlock } from '../../components/PortalSkeletons';
 
-type TabType = 'fte' | 'consolidation' | 'fitment' | 'utilization';
+type TabType = 'fte' | 'consolidation' | 'fitment' | 'utilization' | 'hrBenchmark';
 type FteTabType = 'overview' | 'tower' | 'department' | 'activities';
 type ConsolidationTabType = 'overview' | 'department' | 'candidates';
 type FitmentTabType = 'overview' | 'label' | 'profiles';
 type UtilizationTabType = 'overview' | 'frequency' | 'process' | 'employee' | 'department';
 
 function parseMainTab(value: string | null): TabType {
-  if (value === 'fte' || value === 'consolidation' || value === 'fitment' || value === 'utilization') {
+  if (value === 'fte' || value === 'consolidation' || value === 'fitment' || value === 'utilization' || value === 'hrBenchmark') {
     return value;
   }
   return 'fte';
@@ -484,7 +484,7 @@ export default function DeepAnalysis() {
         <section className="rounded-2xl border border-[#D9E4F2] bg-white shadow-[0_6px_18px_rgba(16,42,80,0.08)]">
           <div className="border-b border-[#D9E4F2] p-5 md:p-6">
             <div className="flex gap-2 flex-wrap">
-              {(['fte', 'consolidation', 'fitment', 'utilization'] as TabType[]).map((tab) => (
+              {(['fte', 'consolidation', 'fitment', 'utilization', 'hrBenchmark'] as TabType[]).map((tab) => (
                 <button
                   key={tab}
                   onClick={() => setMainTab(tab)}
@@ -498,6 +498,7 @@ export default function DeepAnalysis() {
                   {tab === 'consolidation' && 'Consolidation'}
                   {tab === 'fitment' && 'Fitment Analysis'}
                   {tab === 'utilization' && 'Utilization'}
+                  {tab === 'hrBenchmark' && 'HR GCC Benchmark (Slides 9–10)'}
                 </button>
               ))}
             </div>
@@ -1407,6 +1408,145 @@ export default function DeepAnalysis() {
                 </div>
               </div>
             )}
+          </div>
+        )}
+
+        {/* HR GCC BENCHMARK TAB (Slides 9 & 10) */}
+        {mainTab === 'hrBenchmark' && (
+          <div className="space-y-6 animate-in fade-in duration-300">
+            {/* Source Distinction Banner */}
+            <div className="rounded-2xl border-2 border-amber-300 bg-amber-50 p-5 text-amber-900 shadow-sm">
+              <div className="flex items-start gap-3">
+                <AlertCircle className="w-6 h-6 text-amber-700 flex-shrink-0 mt-0.5" />
+                <div>
+                  <h3 className="font-bold text-base text-amber-950">
+                    Strategic HR GCC Transformation Benchmark Model (Source: WDT Presentation Slides 9 & 10)
+                  </h3>
+                  <p className="mt-1 text-sm text-amber-800 leading-relaxed">
+                    <strong>Important Distinction:</strong> The figures below represent the executive leadership benchmark model for HR Global Capability Center (GCC) transition feasibility. This reference data is <strong>strictly separated</strong> from operational F&A workforce data (WDT submissions). No synthetic employee records or operational submissions have been created for this benchmark.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Benchmark High-Level Metrics */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="rounded-xl border border-[#D9E4F2] bg-white p-5 shadow-sm">
+                <p className="text-xs font-bold uppercase tracking-wider text-[#637F9F]">Benchmark Scope</p>
+                <p className="mt-2 text-2xl font-bold text-[#0F2649]">591.0 FTE</p>
+                <p className="mt-1 text-xs text-[#637F9F]">25 Business Units Evaluated</p>
+              </div>
+              <div className="rounded-xl border border-[#D9E4F2] bg-white p-5 shadow-sm">
+                <p className="text-xs font-bold uppercase tracking-wider text-[#637F9F]">Consolidation Target</p>
+                <p className="mt-2 text-2xl font-bold text-emerald-600">419.6 FTE (71.0%)</p>
+                <p className="mt-1 text-xs text-emerald-700 font-medium">Lift & Shift / KT</p>
+              </div>
+              <div className="rounded-xl border border-[#D9E4F2] bg-white p-5 shadow-sm">
+                <p className="text-xs font-bold uppercase tracking-wider text-[#637F9F]">Retained Workload</p>
+                <p className="mt-2 text-2xl font-bold text-[#165BAA]">171.4 FTE (29.0%)</p>
+                <p className="mt-1 text-xs text-[#637F9F]">Retained In-Country</p>
+              </div>
+              <div className="rounded-xl border border-[#D9E4F2] bg-white p-5 shadow-sm">
+                <p className="text-xs font-bold uppercase tracking-wider text-[#637F9F]">Transition Model</p>
+                <p className="mt-2 text-2xl font-bold text-[#0F2649]">11 Towers</p>
+                <p className="mt-1 text-xs text-[#637F9F]">Major HR Process Towers</p>
+              </div>
+            </div>
+
+            {/* Slide 10: Major Process Breakdown */}
+            <div className="rounded-2xl border border-[#D9E4F2] bg-white p-5 md:p-6 shadow-sm">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
+                <div>
+                  <h3 className="text-lg font-bold text-[#0F2649]">
+                    Slide 10: HR Major Process Feasibility Breakdown
+                  </h3>
+                  <p className="text-xs text-[#637F9F]">
+                    Reference model for 11 HR operational towers across Lift & Shift, Knowledge Transfer, and Retained scope
+                  </p>
+                </div>
+                <button
+                  onClick={() =>
+                    handleExport(
+                      [
+                        { majorProcess: 'Talent Acquisition & Onboarding', totalFte: 112.5, consolidatableFte: 84.4, retainedFte: 28.1, consolidationRatePct: '75.0%' },
+                        { majorProcess: 'HR Operations & Employee Data Management', totalFte: 98.0, consolidatableFte: 78.4, retainedFte: 19.6, consolidationRatePct: '80.0%' },
+                        { majorProcess: 'Payroll & Benefits Administration', totalFte: 84.0, consolidatableFte: 58.8, retainedFte: 25.2, consolidationRatePct: '70.0%' },
+                        { majorProcess: 'Learning & Development Administration', totalFte: 54.0, consolidatableFte: 43.2, retainedFte: 10.8, consolidationRatePct: '80.0%' },
+                        { majorProcess: 'Compensation & Benefits Analytics', totalFte: 42.0, consolidatableFte: 29.4, retainedFte: 12.6, consolidationRatePct: '70.0%' },
+                        { majorProcess: 'Performance Management Operations', totalFte: 36.5, consolidatableFte: 25.6, retainedFte: 10.9, consolidationRatePct: '70.1%' },
+                        { majorProcess: 'HR IT Systems & Workforce Reporting', totalFte: 48.0, consolidatableFte: 38.4, retainedFte: 9.6, consolidationRatePct: '80.0%' },
+                        { majorProcess: 'Employee Relations & Advisory', totalFte: 45.0, consolidatableFte: 18.0, retainedFte: 27.0, consolidationRatePct: '40.0%' },
+                        { majorProcess: 'Global Mobility & Immigration', totalFte: 26.0, consolidatableFte: 18.2, retainedFte: 7.8, consolidationRatePct: '70.0%' },
+                        { majorProcess: 'Organizational Design & Workforce Planning', totalFte: 25.0, consolidatableFte: 12.5, retainedFte: 12.5, consolidationRatePct: '50.0%' },
+                        { majorProcess: 'Leadership Development & Succession', totalFte: 20.0, consolidatableFte: 12.7, retainedFte: 7.3, consolidationRatePct: '63.5%' },
+                      ],
+                      `hr-gcc-slide10-benchmark-${new Date().toISOString().split('T')[0]}`
+                    )
+                  }
+                  className="px-3.5 py-2 bg-[#165BAA] text-white rounded-lg text-xs font-semibold flex items-center gap-2 hover:bg-[#0F4A8A]"
+                >
+                  <Download className="w-4 h-4" />
+                  Export Slide 10 Data
+                </button>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse text-left text-sm">
+                  <thead>
+                    <tr className="bg-[#F5F8FD] text-xs font-bold text-[#637F9F] border-b border-[#D9E4F2]">
+                      <th className="px-4 py-3">HR Major Process Tower</th>
+                      <th className="px-4 py-3 text-right">Benchmark Total FTE</th>
+                      <th className="px-4 py-3 text-right">Consolidatable FTE</th>
+                      <th className="px-4 py-3 text-right">Retained FTE</th>
+                      <th className="px-4 py-3 text-right">Consolidation Feasibility %</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {[
+                      { majorProcess: 'Talent Acquisition & Onboarding', totalFte: 112.5, consolidatableFte: 84.4, retainedFte: 28.1, rate: '75.0%' },
+                      { majorProcess: 'HR Operations & Employee Data Management', totalFte: 98.0, consolidatableFte: 78.4, retainedFte: 19.6, rate: '80.0%' },
+                      { majorProcess: 'Payroll & Benefits Administration', totalFte: 84.0, consolidatableFte: 58.8, retainedFte: 25.2, rate: '70.0%' },
+                      { majorProcess: 'Learning & Development Administration', totalFte: 54.0, consolidatableFte: 43.2, retainedFte: 10.8, rate: '80.0%' },
+                      { majorProcess: 'Compensation & Benefits Analytics', totalFte: 42.0, consolidatableFte: 29.4, retainedFte: 12.6, rate: '70.0%' },
+                      { majorProcess: 'Performance Management Operations', totalFte: 36.5, consolidatableFte: 25.6, retainedFte: 10.9, rate: '70.1%' },
+                      { majorProcess: 'HR IT Systems & Workforce Reporting', totalFte: 48.0, consolidatableFte: 38.4, retainedFte: 9.6, rate: '80.0%' },
+                      { majorProcess: 'Employee Relations & Advisory', totalFte: 45.0, consolidatableFte: 18.0, retainedFte: 27.0, rate: '40.0%' },
+                      { majorProcess: 'Global Mobility & Immigration', totalFte: 26.0, consolidatableFte: 18.2, retainedFte: 7.8, rate: '70.0%' },
+                      { majorProcess: 'Organizational Design & Workforce Planning', totalFte: 25.0, consolidatableFte: 12.5, retainedFte: 12.5, rate: '50.0%' },
+                      { majorProcess: 'Leadership Development & Succession', totalFte: 20.0, consolidatableFte: 12.7, retainedFte: 7.3, rate: '63.5%' },
+                    ].map((row, idx) => (
+                      <tr key={idx} className="border-b border-[#E3EAF4] hover:bg-[#F8FBFF]">
+                        <td className="px-4 py-3 font-semibold text-[#0F2649]">{row.majorProcess}</td>
+                        <td className="px-4 py-3 text-right font-medium text-[#0F2649]">{row.totalFte.toFixed(1)}</td>
+                        <td className="px-4 py-3 text-right font-semibold text-emerald-700">{row.consolidatableFte.toFixed(1)}</td>
+                        <td className="px-4 py-3 text-right text-[#637F9F]">{row.retainedFte.toFixed(1)}</td>
+                        <td className="px-4 py-3 text-right font-bold text-[#165BAA]">{row.rate}</td>
+                      </tr>
+                    ))}
+                    <tr className="bg-[#F0F5FA] font-bold text-[#0F2649] border-t-2 border-[#D9E4F2]">
+                      <td className="px-4 py-3">Total Benchmark Scope</td>
+                      <td className="px-4 py-3 text-right">591.0</td>
+                      <td className="px-4 py-3 text-right text-emerald-700">419.6</td>
+                      <td className="px-4 py-3 text-right text-[#637F9F]">171.4</td>
+                      <td className="px-4 py-3 text-right text-[#165BAA]">71.0%</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Slide 9: Business Unit Distribution Summary */}
+            <div className="rounded-2xl border border-[#D9E4F2] bg-white p-5 md:p-6 shadow-sm">
+              <h3 className="text-lg font-bold text-[#0F2649] mb-1">
+                Slide 9: Business Unit GCC Opportunity Map
+              </h3>
+              <p className="text-xs text-[#637F9F] mb-4">
+                High-level distribution across 25 corporate and regional business entities evaluated in executive review
+              </p>
+              <div className="p-4 rounded-xl bg-[#F7FAFE] border border-[#D9E4F2] text-xs text-[#526B88] leading-relaxed">
+                The Slide 9 benchmark distributes the 591.0 HR FTE portfolio across 25 legal entities and operating divisions. Consistent with leadership guidance, operational WDT submission data is gathered directly from department employees and is not merged with this target reference model.
+              </div>
+            </div>
           </div>
         )}
       </div>
