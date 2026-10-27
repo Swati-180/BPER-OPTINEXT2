@@ -56,12 +56,15 @@ const getSixBySixData = async (req, res) => {
     console.log(`[6x6 Report] Fetching data for department: "${department}"`);
     
     // 1. Sync new processes from WDT submissions
+    const { SYSTEM_TEST_ACCOUNT_IDS } = require('../utils/gradeStandardizer');
     const VALID_DEPARTMENTS = ['Finance & Accounting', 'HR', 'Logistics', 'SCM'];
-    let matchStage = {};
+    let matchStage = {
+      'employee.employeeId': { $nin: SYSTEM_TEST_ACCOUNT_IDS },
+    };
     if (department && department !== 'All Departments') {
-       matchStage = { 'employee.department': department };
+       matchStage['employee.department'] = department;
     } else {
-       matchStage = { 'employee.department': { $in: VALID_DEPARTMENTS } };
+       matchStage['employee.department'] = { $in: VALID_DEPARTMENTS };
     }
     
     const aggregatedProcesses = await WDTSubmission.aggregate([

@@ -116,9 +116,13 @@ function isApprovedGradeBand(band) {
   ].includes(band);
 }
 
+// System / administrative test accounts that must be excluded from operational workforce analytics
+const SYSTEM_TEST_ACCOUNT_IDS = Object.freeze(['BPER-000', 'BPER-999']);
+
 module.exports = {
   STANDARDIZED_GRADE_BANDS,
   ORDERED_GRADE_BANDS,
+  SYSTEM_TEST_ACCOUNT_IDS,
   standardizeGrade,
   isApprovedGradeBand,
 };

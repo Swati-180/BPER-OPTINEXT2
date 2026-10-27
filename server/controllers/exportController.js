@@ -51,11 +51,14 @@ async function resolveManager(req) {
   try { return await User.findById(userId).select('role'); } catch { return null; }
 }
 
+const { SYSTEM_TEST_ACCOUNT_IDS } = require('../utils/gradeStandardizer');
+
 async function getScopedSubmissions(req) {
   const { department, month, year } = req.query;
   const match = {
     month: month != null ? Number(month) : 10,
     year: year != null ? Number(year) : 2026,
+    'employee.employeeId': { $nin: SYSTEM_TEST_ACCOUNT_IDS },
   };
   if (department && department !== 'All Departments') {
     match['employee.department'] = department;

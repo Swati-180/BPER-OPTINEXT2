@@ -4,6 +4,8 @@ const Fitment = require('../models/Fitment');
 const ProcessAnalysis = require('../models/ProcessAnalysis');
 const Taxonomy = require('../models/Taxonomy');
 
+const { standardizeGrade, SYSTEM_TEST_ACCOUNT_IDS } = require('../utils/gradeStandardizer');
+
 const STANDARD_MONTHLY_HOURS = 160;
 
 function safeNumber(value) {
@@ -20,6 +22,7 @@ function buildScopeMatch(department, month, year) {
   const match = {
     month: month != null ? Number(month) : 10,
     year: year != null ? Number(year) : 2026,
+    'employee.employeeId': { $nin: SYSTEM_TEST_ACCOUNT_IDS },
   };
   if (department && department !== 'All Departments') {
     match['employee.department'] = department;
@@ -1711,11 +1714,6 @@ async function getWorkforceCapacityReport(req, res) {
       const cleanEmpName = String(r.employeeName || '').trim().toLowerCase();
       const liveUser = userMap.get(cleanEmpId);
 
-      // Exclude admin/seed test submissions from workforce capacity reporting (e.g. QG Admin / BPER-000)
-      if (cleanEmpId === 'BPER-000' || cleanEmpName === 'qg admin') {
-        return;
-      }
-      
       // Reporting-layer reconciliation: For verified October 2026 source contractors, supply 'Contract'
       // if and only if employeeType is missing in the database document. All other NA grades without
       // explicit contract type remain strictly 'Unmapped'.
@@ -1960,6 +1958,7 @@ module.exports = {
   getUtilizationAnalysisReport,
   getWorkforceCapacityReport,
   getAuditLogs,
+  buildScopeMatch,
   flattenRows,
   safeNumber,
   invalidateScopedReportsCache,
