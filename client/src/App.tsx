@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useState, useEffect, type FormEvent } from 'react';
+import { useState, useEffect, type FormEvent, lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -19,27 +19,30 @@ import ManagerLayout from './layouts/ManagerLayout';
 import ProtectedRoute from './components/ProtectedRoute';
 import PortalSelectionPage from './pages/PortalSelection';
 import InviteSignupPage from './pages/InviteSignup';
+import { TablePageSkeleton } from './components/PortalSkeletons';
 
-// Pages
+// Primary Core Pages (eager loaded for instant first paint)
 import EmployeeDashboard from './pages/employee/Dashboard';
-import EmployeeProfile from './pages/employee/Profile';
-import BPERForm from './pages/employee/BPERForm';
-import FormStatus from './pages/employee/FormStatus';
-import MyActivityRequests from './pages/employee/MyActivityRequests';
-
 import ManagerDashboard from './pages/manager/Dashboard';
-import ManagerUsers from './pages/manager/Users';
 import ManagerForms from './pages/manager/Forms';
-import ManagerWDTAnalytics from './pages/manager/WDTAnalytics';
-import ManagerSixBySixAnalysis from './pages/manager/SixBySixAnalysis';
-import DeepAnalysis from './pages/manager/DeepAnalysis';
-import ProcessOperationsHub from './pages/manager/ProcessOperationsHub';
-import PersonalProfile from './pages/manager/PersonalProfile';
-import APIDebug from './pages/manager/APIDebug';
-import EmployeeInvites from './pages/manager/EmployeeInvites';
-import InviteRegistration from './pages/InviteRegistration';
-import CalculationCenter from './pages/manager/CalculationCenter';
-import WorkforceCapacityPlanning from './pages/manager/WorkforceCapacityPlanning';
+
+// Secondary / Heavy Pages (lazy loaded with route-level code splitting)
+const EmployeeProfile = lazy(() => import('./pages/employee/Profile'));
+const BPERForm = lazy(() => import('./pages/employee/BPERForm'));
+const FormStatus = lazy(() => import('./pages/employee/FormStatus'));
+const MyActivityRequests = lazy(() => import('./pages/employee/MyActivityRequests'));
+
+const ManagerUsers = lazy(() => import('./pages/manager/Users'));
+const ManagerWDTAnalytics = lazy(() => import('./pages/manager/WDTAnalytics'));
+const ManagerSixBySixAnalysis = lazy(() => import('./pages/manager/SixBySixAnalysis'));
+const DeepAnalysis = lazy(() => import('./pages/manager/DeepAnalysis'));
+const ProcessOperationsHub = lazy(() => import('./pages/manager/ProcessOperationsHub'));
+const PersonalProfile = lazy(() => import('./pages/manager/PersonalProfile'));
+const APIDebug = lazy(() => import('./pages/manager/APIDebug'));
+const EmployeeInvites = lazy(() => import('./pages/manager/EmployeeInvites'));
+const InviteRegistration = lazy(() => import('./pages/InviteRegistration'));
+const CalculationCenter = lazy(() => import('./pages/manager/CalculationCenter'));
+const WorkforceCapacityPlanning = lazy(() => import('./pages/manager/WorkforceCapacityPlanning'));
 
 import Unauthorized from './pages/Unauthorized';
 import { clearActiveUnderReviewReferenceId } from './pages/employee/bperSubmissionStorage';
@@ -352,15 +355,17 @@ export default function App() {
           element={
             <ProtectedRoute user={user} allowedRoles={["employee", "manager", "admin"]}>
               <EmployeeLayout user={user} onLogout={handleLogout}>
-                <Routes>
-                  <Route path="dashboard" element={<EmployeeDashboard />} />
-                  <Route path="profile" element={<EmployeeProfile />} />
-                  <Route path="form" element={<BPERForm />} />
-                  <Route path="form/:refId" element={<BPERForm />} />
-                  <Route path="status" element={<FormStatus />} />
-                  <Route path="activity-requests" element={<MyActivityRequests />} />
-                  <Route path="*" element={<Navigate to="dashboard" replace />} />
-                </Routes>
+                <Suspense fallback={<TablePageSkeleton rows={7} />}>
+                  <Routes>
+                    <Route path="dashboard" element={<EmployeeDashboard />} />
+                    <Route path="profile" element={<EmployeeProfile />} />
+                    <Route path="form" element={<BPERForm />} />
+                    <Route path="form/:refId" element={<BPERForm />} />
+                    <Route path="status" element={<FormStatus />} />
+                    <Route path="activity-requests" element={<MyActivityRequests />} />
+                    <Route path="*" element={<Navigate to="dashboard" replace />} />
+                  </Routes>
+                </Suspense>
               </EmployeeLayout>
             </ProtectedRoute>
           }
@@ -372,13 +377,15 @@ export default function App() {
           element={
             <ProtectedRoute user={user} allowedRoles={["manager"]}>
               <ManagerLayout user={user} onLogout={handleLogout}>
-                <Routes>
-                  <Route path="users" element={<ManagerUsers />} />
-                  <Route path="forms" element={<ManagerForms />} />
-                  <Route path="employee-invites" element={<EmployeeInvites />} />
-                  <Route path="dashboard" element={<Navigate to="/manager/forms" replace />} />
-                  <Route path="*" element={<Navigate to="/manager/forms" replace />} />
-                </Routes>
+                <Suspense fallback={<TablePageSkeleton rows={7} />}>
+                  <Routes>
+                    <Route path="users" element={<ManagerUsers />} />
+                    <Route path="forms" element={<ManagerForms />} />
+                    <Route path="employee-invites" element={<EmployeeInvites />} />
+                    <Route path="dashboard" element={<Navigate to="/manager/forms" replace />} />
+                    <Route path="*" element={<Navigate to="/manager/forms" replace />} />
+                  </Routes>
+                </Suspense>
               </ManagerLayout>
             </ProtectedRoute>
           }
@@ -390,29 +397,31 @@ export default function App() {
           element={
             <ProtectedRoute user={user} allowedRoles={["admin"]}>
               <ManagerLayout user={user} onLogout={handleLogout}>
-                <Routes>
-                  <Route path="dashboard" element={<ManagerDashboard />} />
-                  <Route path="all-records" element={<ManagerForms />} />
-                  <Route path="users" element={<ManagerUsers />} />
-                  <Route path="forms" element={<ManagerForms />} />
-                  <Route path="wdt-analytics" element={<ManagerWDTAnalytics />} />
-                  <Route path="workforce-capacity" element={<WorkforceCapacityPlanning />} />
-                  <Route path="6x6-analysis" element={<ManagerSixBySixAnalysis />} />
-                  <Route path="deep-analysis" element={<DeepAnalysis />} />
-                  <Route path="process-operations" element={<ProcessOperationsHub />} />
-                  <Route path="activity-requests" element={<Navigate to="/admin/process-operations?tab=requests" replace />} />
-                  <Route path="process-management" element={<Navigate to="/admin/process-operations?tab=process" replace />} />
-                  <Route path="taxonomy" element={<Navigate to="/admin/process-operations?tab=taxonomy" replace />} />
-                  <Route path="audit-logs" element={<Navigate to="/admin/process-operations?tab=audit" replace />} />
-                  <Route path="api-debug" element={<APIDebug />} />
-                  <Route path="my-profile" element={<PersonalProfile />} />
-                  <Route path="employee-invites" element={<EmployeeInvites />} />
-                  <Route path="fitment-scorer" element={<DeepAnalysis />} />
-                  <Route path="process-analytics" element={<ProcessOperationsHub />} />
-                  <Route path="employee-360" element={<PersonalProfile />} />
-                  <Route path="calculation-center" element={<CalculationCenter />} />
-                  <Route path="*" element={<Navigate to="/admin/dashboard" replace />} />
-                </Routes>
+                <Suspense fallback={<TablePageSkeleton rows={7} />}>
+                  <Routes>
+                    <Route path="dashboard" element={<ManagerDashboard />} />
+                    <Route path="all-records" element={<ManagerForms />} />
+                    <Route path="users" element={<ManagerUsers />} />
+                    <Route path="forms" element={<ManagerForms />} />
+                    <Route path="wdt-analytics" element={<ManagerWDTAnalytics />} />
+                    <Route path="workforce-capacity" element={<WorkforceCapacityPlanning />} />
+                    <Route path="6x6-analysis" element={<ManagerSixBySixAnalysis />} />
+                    <Route path="deep-analysis" element={<DeepAnalysis />} />
+                    <Route path="process-operations" element={<ProcessOperationsHub />} />
+                    <Route path="activity-requests" element={<Navigate to="/admin/process-operations?tab=requests" replace />} />
+                    <Route path="process-management" element={<Navigate to="/admin/process-operations?tab=process" replace />} />
+                    <Route path="taxonomy" element={<Navigate to="/admin/process-operations?tab=taxonomy" replace />} />
+                    <Route path="audit-logs" element={<Navigate to="/admin/process-operations?tab=audit" replace />} />
+                    <Route path="api-debug" element={<APIDebug />} />
+                    <Route path="my-profile" element={<PersonalProfile />} />
+                    <Route path="employee-invites" element={<EmployeeInvites />} />
+                    <Route path="fitment-scorer" element={<DeepAnalysis />} />
+                    <Route path="process-analytics" element={<ProcessOperationsHub />} />
+                    <Route path="employee-360" element={<PersonalProfile />} />
+                    <Route path="calculation-center" element={<CalculationCenter />} />
+                    <Route path="*" element={<Navigate to="/admin/dashboard" replace />} />
+                  </Routes>
+                </Suspense>
               </ManagerLayout>
             </ProtectedRoute>
           }

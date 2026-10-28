@@ -1,4 +1,5 @@
 const Fitment = require('../models/Fitment');
+const { invalidateFitmentSummaryCache } = require('./reportsController');
 
 const getFitmentByEmployee = async (req, res) => {
   try {
@@ -19,6 +20,7 @@ const upsertFitment = async (req, res) => {
       req.body,
       { new: true, upsert: true, runValidators: true }
     );
+    invalidateFitmentSummaryCache();
     res.json(fitment);
   } catch (err) {
     res.status(500).json({ message: err.message });

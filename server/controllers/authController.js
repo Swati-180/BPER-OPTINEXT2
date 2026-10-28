@@ -3,6 +3,7 @@ const User = require('../models/User');
 const WDTSubmission = require('../models/WDTSubmission');
 const AdminWhitelist = require('../models/AdminWhitelist');
 const { logAction } = require('../utils/auditLogger');
+const { invalidateFitmentSummaryCache } = require('./reportsController');
 
 function isMissingValue(value) {
   if (value === null || value === undefined) return true;
@@ -127,6 +128,8 @@ const register = async (req, res) => {
       isActive: true,
       formAccessGranted
     });
+
+    invalidateFitmentSummaryCache();
     
     const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, { expiresIn: '30d' });
 
@@ -245,6 +248,7 @@ const updateMe = async (req, res) => {
     }
 
     await user.save();
+    invalidateFitmentSummaryCache();
 
     await logAction({
       req,
@@ -450,7 +454,9 @@ const getAllUsers = async (req, res) => {
     // Fallback: If no authoritative roster is synced to the users collection,
     // dynamically supplement with unique participants from WDT submissions (Option A - read only)
     if (!hasAuthoritativeRoster) {
-      const wdtSubmissions = await WDTSubmission.find({}).sort({ submittedAt: -1 }).lean();
+      const wdtSubmissions = await WDTSubmission.find({}, { employee: 1, submittedAt: 1 })
+        .sort({ submittedAt: -1 })
+        .lean();
       
       const existingEmpIdSet = new Set(sanitizedUsers.map(u => String(u.employeeId || '').trim()).filter(Boolean));
       const existingEmailSet = new Set(sanitizedUsers.map(u => String(u.email || '').toLowerCase().trim()).filter(Boolean));
@@ -596,6 +602,7 @@ const updateUser = async (req, res) => {
     }
 
     const user = await User.findByIdAndUpdate(req.params.id, updateData, { new: true }).select('-password');
+    invalidateFitmentSummaryCache();
     return res.json({ message: 'User updated.', user });
   } catch (err) {
     return res.status(500).json({ message: err.message });
@@ -647,6 +654,7 @@ const bulkUpdateUsers = async (req, res) => {
         next: { userIds, action, role }
     });
 
+    invalidateFitmentSummaryCache();
     return res.json({ message: 'Bulk update successful.' });
   } catch (err) {
     return res.status(500).json({ message: err.message });
@@ -723,6 +731,7 @@ const uploadUsers = async (req, res) => {
         next: { added, updated, errorCount: errors.length }
     });
     
+    invalidateFitmentSummaryCache();
     return res.json({ 
       message: `Upload complete. Added: ${added}, Updated: ${updated}.`,
       added,

@@ -64,6 +64,7 @@ type DashboardReport = {
     towerFte?: Array<{ tower: string; fte: number }>;
     teamUtilization?: Array<{ label: string; utilizationPct: number }>;
     topActivities?: ActivityInsight[];
+    totalActivitiesCount?: number;
     submissionStatusSegments?: Array<{
       key: string;
       label: string;
@@ -136,24 +137,67 @@ function SectionError({ message, onRetry }: { message: string; onRetry: () => vo
   );
 }
 
+// --- Module-Level Safe Dashboard Memory Cache ---
+interface CachedItem<T> {
+  data: T;
+  timestamp: number;
+  userEmail: string;
+}
+
+const DASHBOARD_CACHE_TTL_MS = 60_000; // 60 seconds
+
+let _dashboardCache: CachedItem<DashboardReport> | null = null;
+let _fteSummaryCache: CachedItem<FteSummaryReport> | null = null;
+let _fteConsolidationCache: CachedItem<FteConsolidationReport> | null = null;
+let _fitmentSummaryCache: CachedItem<FitmentSummaryReport> | null = null;
+let _cacheInvalidatedAt = 0;
+
+export function invalidateDashboardCache() {
+  _dashboardCache = null;
+  _fteSummaryCache = null;
+  _fteConsolidationCache = null;
+  _fitmentSummaryCache = null;
+  _cacheInvalidatedAt = Date.now();
+}
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('bper:data-updated', invalidateDashboardCache);
+  window.addEventListener('bper:auth-cleared', invalidateDashboardCache);
+}
+
+function getValidCache<T>(cacheItem: CachedItem<T> | null, currentUserEmail: string): T | null {
+  if (!cacheItem) return null;
+  if (cacheItem.userEmail !== currentUserEmail) return null;
+  if (Date.now() - cacheItem.timestamp > DASHBOARD_CACHE_TTL_MS) return null;
+  if (cacheItem.timestamp <= _cacheInvalidatedAt) return null;
+  return cacheItem.data;
+}
+
 export default function Dashboard() {
   const navigate = useNavigate();
   const user = loadAuthUser();
+  const userEmail = (user?.email || 'anonymous').toLowerCase().trim();
   const isAdmin = user?.role === 'admin';
   const basePath = isAdmin ? '/admin' : '/manager';
   const roleLabel = isAdmin ? 'Admin' : 'Manager';
 
-  // Section data states
-  const [dashboard, setDashboard] = useState<DashboardReport | null>(null);
-  const [fteSummary, setFteSummary] = useState<FteSummaryReport | null>(null);
-  const [fteConsolidation, setFteConsolidation] = useState<FteConsolidationReport | null>(null);
-  const [fitmentSummary, setFitmentSummary] = useState<FitmentSummaryReport | null>(null);
+  // Read valid cache synchronously on mount
+  const cachedDashboard = useMemo(() => getValidCache(_dashboardCache, userEmail), [userEmail]);
+  const cachedFteSummary = useMemo(() => getValidCache(_fteSummaryCache, userEmail), [userEmail]);
+  const cachedFteConsolidation = useMemo(() => getValidCache(_fteConsolidationCache, userEmail), [userEmail]);
+  const cachedFitmentSummary = useMemo(() => getValidCache(_fitmentSummaryCache, userEmail), [userEmail]);
 
-  // Independent section loading states
-  const [isDashboardLoading, setIsDashboardLoading] = useState(true);
-  const [isFteSummaryLoading, setIsFteSummaryLoading] = useState(true);
-  const [isConsolidationLoading, setIsConsolidationLoading] = useState(true);
-  const [isFitmentLoading, setIsFitmentLoading] = useState(true);
+  // Section data states (initialized from cache if available)
+  const [dashboard, setDashboard] = useState<DashboardReport | null>(cachedDashboard);
+  const [fteSummary, setFteSummary] = useState<FteSummaryReport | null>(cachedFteSummary);
+  const [fteConsolidation, setFteConsolidation] = useState<FteConsolidationReport | null>(cachedFteConsolidation);
+  const [fitmentSummary, setFitmentSummary] = useState<FitmentSummaryReport | null>(cachedFitmentSummary);
+
+  // Independent section loading states (false if loaded from cache)
+  const [isDashboardLoading, setIsDashboardLoading] = useState(!cachedDashboard);
+  const [isFteSummaryLoading, setIsFteSummaryLoading] = useState(!cachedFteSummary);
+  const [isConsolidationLoading, setIsConsolidationLoading] = useState(!cachedFteConsolidation);
+  const [isFitmentLoading, setIsFitmentLoading] = useState(!cachedFitmentSummary);
 
   // Independent section error states
   const [dashboardError, setDashboardError] = useState<string | null>(null);
@@ -171,16 +215,21 @@ export default function Dashboard() {
   const consolidationRef = useRef<HTMLDivElement>(null);
   const recentReviewsRef = useRef<HTMLDivElement>(null);
 
-  // Guard against duplicate loads in React StrictMode
-  const hasTriggeredInitialLoad = useRef(false);
+  // Request sequence guards to prevent stale responses from repopulating the cache after invalidation
+  const activeReqTimestampRef = useRef<number>(Date.now());
 
   const loadDashboardData = useCallback(async (isSilent = false) => {
     if (!isSilent) {
       setIsDashboardLoading(true);
       setDashboardError(null);
     }
+    const reqStartedAt = Date.now();
     try {
       const data = await getDashboardReport();
+      // Guard: do not cache if invalidated while request was in-flight
+      if (reqStartedAt > _cacheInvalidatedAt && data && typeof data === 'object' && data.summary) {
+        _dashboardCache = { data, timestamp: Date.now(), userEmail };
+      }
       setDashboard(data);
       setDashboardError(null);
     } catch (err: any) {
@@ -192,15 +241,19 @@ export default function Dashboard() {
     } finally {
       if (!isSilent) setIsDashboardLoading(false);
     }
-  }, []);
+  }, [userEmail]);
 
   const loadFteSummaryData = useCallback(async (isSilent = false) => {
     if (!isSilent) {
       setIsFteSummaryLoading(true);
       setFteSummaryError(null);
     }
+    const reqStartedAt = Date.now();
     try {
       const data = await getFteSummaryReport();
+      if (reqStartedAt > _cacheInvalidatedAt && data && typeof data === 'object') {
+        _fteSummaryCache = { data, timestamp: Date.now(), userEmail };
+      }
       setFteSummary(data);
       setFteSummaryError(null);
     } catch (err: any) {
@@ -210,15 +263,19 @@ export default function Dashboard() {
     } finally {
       if (!isSilent) setIsFteSummaryLoading(false);
     }
-  }, []);
+  }, [userEmail]);
 
   const loadConsolidationData = useCallback(async (isSilent = false) => {
     if (!isSilent) {
       setIsConsolidationLoading(true);
       setConsolidationError(null);
     }
+    const reqStartedAt = Date.now();
     try {
       const data = await getFteConsolidationSummaryReport();
+      if (reqStartedAt > _cacheInvalidatedAt && data && typeof data === 'object') {
+        _fteConsolidationCache = { data, timestamp: Date.now(), userEmail };
+      }
       setFteConsolidation(data);
       setConsolidationError(null);
     } catch (err: any) {
@@ -228,15 +285,19 @@ export default function Dashboard() {
     } finally {
       if (!isSilent) setIsConsolidationLoading(false);
     }
-  }, []);
+  }, [userEmail]);
 
   const loadFitmentData = useCallback(async (isSilent = false) => {
     if (!isSilent) {
       setIsFitmentLoading(true);
       setFitmentError(null);
     }
+    const reqStartedAt = Date.now();
     try {
       const data = await getFitmentSummaryReport();
+      if (reqStartedAt > _cacheInvalidatedAt && data && typeof data === 'object') {
+        _fitmentSummaryCache = { data, timestamp: Date.now(), userEmail };
+      }
       setFitmentSummary(data);
       setFitmentError(null);
     } catch (err: any) {
@@ -246,7 +307,7 @@ export default function Dashboard() {
     } finally {
       if (!isSilent) setIsFitmentLoading(false);
     }
-  }, []);
+  }, [userEmail]);
 
   // Fetch all independently without blocking one section on another
   const loadAllReports = useCallback(async (isSilent = false) => {
@@ -261,10 +322,14 @@ export default function Dashboard() {
   }, [loadDashboardData, loadFteSummaryData, loadConsolidationData, loadFitmentData]);
 
   useEffect(() => {
-    if (hasTriggeredInitialLoad.current) return;
-    hasTriggeredInitialLoad.current = true;
-    loadAllReports(false);
-  }, [loadAllReports]);
+    // If all cached data is fresh and present, perform a silent background refresh
+    const hasFullCache = Boolean(cachedDashboard && cachedFteSummary && cachedFteConsolidation && cachedFitmentSummary);
+    if (hasFullCache) {
+      loadAllReports(true);
+    } else {
+      loadAllReports(false);
+    }
+  }, [loadAllReports, cachedDashboard, cachedFteSummary, cachedFteConsolidation, cachedFitmentSummary]);
 
   async function handleDownloadPdf() {
     if (isExporting || !dashboard) return;
@@ -287,7 +352,8 @@ export default function Dashboard() {
 
   useEffect(() => {
     const refreshOnDataUpdate = () => {
-      loadAllReports(true);
+      invalidateDashboardCache();
+      loadAllReports(false);
     };
 
     const refreshInterval = window.setInterval(() => {
@@ -571,10 +637,14 @@ export default function Dashboard() {
           <div className="flex items-center justify-between border-b border-[#E4ECF7] px-4 py-3 shrink-0">
             <div>
               <h3 className="text-xl font-bold text-[#102846]">Top Activities by FTE</h3>
-              <p className="text-[11px] text-[#6E86A3]">All recorded activities sorted by effort capacity</p>
+              <p className="text-[11px] text-[#6E86A3]">Top effort activities across selected scope</p>
             </div>
             <span className="text-xs font-semibold uppercase tracking-[0.14em] text-[#8AA0BA]">
-              {topActivities.length > 0 ? `${topActivities.length} Activities` : 'Live Aggregation'}
+              {topActivities.length > 0
+                ? (dashboard?.charts?.totalActivitiesCount && dashboard.charts.totalActivitiesCount > topActivities.length
+                    ? `Top ${topActivities.length} of ${dashboard.charts.totalActivitiesCount} Activities`
+                    : `${topActivities.length} Activities`)
+                : 'Live Aggregation'}
             </span>
           </div>
 
@@ -639,6 +709,17 @@ export default function Dashboard() {
                 </tbody>
               </table>
             )}
+          </div>
+
+          <div className="border-t border-[#E4ECF7] px-4 py-2 bg-[#FBFDFF] shrink-0">
+            <button
+              type="button"
+              onClick={() => navigate(`${basePath}/deep-analysis?tab=fte&subTab=activities`)}
+              className="inline-flex items-center gap-1.5 text-xs font-bold text-[#1E5EA9] hover:text-[#194F8D]"
+            >
+              View All Activities in Deep Analysis
+              <ArrowRight className="h-3.5 w-3.5" />
+            </button>
           </div>
         </article>
 
