@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Check, Download, Flag, Printer, X } from 'lucide-react';
 import { apiFetch, exportToCSV } from '../../lib/api';
-import { TablePageSkeleton } from '../../components/PortalSkeletons';
+import { loadAuthUser } from '../../lib/authStorage';
+import { TableLoadingRow, TablePageSkeleton } from '../../components/PortalSkeletons';
 import {
 	applyManagerReviewToSubmission,
 	loadBperSubmissions,
+	loadBperSubmissionDetail,
 	type BperSubmissionRecord,
 } from '../employee/bperSubmissionStorage';
 
@@ -45,32 +47,65 @@ export default function FormsPage() {
 	const [pendingUserApprovals, setPendingUserApprovals] = useState<PendingUserApproval[]>(initialPendingUserApprovals);
 	const [managerProfile, setManagerProfile] = useState<any>(null);
 	const [allSubmissions, setAllSubmissions] = useState<BperSubmissionRecord[]>([]);
-	const [isLoading, setIsLoading] = useState(true);
+	const [isQueueLoading, setIsQueueLoading] = useState(true);
+	const [isPendingUsersLoading, setIsPendingUsersLoading] = useState(true);
 	const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
 	const [reviewStatus, setReviewStatus] = useState<'Approved' | 'Changes Requested' | 'Recall'>('Approved');
 	const [reviewComment, setReviewComment] = useState('');
 
+	// On-demand detail state explicitly tracked by referenceId
+	const [detailsCache, setDetailsCache] = useState<Record<string, BperSubmissionRecord>>({});
+	const [loadingDetailIds, setLoadingDetailIds] = useState<Record<string, boolean>>({});
+
 	const [isMutating, setIsMutating] = useState(false);
 
 	useEffect(() => {
+		let isCancelled = false;
 		async function init() {
-			setIsLoading(true);
-			try {
-				const [profileRes, subsData] = await Promise.all([
-					apiFetch('/auth/me'),
-					loadBperSubmissions(),
-				]);
+			setIsQueueLoading(true);
+			setIsPendingUsersLoading(true);
 
-				if (profileRes.ok) {
-					const profileData = await profileRes.json();
+			// Safely check current role from cached auth to determine if users call is required
+			const currentUser = loadAuthUser();
+			const isPrivileged = currentUser && (
+				currentUser.role === 'admin' ||
+				currentUser.role === 'manager' ||
+				(currentUser as any).userType === 'manager' ||
+				currentUser.email === 'admin@bper.com'
+			);
+
+			// 1. Queue-essential requests: profile & submissions summary
+			const queuePromise = Promise.all([
+				apiFetch('/auth/me').catch(() => null),
+				loadBperSubmissions({ summary: true }).catch(() => [])
+			]).then(async ([profileRes, subsData]) => {
+				if (isCancelled) return null;
+				let profileData = null;
+				if (profileRes && profileRes.ok) {
+					profileData = await profileRes.json().catch(() => null);
 					setManagerProfile(profileData);
-					
-					if (profileData.role === 'admin' || profileData.userType === 'manager') {
-						const usersRes = await apiFetch('/auth/users');
-						if (usersRes.ok) {
-							const users = await usersRes.json();
-							// Show employees who have NOT yet been granted form access by admin
-							const pending = users.filter((u: any) =>
+				}
+				setAllSubmissions(Array.isArray(subsData) ? subsData : []);
+				setIsQueueLoading(false);
+				return profileData;
+			}).catch((err) => {
+				console.error('Forms queue loading error:', err);
+				if (!isCancelled) {
+					setAllSubmissions([]);
+					setIsQueueLoading(false);
+				}
+				return null;
+			});
+
+			// 2. Pending user approvals request: runs concurrently without blocking queue
+			if (isPrivileged) {
+				apiFetch('/auth/users')
+					.then(async (usersRes) => {
+						if (isCancelled) return;
+						if (usersRes && usersRes.ok) {
+							const users = await usersRes.json().catch(() => []);
+							const rawList = Array.isArray(users) ? users : (users.users || users.data || []);
+							const pending = rawList.filter((u: any) =>
 								u.role === 'employee' && u.formAccessGranted === false
 							);
 							setPendingUserApprovals(pending.map((u: any) => ({
@@ -81,17 +116,57 @@ export default function FormsPage() {
 								requestedRole: 'Employee'
 							})));
 						}
+					})
+					.catch((err) => {
+						console.error('Pending user approvals loading error:', err);
+					})
+					.finally(() => {
+						if (!isCancelled) {
+							setIsPendingUsersLoading(false);
+						}
+					});
+			} else {
+				// If not cached as privileged, verify once profile resolves
+				queuePromise.then((profileData) => {
+					if (isCancelled) return;
+					if (profileData && (profileData.role === 'admin' || profileData.userType === 'manager')) {
+						apiFetch('/auth/users')
+							.then(async (lateUsersRes) => {
+								if (isCancelled) return;
+								if (lateUsersRes && lateUsersRes.ok) {
+									const users = await lateUsersRes.json().catch(() => []);
+									const rawList = Array.isArray(users) ? users : (users.users || users.data || []);
+									const pending = rawList.filter((u: any) =>
+										u.role === 'employee' && u.formAccessGranted === false
+									);
+									setPendingUserApprovals(pending.map((u: any) => ({
+										id: u._id,
+										name: u.name,
+										email: u.email,
+										role: u.role,
+										requestedRole: 'Employee'
+									})));
+								}
+							})
+							.catch((err) => {
+								console.error('Pending user approvals fallback loading error:', err);
+							})
+							.finally(() => {
+								if (!isCancelled) {
+									setIsPendingUsersLoading(false);
+								}
+							});
+					} else {
+						setIsPendingUsersLoading(false);
 					}
-				}
-
-				setAllSubmissions(subsData);
-			} catch (error) {
-				console.error('Forms init failed:', error);
-			} finally {
-				setIsLoading(false);
+				});
 			}
 		}
+
 		init();
+		return () => {
+			isCancelled = true;
+		};
 	}, [refreshTick]);
 
 	const pendingQueue = useMemo(() => {
@@ -126,21 +201,60 @@ export default function FormsPage() {
 
 	const activeQueue = activeTab === 'pending' ? pendingQueue : historyQueue;
 
-	const selectedRecord = useMemo(() => {
+	const selectedSummaryRecord = useMemo(() => {
 		if (!activeQueue.length) return null;
 		const match = activeQueue.find((record) => record.referenceId === selectedReferenceId);
 		return match || activeQueue[0];
 	}, [activeQueue, selectedReferenceId]);
 
 	useEffect(() => {
-		if (!selectedRecord) return;
-		setSelectedReferenceId(selectedRecord.referenceId);
-	}, [selectedRecord?.referenceId]);
+		if (!selectedSummaryRecord) return;
+		setSelectedReferenceId(selectedSummaryRecord.referenceId);
+	}, [selectedSummaryRecord?.referenceId]);
 
+	// Fetch complete detail on demand when a record is selected, tracked explicitly by referenceId
+	useEffect(() => {
+		if (!selectedSummaryRecord) return;
+		const refId = selectedSummaryRecord.referenceId;
+		// If already in detailsCache or currently loading, skip duplicate request
+		if (detailsCache[refId] || loadingDetailIds[refId]) return;
+
+		let isCancelled = false;
+		setLoadingDetailIds((prev) => ({ ...prev, [refId]: true }));
+
+		loadBperSubmissionDetail(refId)
+			.then((detail) => {
+				if (isCancelled || !detail) return;
+				setDetailsCache((prev) => ({ ...prev, [refId]: detail }));
+			})
+			.finally(() => {
+				if (!isCancelled) {
+					setLoadingDetailIds((prev) => ({ ...prev, [refId]: false }));
+				}
+			});
+
+		return () => {
+			isCancelled = true;
+		};
+	}, [selectedSummaryRecord?.referenceId, detailsCache, loadingDetailIds]);
+
+	// Full record if detailed data is loaded, otherwise summary record with summary preview row
+	const selectedRecord = useMemo(() => {
+		if (!selectedSummaryRecord) return null;
+		const cachedDetail = detailsCache[selectedSummaryRecord.referenceId];
+		return cachedDetail || selectedSummaryRecord;
+	}, [selectedSummaryRecord, detailsCache]);
+
+	const isDetailLoading = Boolean(selectedSummaryRecord && loadingDetailIds[selectedSummaryRecord.referenceId]);
 	const selectedRows = selectedRecord?.payload.rows ?? [];
 	const selectedFlags = selectedRecord ? savedFlags[selectedRecord.referenceId] ?? [] : [];
 	const flaggedCount = selectedFlags.length;
-	const totalHours = selectedRows.reduce((sum, row) => sum + Number(row.timeTakenHoursPerMonth || 0), 0);
+	// Calculate totalHours from summary totalHours if detail rows are still loading
+	const totalHours = selectedRecord
+		? (typeof selectedRecord.totalHours === 'number' && selectedRecord.totalHours > 0
+			? selectedRecord.totalHours
+			: selectedRows.reduce((sum, row) => sum + Number(row.timeTakenHoursPerMonth || 0), 0))
+		: 0;
 	const canReviewSelected = Boolean(selectedRecord && activeTab === 'pending' && selectedRecord.status === 'Under Review');
 	const canUnlockSelected = Boolean(selectedRecord && activeTab === 'history' && selectedRecord.status === 'Approved');
 	const latestReviewComment = selectedRecord?.reviewHistory[0]?.comment ?? '';
@@ -274,7 +388,7 @@ export default function FormsPage() {
 
 	return (
 		<div className="space-y-4 animate-in fade-in duration-500">
-			{isLoading ? (
+			{isQueueLoading ? (
 				<TablePageSkeleton rows={7} />
 			) : (
 			<section className="rounded-2xl border border-[#D9E4F2] bg-white shadow-[0_6px_18px_rgba(16,42,80,0.08)] overflow-hidden">
@@ -379,6 +493,15 @@ export default function FormsPage() {
 								</div>
 
 								<div className="space-y-2.5 px-5 py-4 overflow-y-auto flex-1 custom-scrollbar">
+									{isDetailLoading && (
+										<div className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 flex items-center justify-between animate-pulse">
+											<div className="flex items-center gap-3">
+												<div className="h-4 w-4 rounded-full border-2 border-blue-600 border-t-transparent animate-spin" />
+												<p className="text-xs font-semibold text-blue-900">Loading full activity rows for this submission...</p>
+											</div>
+											<span className="text-[11px] font-bold uppercase tracking-wider text-blue-700">On-demand</span>
+										</div>
+									)}
 									{selectedRows.map((row, index) => {
 										const isFlagOpen = canReviewSelected && flagRowIndex === index;
 										const savedRowFlag = selectedFlags.find((item) => item.rowIndex === index);
@@ -595,7 +718,9 @@ export default function FormsPage() {
 							</tr>
 						</thead>
 						<tbody>
-							{pendingUserApprovals.length === 0 ? (
+							{isPendingUsersLoading ? (
+								<TableLoadingRow colSpan={5} />
+							) : pendingUserApprovals.length === 0 ? (
 								<tr>
 									<td colSpan={5} className="px-5 py-8 text-center text-xs text-[#6D839F]">
 										No pending user approvals.

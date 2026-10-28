@@ -123,11 +123,49 @@ export async function updateEmployeeFitment(employeeId: string, parameters: any[
 }
 
 // Phase 9: Deep Analysis Reports
-export function getFteAnalysisReport(department?: string) {
-  const query = department && department !== 'All Departments'
-    ? `?department=${encodeURIComponent(department)}`
-    : '';
-  return apiGetJson<any>(`/reports/fte-analysis${query}`);
+export function getFteAnalysisReport(
+  department?: string,
+  options?: {
+    includeActivities?: boolean;
+    page?: number;
+    limit?: number;
+    search?: string;
+    tower?: string;
+    process?: string;
+    subProcess?: string;
+    export?: boolean;
+  }
+) {
+  const params = new URLSearchParams();
+  if (department && department !== 'All Departments') {
+    params.set('department', department);
+  }
+  if (options?.includeActivities) {
+    params.set('includeActivities', 'true');
+  }
+  if (options?.page) {
+    params.set('page', String(options.page));
+  }
+  if (options?.limit) {
+    params.set('limit', String(options.limit));
+  }
+  if (options?.search) {
+    params.set('search', options.search);
+  }
+  if (options?.tower) {
+    params.set('tower', options.tower);
+  }
+  if (options?.process) {
+    params.set('process', options.process);
+  }
+  if (options?.subProcess) {
+    params.set('subProcess', options.subProcess);
+  }
+  if (options?.export) {
+    params.set('export', 'true');
+  }
+  const queryString = params.toString() ? `?${params.toString()}` : '';
+  return apiGetJson<any>(`/reports/fte-analysis${queryString}`);
 }
 
 export function getConsolidationAnalysisReport(department?: string) {

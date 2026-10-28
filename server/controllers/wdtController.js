@@ -2,6 +2,7 @@ const WDTSubmission = require('../models/WDTSubmission');
 const User = require('../models/User');
 const { logAction } = require('../utils/auditLogger');
 const { invalidateScopedReportsCache } = require('./reportsController');
+const { invalidateSixBySixCache } = require('./analysisController');
 
 const submitWDT = async (req, res) => {
   try {
@@ -61,6 +62,7 @@ const submitWDT = async (req, res) => {
         existing.pendingFrom = employee.supervisorName || 'Manager'; // Route to supervisor
         await existing.save();
         invalidateScopedReportsCache();
+        invalidateSixBySixCache();
 
         // Send resubmission notification email
         try {
@@ -78,6 +80,7 @@ const submitWDT = async (req, res) => {
 
     const record = await WDTSubmission.create(req.body);
     invalidateScopedReportsCache();
+    invalidateSixBySixCache();
 
     // Send submission confirmation email
     try {
@@ -162,7 +165,33 @@ const getSubmissions = async (req, res) => {
        }
     }
 
-    const submissions = await WDTSubmission.find(query).sort({ submittedAt: -1 });
+    const isSummary = req.query.summary === 'true' || req.query.summary === '1';
+
+    let queryBuilder = WDTSubmission.find(query).sort({ submittedAt: -1 });
+
+    if (isSummary) {
+      // In summary mode, slice payload.rows to 1 item to preserve queue comment preview (payload.rows[0]?.comments)
+      // while cutting out large unbounded activity rows.
+      queryBuilder = queryBuilder.select({
+        referenceId: 1,
+        submittedAt: 1,
+        month: 1,
+        year: 1,
+        status: 1,
+        employee: 1,
+        'payload.employee': 1,
+        'payload.rows': { $slice: 1 },
+        totalHours: 1,
+        coreCount: 1,
+        supportCount: 1,
+        pendingFrom: 1,
+        reviewHistory: 1,
+        createdAt: 1,
+        updatedAt: 1
+      });
+    }
+
+    const submissions = await queryBuilder;
     res.json(submissions);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -203,6 +232,7 @@ const updateSubmissionStatus = async (req, res) => {
     
     await submission.save();
     invalidateScopedReportsCache();
+    invalidateSixBySixCache();
 
     // Send review notification email to employee
     try {

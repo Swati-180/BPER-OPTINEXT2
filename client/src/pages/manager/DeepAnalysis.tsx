@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { AlertCircle, Download } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 import {
@@ -89,6 +89,12 @@ interface FteAnalysisReport {
       employeeName: string;
       employeeId: string;
     }>;
+    pagination?: {
+      page: number;
+      limit: number;
+      total: number;
+      totalPages: number;
+    } | null;
   };
 }
 
@@ -245,41 +251,189 @@ export default function DeepAnalysis() {
   const [exportError, setExportError] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [selectedActivity, setSelectedActivity] = useState<any | null>(null);
+  const [activityContributors, setActivityContributors] = useState<any[]>([]);
+  const [isContributorsLoading, setIsContributorsLoading] = useState<boolean>(false);
+  const activeContributorsReqIdRef = useRef(0);
 
   // FTE State
   const [fteTab, setFteTab] = useState<FteTabType>(
     initialMainTab === 'fte' ? parseFteTab(initialSubTab) : 'overview'
   );
   const [fteReport, setFteReport] = useState<FteAnalysisReport | null>(null);
-  const [fteLoading, setFteLoading] = useState(true);
+  const [fteLoading, setFteLoading] = useState(initialMainTab === 'fte');
   const [fteError, setFteError] = useState<string | null>(null);
   const fteDepartments = useMemo(
     () => (fteReport?.tabs.byDepartment || []).map((d) => d.department),
     [fteReport]
   );
 
-  const filteredFteActivities = useMemo(() => {
-    const towerFilter = searchParams.get('towerFilter');
-    const query = activitySearchQuery.trim().toLowerCase();
+  // Dedicated on-demand state for All Activities (paginated)
+  const [activitiesData, setActivitiesData] = useState<any[]>([]);
+  const [activitiesPage, setActivitiesPage] = useState<number>(1);
+  const [activitiesTotalPages, setActivitiesTotalPages] = useState<number>(1);
+  const [activitiesTotalCount, setActivitiesTotalCount] = useState<number>(0);
+  const [isActivitiesLoading, setIsActivitiesLoading] = useState<boolean>(false);
+  const [activitiesError, setActivitiesError] = useState<string | null>(null);
+  const activeActivitiesReqIdRef = useRef(0);
 
-    return (fteReport?.tabs.allActivities || []).filter((row) => {
-      const matchesTower = !towerFilter || row.tower === towerFilter;
-      const matchesSearch =
-        !query ||
-        [row.process, row.subProcess]
-          .filter(Boolean)
-          .some((value) => String(value).toLowerCase().includes(query));
+  // In-memory cache for paginated activities: key = dept::tower::search::page
+  const activitiesCacheRef = useRef<Map<string, { rows: any[]; totalPages: number; total: number }>>(new Map());
 
-      return matchesTower && matchesSearch;
-    });
-  }, [activitySearchQuery, fteReport, searchParams]);
+  // Debounced search query for server-side pagination
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(activitySearchQuery);
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearchQuery(activitySearchQuery), 300);
+    return () => clearTimeout(timer);
+  }, [activitySearchQuery]);
+
+  // Reset page to 1 when search or tower filter changes
+  useEffect(() => {
+    setActivitiesPage(1);
+  }, [debouncedSearchQuery, departmentFilter, searchParams]);
+
+  // On-demand fetch for activities when fteTab === 'activities'
+  useEffect(() => {
+    if (mainTab !== 'fte' || fteTab !== 'activities') return;
+
+    const towerFilter = searchParams.get('towerFilter') || '';
+    const cacheKey = `${departmentFilter || '__ALL__'}::${towerFilter}::${debouncedSearchQuery}::${activitiesPage}`;
+    const cached = activitiesCacheRef.current.get(cacheKey);
+
+    if (cached) {
+      setActivitiesData(cached.rows);
+      setActivitiesTotalPages(cached.totalPages);
+      setActivitiesTotalCount(cached.total);
+      setIsActivitiesLoading(false);
+      setActivitiesError(null);
+      return;
+    }
+
+    const currentReqId = ++activeActivitiesReqIdRef.current;
+    setIsActivitiesLoading(true);
+    setActivitiesError(null);
+
+    async function fetchActivities() {
+      try {
+        const res = await getFteAnalysisReport(departmentFilter || undefined, {
+          includeActivities: true,
+          page: activitiesPage,
+          limit: 50,
+          search: debouncedSearchQuery || undefined,
+          tower: towerFilter || undefined
+        });
+
+        if (activeActivitiesReqIdRef.current !== currentReqId) return;
+
+        const items = res?.tabs?.allActivities || [];
+        const pagination = res?.tabs?.pagination || { page: 1, limit: 50, total: items.length, totalPages: 1 };
+
+        activitiesCacheRef.current.set(cacheKey, {
+          rows: items,
+          totalPages: pagination.totalPages,
+          total: pagination.total
+        });
+
+        setActivitiesData(items);
+        setActivitiesTotalPages(pagination.totalPages);
+        setActivitiesTotalCount(pagination.total);
+        setActivitiesError(null);
+      } catch (err: any) {
+        if (activeActivitiesReqIdRef.current !== currentReqId) return;
+        setActivitiesError(err?.message || 'Failed to load activities.');
+      } finally {
+        if (activeActivitiesReqIdRef.current === currentReqId) {
+          setIsActivitiesLoading(false);
+        }
+      }
+    }
+
+    fetchActivities();
+  }, [mainTab, fteTab, departmentFilter, searchParams, debouncedSearchQuery, activitiesPage, refreshKey]);
+
+  // Fetch all contributing employees across all records when an activity is selected
+  useEffect(() => {
+    if (!selectedActivity) {
+      setActivityContributors([]);
+      setIsContributorsLoading(false);
+      return;
+    }
+
+    const currentReqId = ++activeContributorsReqIdRef.current;
+    setIsContributorsLoading(true);
+
+    async function fetchContributors() {
+      try {
+        const proc = selectedActivity.process || selectedActivity.name || '';
+        const subProc = selectedActivity.subProcess || '';
+        const tower = selectedActivity.tower || '';
+
+        const res = await getFteAnalysisReport(departmentFilter || undefined, {
+          includeActivities: true,
+          export: true,
+          tower: tower || undefined,
+          process: proc || undefined,
+          subProcess: subProc || undefined,
+        });
+
+        if (activeContributorsReqIdRef.current !== currentReqId) return;
+
+        const allMatching = (res?.tabs?.allActivities || []).filter((a: any) =>
+          (a.process === proc || a.name === proc) &&
+          (a.subProcess || '') === subProc &&
+          (a.tower || '') === tower
+        );
+
+        setActivityContributors(allMatching);
+      } catch (err) {
+        if (activeContributorsReqIdRef.current !== currentReqId) return;
+        // Fallback to local page items if request fails
+        const fallback = activitiesData.filter(
+          (a: any) =>
+            (a.process === selectedActivity.process || a.name === selectedActivity.name) &&
+            a.subProcess === selectedActivity.subProcess &&
+            a.tower === selectedActivity.tower
+        );
+        setActivityContributors(fallback);
+      } finally {
+        if (activeContributorsReqIdRef.current === currentReqId) {
+          setIsContributorsLoading(false);
+        }
+      }
+    }
+
+    fetchContributors();
+  }, [selectedActivity, departmentFilter]);
+
+  // Full export handler for all activities
+  const handleExportAllActivities = async () => {
+    setIsExporting(true);
+    setExportError(null);
+    try {
+      const towerFilter = searchParams.get('towerFilter') || '';
+      const fullRes = await getFteAnalysisReport(departmentFilter || undefined, {
+        export: true,
+        search: debouncedSearchQuery || undefined,
+        tower: towerFilter || undefined
+      });
+      const allRows = fullRes?.tabs?.allActivities || [];
+      if (allRows.length === 0) {
+        setExportError('No activities available to export.');
+        return;
+      }
+      exportToExcelClient(allRows, `fte-all-activities-${new Date().toISOString().split('T')[0]}`);
+    } catch (err: any) {
+      setExportError(err?.message || 'Failed to export complete activities list.');
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   // Consolidation State
   const [consolidationTab, setConsolidationTab] = useState<ConsolidationTabType>(
     initialMainTab === 'consolidation' ? parseConsolidationTab(initialSubTab) : 'overview'
   );
   const [consolidationReport, setConsolidationReport] = useState<ConsolidationAnalysisReport | null>(null);
-  const [consolidationLoading, setConsolidationLoading] = useState(true);
+  const [consolidationLoading, setConsolidationLoading] = useState(initialMainTab === 'consolidation');
   const [consolidationError, setConsolidationError] = useState<string | null>(null);
   const consolidationDepartments = useMemo(
     () => (consolidationReport?.tabs.byDepartment || []).map((d) => d.department),
@@ -291,7 +445,7 @@ export default function DeepAnalysis() {
     initialMainTab === 'fitment' ? parseFitmentTab(initialSubTab) : 'overview'
   );
   const [fitmentReport, setFitmentReport] = useState<FitmentAnalysisReport | null>(null);
-  const [fitmentLoading, setFitmentLoading] = useState(true);
+  const [fitmentLoading, setFitmentLoading] = useState(initialMainTab === 'fitment');
   const [fitmentError, setFitmentError] = useState<string | null>(null);
 
   // Utilization State
@@ -299,112 +453,169 @@ export default function DeepAnalysis() {
     initialMainTab === 'utilization' ? parseUtilizationTab(initialSubTab) : 'overview'
   );
   const [utilizationReport, setUtilizationReport] = useState<UtilizationAnalysisReport | null>(null);
-  const [utilizationLoading, setUtilizationLoading] = useState(true);
+  const [utilizationLoading, setUtilizationLoading] = useState(initialMainTab === 'utilization');
   const [utilizationError, setUtilizationError] = useState<string | null>(null);
   const utilizationDepartments = useMemo(
     () => (utilizationReport?.tabs.byDepartment || []).map((d) => d.department),
     [utilizationReport]
   );
 
-  // Load FTE
+  // In-memory per-tab cache across department filters
+  const fteCacheRef = useRef<Map<string, FteAnalysisReport>>(new Map());
+  const consolidationCacheRef = useRef<Map<string, ConsolidationAnalysisReport>>(new Map());
+  const fitmentCacheRef = useRef<FitmentAnalysisReport | null>(null);
+  const utilizationCacheRef = useRef<Map<string, UtilizationAnalysisReport>>(new Map());
+
+  // Request race condition guards (prevent stale responses from overwriting newer filter queries)
+  const activeFteReqIdRef = useRef(0);
+  const activeConsolidationReqIdRef = useRef(0);
+  const activeFitmentReqIdRef = useRef(0);
+  const activeUtilizationReqIdRef = useRef(0);
+
+  // Load FTE (lazy loaded only when mainTab === 'fte')
   useEffect(() => {
+    if (mainTab !== 'fte') return;
+
+    const cacheKey = departmentFilter || '__ALL__';
+    const cached = fteCacheRef.current.get(cacheKey);
+
+    if (cached) {
+      setFteReport(cached);
+      setFteLoading(false);
+      setFteError(null);
+      return;
+    }
+
+    const currentReqId = ++activeFteReqIdRef.current;
+    setFteLoading(true);
+    setFteError(null);
+
     async function loadFte() {
-      const isInitial = !fteReport;
-      if (isInitial) {
-        setFteLoading(true);
-        setFteError(null);
-      }
       try {
         const data = await getFteAnalysisReport(departmentFilter || undefined);
+        if (activeFteReqIdRef.current !== currentReqId) return;
+        fteCacheRef.current.set(cacheKey, data);
         setFteReport(data);
-        if (isInitial) setFteError(null);
+        setFteError(null);
       } catch (err) {
-        if (isInitial) {
-          setFteError((err as any)?.message || 'Failed to load FTE analysis.');
-        } else {
-          console.warn('FTE background refresh failed (swallowed):', (err as any)?.message);
-        }
+        if (activeFteReqIdRef.current !== currentReqId) return;
+        setFteError((err as any)?.message || 'Failed to load FTE analysis.');
       } finally {
-        setFteLoading(false);
+        if (activeFteReqIdRef.current === currentReqId) {
+          setFteLoading(false);
+        }
       }
     }
     loadFte();
-  }, [departmentFilter, refreshKey]);
+  }, [mainTab, departmentFilter, refreshKey]);
 
-  // Load Consolidation
+  // Load Consolidation (lazy loaded only when mainTab === 'consolidation')
   useEffect(() => {
+    if (mainTab !== 'consolidation') return;
+
+    const cacheKey = departmentFilter || '__ALL__';
+    const cached = consolidationCacheRef.current.get(cacheKey);
+
+    if (cached) {
+      setConsolidationReport(cached);
+      setConsolidationLoading(false);
+      setConsolidationError(null);
+      return;
+    }
+
+    const currentReqId = ++activeConsolidationReqIdRef.current;
+    setConsolidationLoading(true);
+    setConsolidationError(null);
+
     async function loadConsolidation() {
-      const isInitial = !consolidationReport;
-      if (isInitial) {
-        setConsolidationLoading(true);
-        setConsolidationError(null);
-      }
       try {
         const data = await getConsolidationAnalysisReport(departmentFilter || undefined);
+        if (activeConsolidationReqIdRef.current !== currentReqId) return;
+        consolidationCacheRef.current.set(cacheKey, data);
         setConsolidationReport(data);
-        if (isInitial) setConsolidationError(null);
+        setConsolidationError(null);
       } catch (err) {
-        if (isInitial) {
-          setConsolidationError((err as any)?.message || 'Failed to load consolidation analysis.');
-        } else {
-          console.warn('Consolidation background refresh failed (swallowed):', (err as any)?.message);
-        }
+        if (activeConsolidationReqIdRef.current !== currentReqId) return;
+        setConsolidationError((err as any)?.message || 'Failed to load consolidation analysis.');
       } finally {
-        setConsolidationLoading(false);
+        if (activeConsolidationReqIdRef.current === currentReqId) {
+          setConsolidationLoading(false);
+        }
       }
     }
     loadConsolidation();
-  }, [departmentFilter, refreshKey]);
+  }, [mainTab, departmentFilter, refreshKey]);
 
-  // Load Fitment
+  // Load Fitment (lazy loaded only when mainTab === 'fitment')
   useEffect(() => {
+    if (mainTab !== 'fitment') return;
+
+    if (fitmentCacheRef.current) {
+      setFitmentReport(fitmentCacheRef.current);
+      setFitmentLoading(false);
+      setFitmentError(null);
+      return;
+    }
+
+    const currentReqId = ++activeFitmentReqIdRef.current;
+    setFitmentLoading(true);
+    setFitmentError(null);
+
     async function loadFitment() {
-      const isInitial = !fitmentReport;
-      if (isInitial) {
-        setFitmentLoading(true);
-        setFitmentError(null);
-      }
       try {
         const data = await getFitmentAnalysisReport();
+        if (activeFitmentReqIdRef.current !== currentReqId) return;
+        fitmentCacheRef.current = data;
         setFitmentReport(data);
-        if (isInitial) setFitmentError(null);
+        setFitmentError(null);
       } catch (err) {
-        if (isInitial) {
-          setFitmentError((err as any)?.message || 'Failed to load fitment analysis.');
-        } else {
-          console.warn('Fitment background refresh failed (swallowed):', (err as any)?.message);
-        }
+        if (activeFitmentReqIdRef.current !== currentReqId) return;
+        setFitmentError((err as any)?.message || 'Failed to load fitment analysis.');
       } finally {
-        setFitmentLoading(false);
+        if (activeFitmentReqIdRef.current === currentReqId) {
+          setFitmentLoading(false);
+        }
       }
     }
     loadFitment();
-  }, [refreshKey]);
+  }, [mainTab, refreshKey]);
 
-  // Load Utilization
+  // Load Utilization (lazy loaded only when mainTab === 'utilization')
   useEffect(() => {
+    if (mainTab !== 'utilization') return;
+
+    const cacheKey = departmentFilter || '__ALL__';
+    const cached = utilizationCacheRef.current.get(cacheKey);
+
+    if (cached) {
+      setUtilizationReport(cached);
+      setUtilizationLoading(false);
+      setUtilizationError(null);
+      return;
+    }
+
+    const currentReqId = ++activeUtilizationReqIdRef.current;
+    setUtilizationLoading(true);
+    setUtilizationError(null);
+
     async function loadUtilization() {
-      const isInitial = !utilizationReport;
-      if (isInitial) {
-        setUtilizationLoading(true);
-        setUtilizationError(null);
-      }
       try {
         const data = await getUtilizationAnalysisReport(departmentFilter || undefined);
+        if (activeUtilizationReqIdRef.current !== currentReqId) return;
+        utilizationCacheRef.current.set(cacheKey, data);
         setUtilizationReport(data);
-        if (isInitial) setUtilizationError(null);
+        setUtilizationError(null);
       } catch (err) {
-        if (isInitial) {
-          setUtilizationError((err as any)?.message || 'Failed to load utilization analysis.');
-        } else {
-          console.warn('Utilization background refresh failed (swallowed):', (err as any)?.message);
-        }
+        if (activeUtilizationReqIdRef.current !== currentReqId) return;
+        setUtilizationError((err as any)?.message || 'Failed to load utilization analysis.');
       } finally {
-        setUtilizationLoading(false);
+        if (activeUtilizationReqIdRef.current === currentReqId) {
+          setUtilizationLoading(false);
+        }
       }
     }
     loadUtilization();
-  }, [departmentFilter, refreshKey]);
+  }, [mainTab, departmentFilter, refreshKey]);
 
   useEffect(() => {
     const nextMainTab = parseMainTab(searchParams.get('tab'));
@@ -423,9 +634,13 @@ export default function DeepAnalysis() {
     }
   }, [searchParams]);
 
-  // Auto-refresh on data updates
+  // Auto-refresh on data updates: clear caches and trigger refresh
   useEffect(() => {
     const refreshOnDataUpdate = () => {
+      fteCacheRef.current.clear();
+      consolidationCacheRef.current.clear();
+      fitmentCacheRef.current = null;
+      utilizationCacheRef.current.clear();
       setRefreshKey((prev) => prev + 1);
     };
     const refreshInterval = window.setInterval(() => {
@@ -712,48 +927,94 @@ export default function DeepAnalysis() {
                       </div>
                     )}
                     {fteTab === 'activities' && (
-                      <div className="overflow-x-auto">
-                        <table className="w-full text-sm">
-                          <thead className="bg-[#F8FBFF] border-b border-[#E3EAF4]">
-                            <tr>
-                              <th className="px-4 py-2 text-left font-semibold text-[#0F2649]">Sub Process</th>
-                              <th className="px-4 py-2 text-left font-semibold text-[#0F2649]">Process Name</th>
-                              <th className="px-4 py-2 text-left font-semibold text-[#0F2649]">Tower</th>
-                              <th className="px-4 py-2 text-left font-semibold text-[#0F2649]">Department</th>
-                              <th className="px-4 py-2 text-right font-semibold text-[#0F2649]">Hours</th>
-                              <th className="px-4 py-2 text-right font-semibold text-[#0F2649]">FTE</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {filteredFteActivities.map((row, idx) => (
-                              <tr 
-                                key={idx} 
-                                className="border-b border-[#E3EAF4] hover:bg-[#F8FBFF] cursor-pointer"
-                                onClick={() => setSelectedActivity(row)}
+                      <div className="space-y-4">
+                        {activitiesError ? (
+                          <div className="bg-[#FEE5E5] border border-[#FACAC9] rounded-lg p-4 flex items-center gap-3">
+                            <AlertCircle className="w-5 h-5 text-[#DC2626]" />
+                            <span className="text-[#DC2626]">{activitiesError}</span>
+                            <button
+                              onClick={() => setActivitiesPage((p) => p)}
+                              className="ml-auto px-3 py-1 bg-[#DC2626] text-white rounded text-sm hover:bg-[#BB1B1B]"
+                            >
+                              Retry
+                            </button>
+                          </div>
+                        ) : isActivitiesLoading ? (
+                          <div className="py-8">
+                            <InlineLoadingBlock className="mx-auto max-w-xl" />
+                          </div>
+                        ) : activitiesData.length === 0 ? (
+                          <div className="bg-[#F8FBFF] border border-[#E3EAF4] rounded-xl p-8 text-center text-[#5D789A]">
+                            No activities match your current search and filter criteria.
+                          </div>
+                        ) : (
+                          <div className="overflow-x-auto">
+                            <table className="w-full text-sm">
+                              <thead className="bg-[#F8FBFF] border-b border-[#E3EAF4]">
+                                <tr>
+                                  <th className="px-4 py-2 text-left font-semibold text-[#0F2649]">Sub Process</th>
+                                  <th className="px-4 py-2 text-left font-semibold text-[#0F2649]">Process Name</th>
+                                  <th className="px-4 py-2 text-left font-semibold text-[#0F2649]">Tower</th>
+                                  <th className="px-4 py-2 text-left font-semibold text-[#0F2649]">Department</th>
+                                  <th className="px-4 py-2 text-right font-semibold text-[#0F2649]">Hours</th>
+                                  <th className="px-4 py-2 text-right font-semibold text-[#0F2649]">FTE</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {activitiesData.map((row, idx) => (
+                                  <tr 
+                                    key={idx} 
+                                    className="border-b border-[#E3EAF4] hover:bg-[#F8FBFF] cursor-pointer"
+                                    onClick={() => setSelectedActivity(row)}
+                                  >
+                                    <td className="px-4 py-2 text-[#5D789A]">{row.subProcess || '—'}</td>
+                                    <td className="px-4 py-2 text-[#0F2649] font-medium">{row.process || row.name || '—'}</td>
+                                    <td className="px-4 py-2 text-[#0F2649]">{row.tower || '—'}</td>
+                                    <td className="px-4 py-2 text-[#0F2649]">{row.department || '—'}</td>
+                                    <td className="px-4 py-2 text-right text-[#0F2649]">{safeNumber(row.monthlyHours)}</td>
+                                    <td className="px-4 py-2 text-right text-[#1E5EAB] font-semibold">{safeNumber(row.fte)}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+
+                            {/* Pagination Controls */}
+                            <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-[#E3EAF4] pt-4">
+                              <div className="text-xs text-[#5D789A]">
+                                Showing page <span className="font-bold text-[#0F2649]">{activitiesPage}</span> of <span className="font-bold text-[#0F2649]">{activitiesTotalPages}</span> ({activitiesTotalCount.toLocaleString()} total items)
+                              </div>
+
+                              <div className="flex items-center gap-2">
+                                <button
+                                  onClick={() => setActivitiesPage((p) => Math.max(1, p - 1))}
+                                  disabled={activitiesPage <= 1 || isActivitiesLoading}
+                                  className="h-9 px-3 rounded-lg border border-[#D6E2F0] bg-white text-xs font-semibold text-[#243A59] hover:bg-[#F4F8FF] disabled:opacity-40 transition-colors"
+                                >
+                                  Previous
+                                </button>
+                                <span className="text-xs font-semibold text-[#0F2649] px-1">
+                                  {activitiesPage} / {activitiesTotalPages}
+                                </span>
+                                <button
+                                  onClick={() => setActivitiesPage((p) => Math.min(activitiesTotalPages, p + 1))}
+                                  disabled={activitiesPage >= activitiesTotalPages || isActivitiesLoading}
+                                  className="h-9 px-3 rounded-lg border border-[#D6E2F0] bg-white text-xs font-semibold text-[#243A59] hover:bg-[#F4F8FF] disabled:opacity-40 transition-colors"
+                                >
+                                  Next
+                                </button>
+                              </div>
+
+                              <button
+                                onClick={handleExportAllActivities}
+                                disabled={isExporting}
+                                className="inline-flex items-center gap-2 h-9 rounded-lg border border-[#D6E2F0] bg-white px-3 text-xs font-semibold text-[#243A59] hover:bg-[#F4F8FF] disabled:opacity-60 transition-colors"
                               >
-                                <td className="px-4 py-2 text-[#5D789A]">{row.subProcess || '—'}</td>
-                                <td className="px-4 py-2 text-[#0F2649] font-medium">{row.process || row.name || '—'}</td>
-                                <td className="px-4 py-2 text-[#0F2649]">{row.tower || '—'}</td>
-                                <td className="px-4 py-2 text-[#0F2649]">{row.department || '—'}</td>
-                                <td className="px-4 py-2 text-right text-[#0F2649]">{safeNumber(row.monthlyHours)}</td>
-                                <td className="px-4 py-2 text-right text-[#1E5EAB] font-semibold">{safeNumber(row.fte)}</td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                        <button
-                          onClick={() =>
-                            handleExport(
-                              filteredFteActivities,
-                              `fte-all-activities-${new Date().toISOString().split('T')[0]}`
-                            )
-                          }
-                          disabled={isExporting}
-                          className="mt-4 inline-flex items-center gap-2 h-11 rounded-xl border border-[#D6E2F0] bg-white px-4 text-sm font-semibold text-[#243A59] hover:bg-[#F4F8FF] disabled:opacity-60 transition-colors"
-                        >
-                          <Download className="w-4 h-4" />
-                          {isExporting ? 'Exporting...' : 'Excel'}
-                        </button>
+                                <Download className="w-3.5 h-3.5" />
+                                {isExporting ? 'Exporting All...' : 'Export All Activities (Excel)'}
+                              </button>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
@@ -1587,10 +1848,7 @@ export default function DeepAnalysis() {
                   <div className="col-span-2 rounded-xl border border-[#D9E4F2] bg-[#F5F8FD] p-4 shadow-sm border-[#B1C8E6]">
                     <p className="text-[10px] font-bold uppercase tracking-wider text-[#617D9D]">Total FTE</p>
                     <p className="mt-1 text-lg font-bold text-[#1E5EAB]">
-                      {fteReport.tabs.allActivities
-                        .filter(a => a.process === selectedActivity.process && a.subProcess === selectedActivity.subProcess && a.tower === selectedActivity.tower)
-                        .reduce((sum, a) => sum + Number(a.fte), 0)
-                        .toFixed(2)}
+                      {safeNumber(selectedActivity.fte)}
                     </p>
                   </div>
                 </div>
@@ -1598,8 +1856,11 @@ export default function DeepAnalysis() {
 
               {/* Employees who submitted this activity */}
               <div className="rounded-xl border border-[#D9E4F2] bg-white overflow-hidden shadow-sm">
-                <div className="bg-[#F8FBFF] px-4 py-3 border-b border-[#E3EAF4]">
+                <div className="bg-[#F8FBFF] px-4 py-3 border-b border-[#E3EAF4] flex items-center justify-between">
                   <h3 className="text-xs font-bold uppercase tracking-[0.1em] text-[#617D9D]">Employees Contributing</h3>
+                  {isContributorsLoading && (
+                    <span className="text-[11px] text-[#1E5EAB] animate-pulse">Loading contributors...</span>
+                  )}
                 </div>
                 <div className="overflow-x-auto">
                   <table className="w-full border-collapse text-left text-sm">
@@ -1611,18 +1872,30 @@ export default function DeepAnalysis() {
                       </tr>
                     </thead>
                     <tbody>
-                      {fteReport.tabs.allActivities
-                        .filter(a => a.process === selectedActivity.process && a.subProcess === selectedActivity.subProcess && a.tower === selectedActivity.tower)
-                        .map((a, i) => (
-                        <tr key={i} className="border-b border-[#E3EAF4] last:border-0 hover:bg-[#F8FBFF]">
-                          <td className="px-4 py-2">
-                            <p className="font-medium text-[#0F2649]">{a.employeeName}</p>
-                            <p className="text-[10px] text-[#5D789A]">{a.employeeId}</p>
+                      {isContributorsLoading && activityContributors.length === 0 ? (
+                        <tr>
+                          <td colSpan={3} className="px-4 py-6 text-center text-xs text-[#5D789A]">
+                            Loading contributing employees...
                           </td>
-                          <td className="px-4 py-2 text-right text-[#5D789A]">{a.monthlyHours}</td>
-                          <td className="px-4 py-2 text-right text-[#1E5EAB] font-semibold">{a.fte}</td>
                         </tr>
-                      ))}
+                      ) : activityContributors.length === 0 ? (
+                        <tr>
+                          <td colSpan={3} className="px-4 py-6 text-center text-xs text-[#5D789A]">
+                            No contributing records found.
+                          </td>
+                        </tr>
+                      ) : (
+                        activityContributors.map((a, i) => (
+                          <tr key={i} className="border-b border-[#E3EAF4] last:border-0 hover:bg-[#F8FBFF]">
+                            <td className="px-4 py-2">
+                              <p className="font-medium text-[#0F2649]">{a.employeeName}</p>
+                              <p className="text-[10px] text-[#5D789A]">{a.employeeId}</p>
+                            </td>
+                            <td className="px-4 py-2 text-right text-[#5D789A]">{a.monthlyHours}</td>
+                            <td className="px-4 py-2 text-right text-[#1E5EAB] font-semibold">{a.fte}</td>
+                          </tr>
+                        ))
+                      )}
                     </tbody>
                   </table>
                 </div>

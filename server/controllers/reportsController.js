@@ -213,6 +213,16 @@ const CACHE_TTL_MS = 60 * 1000; // 60 seconds TTL
 
 function invalidateScopedReportsCache() {
   scopedSubmissionsCache.clear();
+  fitmentSummaryCache.clear();
+}
+
+// --- In-Memory Fitment Summary Cache with Request Coalescing & Race Guard ---
+const fitmentSummaryCache = new Map();
+let fitmentSummaryGeneration = 0;
+
+function invalidateFitmentSummaryCache() {
+  fitmentSummaryCache.clear();
+  fitmentSummaryGeneration++;
 }
 
 async function getScopedSubmissions(req) {
@@ -454,13 +464,17 @@ async function getDashboardReport(req, res) {
       };
     });
 
+    const topActivitiesCount = topActivities.length;
+    const topActivitiesPreview = topActivities.slice(0, 50);
+
     res.json({
       generatedAt: new Date().toISOString(),
       submissionWindow: getSubmissionWindowStatus(),
       summary,
       charts: {
         towerFte,
-        topActivities,
+        topActivities: topActivitiesPreview,
+        totalActivitiesCount: topActivitiesCount,
         submissionStatusSegments,
         teamUtilization,
         employeeFteData,
@@ -899,130 +913,175 @@ async function getFitmentSummaryReport(req, res) {
     if (!ensureManager(requestUser.role, res)) return;
 
     const { department } = req.query;
-    let employeeIdsScope = null;
+    const normalizedDept = (department && department !== 'All Departments')
+      ? String(department).trim()
+      : '__ALL__';
 
-    if (department && department !== 'All Departments') {
-      employeeIdsScope = await WDTSubmission.distinct('employee.employeeId', { 'employee.department': department });
+    const now = Date.now();
+    const cached = fitmentSummaryCache.get(normalizedDept);
+    if (cached && cached.expiresAt > now && cached.data) {
+      return res.json(cached.data);
     }
 
-    const fitmentQuery = {};
-    if (employeeIdsScope) {
-      fitmentQuery.employeeId = { $in: employeeIdsScope };
+    if (cached && cached.inFlightPromise) {
+      const data = await cached.inFlightPromise;
+      return res.json(data);
     }
 
-    const fitments = await Fitment.find(fitmentQuery).sort({ weightedScore: -1 }).lean();
-
-    // Determine the true operational workforce scope (named staff only, excluding vacancies)
-    let totalEmployees = 0;
-    let operationalEmpIdSet = new Set();
-    if (employeeIdsScope) {
-      totalEmployees = employeeIdsScope.length;
-      operationalEmpIdSet = new Set(employeeIdsScope.map(String));
-    } else {
-      const authoritativeRosterCount = await User.countDocuments({ role: 'employee', isActive: true, isRosterOnly: true, isArchivedDemo: { $ne: true } });
-      if (authoritativeRosterCount > 0) {
-        totalEmployees = await User.countDocuments({ role: 'employee', isActive: true, isArchivedDemo: { $ne: true } });
-        const rosterUsers = await User.find({ role: 'employee', isActive: true, isArchivedDemo: { $ne: true } }).select('employeeId').lean();
-        operationalEmpIdSet = new Set(rosterUsers.map(u => String(u.employeeId || '').trim()).filter(Boolean));
-      } else {
-        // Fallback to active named staff in WDT submissions
-        const wdtNamed = await WDTSubmission.distinct('employee.employeeId', { 'employee.name': { $not: /^vacant$/i } });
-        totalEmployees = wdtNamed.length > 0 ? wdtNamed.length : await User.countDocuments({ role: 'employee', isActive: true, isArchivedDemo: { $ne: true } });
-        operationalEmpIdSet = new Set(wdtNamed.map(String));
+    const computePromise = (async () => {
+      let employeeIdsScope = null;
+      if (normalizedDept !== '__ALL__') {
+        employeeIdsScope = await WDTSubmission.distinct('employee.employeeId', { 'employee.department': normalizedDept });
       }
-    }
 
-    const userMap = new Map(
-      (
-        await User.find({ role: 'employee' })
-          .select('employeeId name designation band')
-          .lean()
-      ).map((u) => [u.employeeId, u])
-    );
+      const fitmentQuery = {};
+      if (employeeIdsScope) {
+        fitmentQuery.employeeId = { $in: employeeIdsScope };
+      }
 
-    const profilesWithUser = fitments.map((item) => {
-      const user = userMap.get(item.employeeId) || {};
-      const isOperational = operationalEmpIdSet.has(String(item.employeeId || '').trim());
-      return {
-        employeeId: item.employeeId,
-        name: user.name || item.employeeId,
-        designation: user.designation || '',
-        band: user.band || '',
-        weightedScore: safeNumber(item.weightedScore),
-        fitmentLabel: item.fitmentLabel || 'UNFIT',
-        lastEvaluatedAt: item.lastEvaluatedAt || item.updatedAt || item.createdAt,
-        isPilotAssessment: !isOperational,
-        assessmentCategory: isOperational ? 'Operational Workforce' : 'Pilot Evaluation Record'
-      };
-    });
+      // Parallelize independent queries: Fitment query, User details lookup, and workforce calculation
+      const fitmentsPromise = Fitment.find(fitmentQuery).sort({ weightedScore: -1 }).lean();
+      const userMapPromise = User.find({ role: 'employee' })
+        .select('employeeId name designation band')
+        .lean()
+        .then((users) => new Map(users.map((u) => [u.employeeId, u])));
 
-    // Segregate operational vs pilot records
-    const operationalProfiles = profilesWithUser.filter(p => !p.isPilotAssessment);
-    const pilotProfiles = profilesWithUser.filter(p => p.isPilotAssessment);
-
-    const operationalAssessedCount = operationalProfiles.length;
-    const operationalCoveragePct = Number(toPercent(operationalAssessedCount, totalEmployees).toFixed(1));
-
-    const avgWeightedScore = operationalAssessedCount
-      ? Number((operationalProfiles.reduce((sum, item) => sum + safeNumber(item.weightedScore), 0) / operationalAssessedCount).toFixed(1))
-      : (pilotProfiles.length ? Number((pilotProfiles.reduce((sum, item) => sum + safeNumber(item.weightedScore), 0) / pilotProfiles.length).toFixed(1)) : 0);
-
-    const activeListForCharts = operationalAssessedCount > 0 ? operationalProfiles : pilotProfiles;
-
-    const labelBreakdown = {
-      fit: activeListForCharts.filter((item) => item.fitmentLabel === 'FIT').length,
-      trainToFit: activeListForCharts.filter((item) => item.fitmentLabel === 'TRAIN TO FIT').length,
-      unfit: activeListForCharts.filter((item) => item.fitmentLabel === 'UNFIT').length,
-    };
-
-    const scoreDistribution = [
-      { label: '0-39', min: 0, max: 39 },
-      { label: '40-64', min: 40, max: 64 },
-      { label: '65-79', min: 65, max: 79 },
-      { label: '80-100', min: 80, max: 100 },
-    ].map((bucket) => ({
-      label: bucket.label,
-      count: activeListForCharts.filter((item) => {
-        const score = safeNumber(item.weightedScore);
-        return score >= bucket.min && score <= bucket.max;
-      }).length,
-    }));
-
-    res.json({
-      generatedAt: new Date().toISOString(),
-      summary: {
-        profiles: operationalAssessedCount,
-        totalEmployees,
-        coveragePct: operationalCoveragePct,
-        avgWeightedScore,
-        labelBreakdown,
-        operationalWorkforce: {
-          totalEmployees,
-          assessed: operationalAssessedCount,
-          coveragePct: operationalCoveragePct,
-          status: operationalAssessedCount === 0 ? 'Assessment Phase Pending (0% Verified Coverage)' : `${operationalCoveragePct}% Verified Coverage`
-        },
-        pilotAssessments: {
-          totalCount: pilotProfiles.length,
-          label: 'Sandbox / Pilot Baseline Records',
-          notice: 'Historical pilot assessments performed during initial setup on sandbox accounts; kept separate from operational staff.'
+      const workforcePromise = (async () => {
+        let totalEmployees = 0;
+        let operationalEmpIdSet = new Set();
+        if (employeeIdsScope) {
+          totalEmployees = employeeIdsScope.length;
+          operationalEmpIdSet = new Set(employeeIdsScope.map(String));
+        } else {
+          const authoritativeRosterCount = await User.countDocuments({ role: 'employee', isActive: true, isRosterOnly: true, isArchivedDemo: { $ne: true } });
+          if (authoritativeRosterCount > 0) {
+            totalEmployees = await User.countDocuments({ role: 'employee', isActive: true, isArchivedDemo: { $ne: true } });
+            const rosterUsers = await User.find({ role: 'employee', isActive: true, isArchivedDemo: { $ne: true } }).select('employeeId').lean();
+            operationalEmpIdSet = new Set(rosterUsers.map(u => String(u.employeeId || '').trim()).filter(Boolean));
+          } else {
+            // Fallback to active named staff in WDT submissions
+            const wdtNamed = await WDTSubmission.distinct('employee.employeeId', { 'employee.name': { $not: /^vacant$/i } });
+            totalEmployees = wdtNamed.length > 0 ? wdtNamed.length : await User.countDocuments({ role: 'employee', isActive: true, isArchivedDemo: { $ne: true } });
+            operationalEmpIdSet = new Set(wdtNamed.map(String));
+          }
         }
-      },
-      charts: {
-        scoreDistribution,
-      },
-      tables: {
-        topFitEmployees: activeListForCharts
-          .filter((item) => item.fitmentLabel === 'FIT')
-          .sort((a, b) => b.weightedScore - a.weightedScore)
-          .slice(0, 10),
-        lowFitEmployees: activeListForCharts
-          .filter((item) => item.fitmentLabel !== 'FIT')
-          .sort((a, b) => a.weightedScore - b.weightedScore)
-          .slice(0, 10),
-        pilotEvaluationRecords: pilotProfiles
-      },
+        return { totalEmployees, operationalEmpIdSet };
+      })();
+
+      const [fitments, userMap, { totalEmployees, operationalEmpIdSet }] = await Promise.all([
+        fitmentsPromise,
+        userMapPromise,
+        workforcePromise,
+      ]);
+
+      const profilesWithUser = fitments.map((item) => {
+        const user = userMap.get(item.employeeId) || {};
+        const isOperational = operationalEmpIdSet.has(String(item.employeeId || '').trim());
+        return {
+          employeeId: item.employeeId,
+          name: user.name || item.employeeId,
+          designation: user.designation || '',
+          band: user.band || '',
+          weightedScore: safeNumber(item.weightedScore),
+          fitmentLabel: item.fitmentLabel || 'UNFIT',
+          lastEvaluatedAt: item.lastEvaluatedAt || item.updatedAt || item.createdAt,
+          isPilotAssessment: !isOperational,
+          assessmentCategory: isOperational ? 'Operational Workforce' : 'Pilot Evaluation Record'
+        };
+      });
+
+      // Segregate operational vs pilot records
+      const operationalProfiles = profilesWithUser.filter(p => !p.isPilotAssessment);
+      const pilotProfiles = profilesWithUser.filter(p => p.isPilotAssessment);
+
+      const operationalAssessedCount = operationalProfiles.length;
+      const operationalCoveragePct = Number(toPercent(operationalAssessedCount, totalEmployees).toFixed(1));
+
+      const avgWeightedScore = operationalAssessedCount
+        ? Number((operationalProfiles.reduce((sum, item) => sum + safeNumber(item.weightedScore), 0) / operationalAssessedCount).toFixed(1))
+        : (pilotProfiles.length ? Number((pilotProfiles.reduce((sum, item) => sum + safeNumber(item.weightedScore), 0) / pilotProfiles.length).toFixed(1)) : 0);
+
+      const activeListForCharts = operationalAssessedCount > 0 ? operationalProfiles : pilotProfiles;
+
+      const labelBreakdown = {
+        fit: activeListForCharts.filter((item) => item.fitmentLabel === 'FIT').length,
+        trainToFit: activeListForCharts.filter((item) => item.fitmentLabel === 'TRAIN TO FIT').length,
+        unfit: activeListForCharts.filter((item) => item.fitmentLabel === 'UNFIT').length,
+      };
+
+      const scoreDistribution = [
+        { label: '0-39', min: 0, max: 39 },
+        { label: '40-64', min: 40, max: 64 },
+        { label: '65-79', min: 65, max: 79 },
+        { label: '80-100', min: 80, max: 100 },
+      ].map((bucket) => ({
+        label: bucket.label,
+        count: activeListForCharts.filter((item) => {
+          const score = safeNumber(item.weightedScore);
+          return score >= bucket.min && score <= bucket.max;
+        }).length,
+      }));
+
+      return {
+        generatedAt: new Date().toISOString(),
+        summary: {
+          profiles: operationalAssessedCount,
+          totalEmployees,
+          coveragePct: operationalCoveragePct,
+          avgWeightedScore,
+          labelBreakdown,
+          operationalWorkforce: {
+            totalEmployees,
+            assessed: operationalAssessedCount,
+            coveragePct: operationalCoveragePct,
+            status: operationalAssessedCount === 0 ? 'Assessment Phase Pending (0% Verified Coverage)' : `${operationalCoveragePct}% Verified Coverage`
+          },
+          pilotAssessments: {
+            totalCount: pilotProfiles.length,
+            label: 'Sandbox / Pilot Baseline Records',
+            notice: 'Historical pilot assessments performed during initial setup on sandbox accounts; kept separate from operational staff.'
+          }
+        },
+        charts: {
+          scoreDistribution,
+        },
+        tables: {
+          topFitEmployees: activeListForCharts
+            .filter((item) => item.fitmentLabel === 'FIT')
+            .sort((a, b) => b.weightedScore - a.weightedScore)
+            .slice(0, 10),
+          lowFitEmployees: activeListForCharts
+            .filter((item) => item.fitmentLabel !== 'FIT')
+            .sort((a, b) => a.weightedScore - b.weightedScore)
+            .slice(0, 10),
+          pilotEvaluationRecords: pilotProfiles
+        },
+      };
+    })();
+
+    const requestGeneration = fitmentSummaryGeneration;
+
+    fitmentSummaryCache.set(normalizedDept, {
+      inFlightPromise: computePromise,
+      generation: requestGeneration,
     });
+
+    try {
+      const result = await computePromise;
+      // Race guard: only populate cache if no invalidation happened during execution
+      if (fitmentSummaryGeneration === requestGeneration) {
+        fitmentSummaryCache.set(normalizedDept, {
+          data: result,
+          expiresAt: Date.now() + CACHE_TTL_MS,
+        });
+      }
+      return res.json(result);
+    } catch (err) {
+      if (fitmentSummaryGeneration === requestGeneration) {
+        fitmentSummaryCache.delete(normalizedDept);
+      }
+      throw err;
+    }
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -1079,22 +1138,73 @@ async function getFteAnalysisReport(req, res) {
       }))
       .sort((a, b) => b.fte - a.fte);
 
-    // All Activities Detail
-    const allActivities = rows
-      .map((row) => ({
-        name: row.process || row.subProcess, // Fallback if needed, but we'll use process/subProcess directly now
-        subProcess: row.subProcess && row.subProcess !== 'Unspecified Activity' ? row.subProcess : '',
-        tower: row.tower,
-        department: row.department,
-        process: row.process && row.process !== 'Unspecified Process' ? row.process : '',
-        frequency: row.frequency,
-        monthlyHours: Number(row.monthlyHours.toFixed(1)),
-        fte: Number((row.monthlyHours / STANDARD_MONTHLY_HOURS).toFixed(2)),
-        activityCategory: row.activityCategory,
-        employeeName: row.employeeName,
-        employeeId: row.employeeId,
-      }))
-      .sort((a, b) => b.fte - a.fte);
+    const includeActivities = req.query.includeActivities === 'true' || req.query.allActivities === 'true';
+    const isExport = req.query.export === 'true';
+    const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+    const limit = Math.max(1, Math.min(1000, parseInt(req.query.limit, 10) || 50));
+    const search = req.query.search ? String(req.query.search).trim().toLowerCase() : '';
+    const towerFilter = req.query.tower ? String(req.query.tower).trim() : '';
+    const processFilter = req.query.process ? String(req.query.process).trim() : '';
+    const subProcessFilter = req.query.subProcess ? String(req.query.subProcess).trim() : '';
+
+    let activitiesResult = [];
+    let activitiesPagination = null;
+
+    if (includeActivities || isExport) {
+      let filteredRows = rows;
+      if (towerFilter) {
+        filteredRows = filteredRows.filter(r => r.tower === towerFilter);
+      }
+      if (processFilter) {
+        filteredRows = filteredRows.filter(r => (r.process || r.name) === processFilter);
+      }
+      if (subProcessFilter) {
+        filteredRows = filteredRows.filter(r => (r.subProcess && r.subProcess !== 'Unspecified Activity' ? r.subProcess : '') === subProcessFilter);
+      }
+      if (search) {
+        filteredRows = filteredRows.filter(r =>
+          String(r.process || '').toLowerCase().includes(search) ||
+          String(r.subProcess || '').toLowerCase().includes(search)
+        );
+      }
+
+      const totalFiltered = filteredRows.length;
+
+      const mappedActivities = filteredRows
+        .map((row) => ({
+          name: row.process || row.subProcess,
+          subProcess: row.subProcess && row.subProcess !== 'Unspecified Activity' ? row.subProcess : '',
+          tower: row.tower,
+          department: row.department,
+          process: row.process && row.process !== 'Unspecified Process' ? row.process : '',
+          frequency: row.frequency,
+          monthlyHours: Number(row.monthlyHours.toFixed(1)),
+          fte: Number((row.monthlyHours / STANDARD_MONTHLY_HOURS).toFixed(2)),
+          activityCategory: row.activityCategory,
+          employeeName: row.employeeName,
+          employeeId: row.employeeId,
+        }))
+        .sort((a, b) => b.fte - a.fte);
+
+      if (isExport) {
+        activitiesResult = mappedActivities;
+        activitiesPagination = {
+          page: 1,
+          limit: totalFiltered,
+          total: totalFiltered,
+          totalPages: 1
+        };
+      } else {
+        const startIndex = (page - 1) * limit;
+        activitiesResult = mappedActivities.slice(startIndex, startIndex + limit);
+        activitiesPagination = {
+          page,
+          limit,
+          total: totalFiltered,
+          totalPages: Math.ceil(totalFiltered / limit) || 1
+        };
+      }
+    }
 
     res.json({
       generatedAt: new Date().toISOString(),
@@ -1108,7 +1218,8 @@ async function getFteAnalysisReport(req, res) {
       tabs: {
         byTower: byTowerDetail,
         byDepartment: byDepartmentDetail,
-        allActivities,
+        allActivities: activitiesResult,
+        pagination: activitiesPagination
       },
     });
   } catch (err) {
@@ -2014,4 +2125,5 @@ module.exports = {
   flattenRows,
   safeNumber,
   invalidateScopedReportsCache,
+  invalidateFitmentSummaryCache,
 };

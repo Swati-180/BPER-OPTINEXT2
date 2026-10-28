@@ -89,10 +89,18 @@ export function buildBperSubmission(payload: WdtPayload, profile?: EmployeeSnaps
   };
 }
 
-export async function loadBperSubmissions(): Promise<BperSubmissionRecord[]> {
+export async function loadBperSubmissions(options?: { summary?: boolean; department?: string }): Promise<BperSubmissionRecord[]> {
   try {
     const token = localStorage.getItem('bper.auth.token');
-    const response = await fetch(`${API_BASE_URL}/api/wdt/submissions`, {
+    const params = new URLSearchParams();
+    if (options?.summary) {
+      params.append('summary', 'true');
+    }
+    if (options?.department && options.department !== 'All Departments') {
+      params.append('department', options.department);
+    }
+    const queryString = params.toString() ? `?${params.toString()}` : '';
+    const response = await fetch(`${API_BASE_URL}/api/wdt/submissions${queryString}`, {
       headers: { 'Authorization': `Bearer ${token}` }
     });
     const data = await readJson<BperSubmissionRecord[]>(response);
@@ -100,6 +108,20 @@ export async function loadBperSubmissions(): Promise<BperSubmissionRecord[]> {
   } catch (error) {
     console.error('Failed to load submissions:', error);
     return [];
+  }
+}
+
+export async function loadBperSubmissionDetail(referenceId: string): Promise<BperSubmissionRecord | null> {
+  try {
+    const token = localStorage.getItem('bper.auth.token');
+    const response = await fetch(`${API_BASE_URL}/api/wdt/submissions/${encodeURIComponent(referenceId)}`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    const data = await readJson<BperSubmissionRecord>(response);
+    return response.ok && data ? data : null;
+  } catch (error) {
+    console.error('Failed to load submission detail:', error);
+    return null;
   }
 }
 
