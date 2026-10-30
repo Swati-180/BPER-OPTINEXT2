@@ -250,6 +250,20 @@ export default function DeepAnalysis() {
   const [isExporting, setIsExporting] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
+
+  // Bust in-memory report caches and refresh views when organization assumptions are updated
+  useEffect(() => {
+    const handleAssumptionsUpdated = () => {
+      fteCacheRef.current.clear();
+      consolidationCacheRef.current.clear();
+      fitmentCacheRef.current = null;
+      utilizationCacheRef.current.clear();
+      activitiesCacheRef.current.clear();
+      setRefreshKey((k) => k + 1);
+    };
+    window.addEventListener('bper:assumptions-updated', handleAssumptionsUpdated);
+    return () => window.removeEventListener('bper:assumptions-updated', handleAssumptionsUpdated);
+  }, []);
   const [selectedActivity, setSelectedActivity] = useState<any | null>(null);
   const [activityContributors, setActivityContributors] = useState<any[]>([]);
   const [isContributorsLoading, setIsContributorsLoading] = useState<boolean>(false);

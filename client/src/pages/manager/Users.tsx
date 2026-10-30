@@ -105,7 +105,7 @@ export default function UsersPage() {
 	const [generatedInviteUrl, setGeneratedInviteUrl] = useState('');
 	const fileInputRef = React.useRef<HTMLInputElement>(null);
 	const [isUploading, setIsUploading] = useState(false);
-	const [uploadResult, setUploadResult] = useState<{ added: number, updated: number, errors: string[] } | null>(null);
+	const [uploadResult, setUploadResult] = useState<{ added: number, updated: number, skipped?: number, failed?: number, errors: string[] } | null>(null);
 	const modalRoot = typeof document !== 'undefined' ? document.body : null;
 	const currentUser = loadAuthUser();
 
@@ -384,6 +384,8 @@ export default function UsersPage() {
 			setUploadResult({
 				added: result.added || 0,
 				updated: result.updated || 0,
+				skipped: result.skipped || 0,
+				failed: result.failed != null ? result.failed : (result.errors?.length || 0),
 				errors: result.errors || []
 			});
 			fetchUsers();
@@ -391,6 +393,8 @@ export default function UsersPage() {
 			setUploadResult({
 				added: 0,
 				updated: 0,
+				skipped: 0,
+				failed: 1,
 				errors: [error.message]
 			});
 		} finally {
@@ -1193,14 +1197,22 @@ export default function UsersPage() {
 						</div>
 
 						<div className="px-6 py-6 space-y-5">
-							<div className="flex gap-4">
-								<div className="flex-1 rounded-xl bg-[#F0FDF4] border border-[#DCFCE7] p-4 text-center">
-									<p className="text-[11px] font-bold uppercase tracking-widest text-[#166534]">Added</p>
-									<p className="mt-1 text-3xl font-black text-[#15803D]">{uploadResult.added}</p>
+							<div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+								<div className="rounded-xl bg-[#F0FDF4] border border-[#DCFCE7] p-3.5 text-center">
+									<p className="text-[10px] font-bold uppercase tracking-widest text-[#166534]">Added</p>
+									<p className="mt-1 text-2xl font-black text-[#15803D]">{uploadResult.added}</p>
 								</div>
-								<div className="flex-1 rounded-xl bg-[#EFF6FF] border border-[#DBEAFE] p-4 text-center">
-									<p className="text-[11px] font-bold uppercase tracking-widest text-[#1E40AF]">Updated</p>
-									<p className="mt-1 text-3xl font-black text-[#1D4ED8]">{uploadResult.updated}</p>
+								<div className="rounded-xl bg-[#EFF6FF] border border-[#DBEAFE] p-3.5 text-center">
+									<p className="text-[10px] font-bold uppercase tracking-widest text-[#1E40AF]">Updated</p>
+									<p className="mt-1 text-2xl font-black text-[#1D4ED8]">{uploadResult.updated}</p>
+								</div>
+								<div className="rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] p-3.5 text-center">
+									<p className="text-[10px] font-bold uppercase tracking-widest text-[#475569]">Skipped</p>
+									<p className="mt-1 text-2xl font-black text-[#334155]">{uploadResult.skipped || 0}</p>
+								</div>
+								<div className="rounded-xl bg-[#FEF2F2] border border-[#FEE2E2] p-3.5 text-center">
+									<p className="text-[10px] font-bold uppercase tracking-widest text-[#991B1B]">Failed</p>
+									<p className="mt-1 text-2xl font-black text-[#DC2626]">{uploadResult.failed || 0}</p>
 								</div>
 							</div>
 

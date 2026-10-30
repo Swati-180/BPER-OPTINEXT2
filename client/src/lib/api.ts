@@ -488,3 +488,48 @@ export async function rejectActivityRequest(id: string, reason: string, remarks?
   });
   return parseApiResponse<{ message: string; request: ActivityRequestItem }>(response, 'Failed to reject activity request.');
 }
+
+export interface OrganizationAssumptions {
+  key: string;
+  scenarioAssumptions: {
+    efficiencyFactor: number;
+    costPerFteLakhs: number;
+  };
+  screeningSettings: {
+    standardMonthlyHours: number;
+    screeningThresholdHours: number;
+    screeningKeywords: string[];
+  };
+  isDefault: boolean;
+  updatedAt?: string | null;
+  updatedBy?: string | null;
+}
+
+export interface UpdateAssumptionsPayload {
+  scenarioAssumptions?: {
+    efficiencyFactor?: number;
+    costPerFteLakhs?: number;
+  };
+  screeningSettings?: {
+    standardMonthlyHours?: number;
+    screeningThresholdHours?: number;
+    screeningKeywords?: string[];
+  };
+}
+
+export function getOrganizationAssumptions(): Promise<OrganizationAssumptions> {
+  return apiGetJson<OrganizationAssumptions>('/config/assumptions');
+}
+
+export async function updateOrganizationAssumptions(
+  payload: UpdateAssumptionsPayload
+): Promise<{ message: string; data?: OrganizationAssumptions; rolledBack?: boolean; error?: string }> {
+  const response = await apiFetch('/config/assumptions', {
+    method: 'PUT',
+    body: JSON.stringify(payload),
+  });
+  return parseApiResponse<{ message: string; data?: OrganizationAssumptions; rolledBack?: boolean; error?: string }>(
+    response,
+    'Failed to update organization assumptions.'
+  );
+}

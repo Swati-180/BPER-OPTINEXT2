@@ -2,8 +2,9 @@ const ExcelJS = require('exceljs');
 const WDTSubmission = require('../models/WDTSubmission');
 const User = require('../models/User');
 const verifyToken = require('../middleware/verifyToken');
+const { getEffectiveAssumptions } = require('../services/assumptionsService');
 
-const STANDARD_MONTHLY_HOURS = 160;
+const DEFAULT_STANDARD_MONTHLY_HOURS = 160;
 
 function safeNumber(v) { const n = Number(v); return Number.isFinite(n) ? n : 0; }
 
@@ -77,6 +78,9 @@ async function exportWDTSubmissionsExcel(req, res) {
       return res.status(403).json({ message: 'Manager access required.' });
     }
 
+    const assumptions = await getEffectiveAssumptions();
+    const standardMonthlyHours = assumptions?.screeningSettings?.standardMonthlyHours || DEFAULT_STANDARD_MONTHLY_HOURS;
+
     const submissions = await getScopedSubmissions(req);
     const workbook = new ExcelJS.Workbook();
     workbook.creator = 'BPER Platform';
@@ -109,7 +113,7 @@ async function exportWDTSubmissionsExcel(req, res) {
         month: sub.month,
         year: sub.year,
         totalHours: hours,
-        fte: Number((hours / STANDARD_MONTHLY_HOURS).toFixed(2)),
+        fte: Number((hours / standardMonthlyHours).toFixed(2)),
         status: sub.status,
         submittedAt: formatDate(sub.submittedAt),
       });
@@ -209,7 +213,7 @@ async function exportWDTSubmissionsExcel(req, res) {
           volume: row.volume,
           timeMins: row.timeMins,
           hours: row.hours,
-          fte: Number((row.hours / STANDARD_MONTHLY_HOURS).toFixed(3)),
+          fte: Number((row.hours / standardMonthlyHours).toFixed(3)),
           apps: row.apps,
           comments: row.comments,
         });
@@ -242,7 +246,7 @@ async function exportWDTSubmissionsExcel(req, res) {
     Array.from(deptMap.entries())
       .sort((a, b) => b[1].hours - a[1].hours)
       .forEach(([dept, data]) => {
-        const fte = data.hours / STANDARD_MONTHLY_HOURS;
+        const fte = data.hours / standardMonthlyHours;
         fteSheet.addRow({
           dept,
           hours: Number(data.hours.toFixed(2)),
@@ -314,7 +318,7 @@ async function exportWDTSubmissionsExcel(req, res) {
 
       actList.forEach(r => {
         const hours = safeNumber(r.timeTakenHoursPerMonth != null ? r.timeTakenHoursPerMonth : (r.monthlyHours != null ? r.monthlyHours : r.hours));
-        const fteContribution = hours / STANDARD_MONTHLY_HOURS;
+        const fteContribution = hours / standardMonthlyHours;
 
         // Prefer granular subProcess or name; fall back to process only if granular name is missing/unspecified
         const granularName = r.subProcess || r.name;
@@ -406,6 +410,9 @@ async function exportFTEReportExcel(req, res) {
       return res.status(403).json({ message: 'Manager access required.' });
     }
 
+    const assumptions = await getEffectiveAssumptions();
+    const standardMonthlyHours = assumptions?.screeningSettings?.standardMonthlyHours || DEFAULT_STANDARD_MONTHLY_HOURS;
+
     const submissions = await getScopedSubmissions(req);
     const workbook = new ExcelJS.Workbook();
     workbook.creator = 'BPER Platform';
@@ -431,7 +438,7 @@ async function exportFTEReportExcel(req, res) {
       const rows = Array.isArray(sub.payload?.rows) ? sub.payload.rows : [];
       rows.forEach(row => {
         const h = safeNumber(row.timeTakenHoursPerMonth);
-        const fte = h / STANDARD_MONTHLY_HOURS;
+        const fte = h / standardMonthlyHours;
         const band = fte < 0.25 ? '0–0.25' : fte < 0.5 ? '0.25–0.5' : fte < 0.75 ? '0.5–0.75' : fte < 1.0 ? '0.75–1.0' : '1.0+';
         actSheet.addRow({
           name: sub.employee?.name || '',

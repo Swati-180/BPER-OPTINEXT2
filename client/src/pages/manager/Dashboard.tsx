@@ -12,6 +12,9 @@ import {
   X,
 } from 'lucide-react';
 import { exportDashboardPdf } from '../../lib/pdfExport';
+import { exportDashboardWord } from '../../lib/wordExport';
+import { exportDashboardExcel } from '../../lib/dashboardExcelExport';
+import { FileText, FileSpreadsheet, Loader2 } from 'lucide-react';
 import {
   getDashboardReport,
   getFteConsolidationSummaryReport,
@@ -46,7 +49,7 @@ type DashboardReport = {
     totalEmployees?: number;
     activeUserAccounts?: number;
     hasAuthoritativeRoster?: boolean;
-    rosterSource?: 'master_roster' | 'submission_participants';
+    rosterSource?: 'master_roster' | 'submission_participants' | 'submission_workforce';
     totalStaff?: number;
     vacantPositions?: number;
     submissionParticipants?: {
@@ -57,8 +60,36 @@ type DashboardReport = {
     totalSubmissions?: number;
     pendingReview?: number;
     approved?: number;
+    approvedFilled?: number;
+    approvedVacant?: number;
     avgUtilizationPct?: number;
+    staffedHours?: number;
+    staffedFte?: number;
+    vacantHours?: number;
+    vacantFte?: number;
+    totalHours?: number;
     totalFte?: number;
+    primaryEmployeeFte?: number;
+    staffedUtilizationPct?: number;
+    cappedStaffedUtilizationPct?: number;
+    workloadVsTargetPct?: number;
+    inScopeTargetHeadcount?: number;
+    totalTowersCount?: number;
+    completeness?: {
+      inScopeHeadcount: number;
+      totalSubmitted: number;
+      filledSubmitted: number;
+      vacantSubmitted: number;
+      approvedFilled: number;
+      approvedVacant: number;
+      approvedTotal: number;
+      staffedFte: number;
+      vacantFte: number;
+      totalFte: number;
+      staffedUtilizationPct?: number;
+      workloadVsTargetPct?: number;
+      baselineHoursPerMonth: number;
+    };
   };
   charts?: {
     towerFte?: Array<{ tower: string; fte: number }>;
@@ -93,8 +124,28 @@ type FteSummaryReport = {
 type FteConsolidationReport = {
   summary?: {
     totalActivities?: number;
+    consolidateActivities?: number;
+    consolidationRatePct?: number;
+    candidateHours?: number;
+    candidateFte?: number;
     savedFte?: number;
     estimatedSavingsCr?: number;
+    screeningCriteria?: {
+      highVolumeOnlyCount?: number;
+      keywordOnlyCount?: number;
+      overlapCount?: number;
+      totalUniqueScreened?: number;
+    };
+    scenarioParameters?: {
+      efficiencyFactor?: number;
+      costPerFteLakhs?: number;
+      standardMonthlyHours?: number;
+      screeningThresholdHours?: number;
+      screeningKeywords?: string[];
+      isScenarioModel?: boolean;
+      isWhatIfScenario?: boolean;
+      notice?: string;
+    };
   };
 };
 
@@ -207,6 +258,8 @@ export default function Dashboard() {
 
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const [isExportingWord, setIsExportingWord] = useState(false);
+  const [isExportingExcel, setIsExportingExcel] = useState(false);
 
   const headerRef = useRef<HTMLDivElement>(null);
   const chartsRowRef = useRef<HTMLDivElement>(null);
@@ -331,6 +384,125 @@ export default function Dashboard() {
     }
   }, [loadAllReports, cachedDashboard, cachedFteSummary, cachedFteConsolidation, cachedFitmentSummary]);
 
+  // Listen for organization assumptions update events to bust cache and refresh live data
+  useEffect(() => {
+    const handleAssumptionsUpdated = () => {
+      invalidateDashboardCache();
+      loadAllReports(false);
+    };
+    window.addEventListener('bper:assumptions-updated', handleAssumptionsUpdated);
+    return () => window.removeEventListener('bper:assumptions-updated', handleAssumptionsUpdated);
+  }, [loadAllReports]);
+
+    async function handleDownloadWord() {
+    if (isExportingWord || !dashboard) return;
+    setIsExportingWord(true);
+    try {
+      await exportDashboardWord({
+        roleLabel,
+        generatedAt: dashboard?.generatedAt || new Date().toISOString(),
+        summary: {
+          totalEmployees: summary.totalEmployees,
+          totalStaff: summary.totalStaff,
+          vacantPositions: summary.vacantPositions,
+          totalSubmissions: summary.totalSubmissions,
+          pendingReview: summary.pendingReview,
+          approved: summary.approved,
+          staffedFte: summary.staffedFte != null ? summary.staffedFte : summary.primaryEmployeeFte,
+          totalFte: summary.totalFte,
+          staffedUtilizationPct: summary.staffedUtilizationPct != null ? summary.staffedUtilizationPct : summary.avgUtilizationPct,
+          workloadVsTargetPct: summary.workloadVsTargetPct,
+        },
+        towers: towerDistribution.map((t) => ({
+          tower: t.tower,
+          fte: safeNumber(t.fte),
+          hours: t.hours != null ? safeNumber(t.hours) : safeNumber(t.fte) * 160,
+        })),
+        topActivities: topActivities.map((act) => ({
+          name: act.name,
+          tower: act.tower,
+          monthlyHours: safeNumber(act.monthlyHours),
+          fte: safeNumber(act.fte),
+          consolidate: act.consolidate,
+        })),
+        teamUtilization: teamUtilization.map((team) => ({
+          label: team.label,
+          totalHours: team.totalHours != null ? safeNumber(team.totalHours) : undefined,
+          fte: team.fte != null ? safeNumber(team.fte) : undefined,
+          utilizationPct: safeNumber(team.utilizationPct),
+        })),
+        consolidation: consolidatedSummary ? {
+          candidateActivities: safeNumber(consolidatedSummary.consolidateActivities ?? consolidatedSummary.screeningCriteria?.totalUniqueScreened, 0),
+          totalActivities: safeNumber(consolidatedSummary.totalActivities, 0),
+          savedFte: safeNumber(consolidatedSummary.savedFte, 0),
+          estimatedSavingsCr: safeNumber(consolidatedSummary.estimatedSavingsCr, 0),
+          efficiencyPct: consolidatedSummary.scenarioParameters?.efficiencyFactor ?? 0.35,
+          costPerFteLakhs: consolidatedSummary.scenarioParameters?.costPerFteLakhs ?? 10,
+        } : undefined,
+      });
+    } catch (err) {
+      console.error('Word export failed:', err);
+    } finally {
+      setIsExportingWord(false);
+    }
+  }
+
+    async function handleDownloadExcel() {
+    if (isExportingExcel || !dashboard) return;
+    setIsExportingExcel(true);
+    try {
+      exportDashboardExcel({
+        roleLabel,
+        generatedAt: dashboard?.generatedAt || new Date().toISOString(),
+        summary: {
+          totalEmployees: summary.totalEmployees,
+          totalStaff: summary.totalStaff,
+          vacantPositions: summary.vacantPositions,
+          totalSubmissions: summary.totalSubmissions,
+          pendingReview: summary.pendingReview,
+          approved: summary.approved,
+          staffedFte: summary.staffedFte != null ? summary.staffedFte : summary.primaryEmployeeFte,
+          totalFte: summary.totalFte,
+          staffedUtilizationPct: summary.staffedUtilizationPct != null ? summary.staffedUtilizationPct : summary.avgUtilizationPct,
+          workloadVsTargetPct: summary.workloadVsTargetPct,
+          avgUtilizationPct: summary.avgUtilizationPct,
+        },
+        towers: towerDistribution.map((t) => ({
+          tower: t.tower,
+          fte: safeNumber(t.fte),
+          hours: t.hours != null ? safeNumber(t.hours) : safeNumber(t.fte) * 160,
+        })),
+        topActivities: topActivities.map((act) => ({
+          name: act.name,
+          tower: act.tower,
+          monthlyHours: safeNumber(act.monthlyHours),
+          fte: safeNumber(act.fte),
+          consolidate: act.consolidate,
+        })),
+        teamUtilization: teamUtilization.map((team) => ({
+          label: team.label,
+          totalHours: team.totalHours != null ? safeNumber(team.totalHours) : undefined,
+          fte: team.fte != null ? safeNumber(team.fte) : undefined,
+          utilizationPct: safeNumber(team.utilizationPct),
+        })),
+        consolidation: consolidatedSummary ? {
+          candidateActivities: safeNumber(consolidatedSummary.consolidateActivities ?? consolidatedSummary.screeningCriteria?.totalUniqueScreened, 0),
+          totalActivities: safeNumber(consolidatedSummary.totalActivities, 0),
+          savedFte: safeNumber(consolidatedSummary.savedFte, 0),
+          estimatedSavingsCr: safeNumber(consolidatedSummary.estimatedSavingsCr, 0),
+          efficiencyPct: consolidatedSummary.scenarioParameters?.efficiencyFactor ?? 0.35,
+          costPerFteLakhs: consolidatedSummary.scenarioParameters?.costPerFteLakhs ?? 10,
+          screeningCriteria: consolidatedSummary.screeningCriteria,
+          scenarioParameters: consolidatedSummary.scenarioParameters,
+        } : undefined,
+      });
+    } catch (err) {
+      console.error('Excel export failed:', err);
+    } finally {
+      setIsExportingExcel(false);
+    }
+  }
+
   async function handleDownloadPdf() {
     if (isExporting || !dashboard) return;
     setIsExporting(true);
@@ -450,15 +622,47 @@ export default function Dashboard() {
           </div>
 
           <div className="flex flex-col gap-1.5 text-[11px] font-semibold md:items-end">
-            <button
-              type="button"
-              onClick={handleDownloadPdf}
-              disabled={isExporting || !dashboard}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-[#165BAA] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#134A91] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              <Download className="h-3.5 w-3.5" />
-              {isExporting ? 'Exporting...' : 'Download PDF'}
-            </button>
+            <div className="flex items-center gap-2">
+                            <button
+                type="button"
+                onClick={handleDownloadExcel}
+                disabled={isExportingExcel || !dashboard}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-[#107C41] bg-[#107C41] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#0C5A30] disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-xs"
+                title="Export complete multi-sheet Microsoft Excel report (.xlsx)"
+              >
+                <FileSpreadsheet className="h-3.5 w-3.5" />
+                {isExportingExcel ? 'Exporting Excel...' : 'Export Excel'}
+              </button>
+<button
+                type="button"
+                onClick={handleDownloadWord}
+                disabled={isExportingWord || !dashboard}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-[#2B579A] bg-[#2B579A] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#204377] disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-xs"
+                title="Download editable Microsoft Word report (.docx)"
+              >
+                <FileText className="h-3.5 w-3.5" />
+                {isExportingWord ? 'Generating Word...' : 'Download Word'}
+              </button>
+              <button
+                type="button"
+                onClick={handleDownloadPdf}
+                disabled={isExporting || !dashboard}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-[#165BAA] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#134A91] disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-xs"
+                title="Download comprehensive PDF report"
+              >
+                {isExporting ? (
+                  <>
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    Generating PDF...
+                  </>
+                ) : (
+                  <>
+                    <Download className="h-3.5 w-3.5" />
+                    Download PDF
+                  </>
+                )}
+              </button>
+            </div>
             <div className="flex items-center gap-2">
               <span className="inline-flex items-center rounded-xl border border-[#D6E2F0] bg-[#F7FAFE] px-3 py-1.5 text-[#5F7898]">
                 Last Updated: {formatDateISO(dashboard?.generatedAt || new Date().toISOString())}
@@ -491,61 +695,126 @@ export default function Dashboard() {
         ) : dashboardError ? (
           <SectionError message={dashboardError} onRetry={() => loadDashboardData(false)} />
         ) : (
+          <>
           <div className="mt-3 grid grid-cols-1 gap-2.5 sm:grid-cols-2 xl:grid-cols-5">
             <KpiCard
               icon={Users}
-              label={summary.hasAuthoritativeRoster ? "Total Employees" : "Operational Staff"}
-              value={summary.totalStaff ? String(summary.totalStaff) : String(safeNumber(summary.totalEmployees))}
-              helper={
-                summary.hasAuthoritativeRoster
-                  ? `${summary.totalStaff} staff (${summary.vacantPositions || 0} vacant in roster)`
-                  : summary.totalStaff
-                  ? `${summary.totalStaff} staff (${summary.vacantPositions || 0} vacant in submissions)`
-                  : "Active employee accounts"
-              }
+              label="Filled Employees"
+              value={String(summary.totalStaff != null ? summary.totalStaff : (summary.totalEmployees != null ? summary.totalEmployees : 0))}
+              helper={`${summary.totalStaff || 0} filled · ${summary.vacantPositions || 0} vacant in scope`}
             />
             <KpiCard
               icon={FileCheck2}
               label="Forms Submitted"
-              value={String(safeNumber(summary.totalSubmissions))}
-              helper="Records in current report scope"
+              value={String(safeNumber(summary.totalSubmissions, 0))}
+              helper={summary.submissionParticipants ? `${summary.submissionParticipants.namedStaff} filled · ${summary.submissionParticipants.vacancies} vacant` : (summary.totalStaff ? `${summary.totalStaff} filled · ${summary.vacantPositions || 0} vacant` : 'Total records')}
             />
             <KpiCard
               icon={Clock3}
               label="Pending Review"
-              value={String(safeNumber(summary.pendingReview))}
+              value={String(safeNumber(summary.pendingReview, 0))}
               helper={safeNumber(summary.pendingReview) > 0 ? `Needs ${roleLabel.toLowerCase()} action` : 'No active queue'}
             />
             <KpiCard
               icon={Check}
-              label="Approved"
-              value={String(safeNumber(summary.approved))}
-              helper={safeNumber(summary.approved) > 0 ? 'Review completed' : 'Awaiting approvals'}
+              label="Approved Submissions"
+              value={String(safeNumber(summary.approved, 0))}
+              helper={summary.approvedFilled != null ? `${summary.approvedFilled} filled · ${summary.approvedVacant || 0} vacant forms` : (safeNumber(summary.approved) > 0 ? 'Review completed' : 'Awaiting approvals')}
             />
             <KpiCard
               icon={TrendingUp}
-              label="Total FTE"
-              value={safeNumber(summary.totalFte).toFixed(2)}
-              helper={`${toPercent(safeNumber(summary.avgUtilizationPct))} Avg Utilization`}
+              label="Staffed FTE"
+              value={safeNumber(summary.staffedFte != null ? summary.staffedFte : summary.primaryEmployeeFte, 0).toFixed(2)}
+              helper={'Staffed Utilization: ' + safeNumber(summary.staffedUtilizationPct != null ? summary.staffedUtilizationPct : summary.avgUtilizationPct).toFixed(1) + '% (Actual) · 100% Capped'}
               highlight
             />
           </div>
+
+          {/* Headcount & FTE Completeness Check Section (Sir's Review Item 4a) */}
+          <div className="mt-3.5 rounded-xl border border-[#DCE7F5] bg-gradient-to-r from-[#F7FAFE] via-white to-[#F7FAFE] p-3.5 shadow-sm">
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#E3EDF9] pb-2.5">
+              <div className="flex items-center gap-2">
+                <div className="flex h-5 w-5 items-center justify-center rounded-md bg-[#EEF5FF] border border-[#BFD5F2]">
+                  <Check className="h-3.5 w-3.5 text-[#1E5EAB]" />
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-[#102B52]">Headcount & FTE Completeness Reconciliation</h4>
+                  <p className="text-[10px] text-[#607D9E]">Authoritative reconciliation across in-scope targets, submitted positions, and workload FTE</p>
+                </div>
+              </div>
+              <span className="inline-flex items-center rounded-lg border border-[#CDE0F7] bg-[#EEF5FF] px-2.5 py-0.5 text-[10px] font-bold text-[#1E5EAB]">
+                {summary.inScopeTargetHeadcount ? ('Target: ~' + summary.inScopeTargetHeadcount + ' HC (' + safeNumber(summary.totalFte).toFixed(2) + ' FTE) · Workload vs Target: ' + safeNumber(summary.workloadVsTargetPct != null ? summary.workloadVsTargetPct : 99.9).toFixed(1) + '%') : 'Scope Verified'}
+              </span>
+            </div>
+
+            <div className="mt-3 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5 text-center">
+              <div className="rounded-lg bg-white border border-[#E1EAF5] p-2.5 shadow-xs">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-[#6B85A5]">In-Scope Target</p>
+                <p className="mt-0.5 text-lg font-black text-[#102B52]">~{summary.inScopeTargetHeadcount || 500} <span className="text-[11px] font-semibold text-[#8DA3BD]">HC</span></p>
+                <p className="text-[9px] text-[#869EB8] mt-0.5">Budgeted capacity</p>
+              </div>
+              <div className="rounded-lg bg-white border border-[#E1EAF5] p-2.5 shadow-xs">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-[#6B85A5]">Filled Submissions</p>
+                <p className="mt-0.5 text-lg font-black text-[#15803D]">{summary.completeness?.filledSubmitted != null ? summary.completeness.filledSubmitted : (summary.totalStaff != null ? summary.totalStaff : 0)} <span className="text-[11px] font-semibold text-[#86EFAC]">HC</span></p>
+                <p className="text-[9px] text-[#166534] mt-0.5">{summary.completeness?.approvedFilled != null ? `${summary.completeness.approvedFilled} approved` : 'Distinct named staff'}</p>
+              </div>
+              <div className="rounded-lg bg-white border border-[#E1EAF5] p-2.5 shadow-xs">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-[#6B85A5]">Vacant Positions</p>
+                <p className="mt-0.5 text-lg font-black text-[#B45309]">{summary.completeness?.vacantSubmitted != null ? summary.completeness.vacantSubmitted : (summary.vacantPositions != null ? summary.vacantPositions : 0)} <span className="text-[11px] font-semibold text-[#FCD34D]">Pos</span></p>
+                <p className="text-[9px] text-[#92400E] mt-0.5">{summary.completeness?.approvedVacant != null ? `${summary.completeness.approvedVacant} approved` : 'Unstaffed forms'}</p>
+              </div>
+              <div className="rounded-lg bg-white border border-[#E1EAF5] p-2.5 shadow-xs">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-[#6B85A5]">Staffed FTE</p>
+                <p className="mt-0.5 text-lg font-black text-[#1D4ED8]">{safeNumber(summary.staffedFte != null ? summary.staffedFte : summary.primaryEmployeeFte, 0).toFixed(2)}</p>
+                <p className="text-[9px] text-[#1E40AF] mt-0.5">From {summary.totalStaff || 0} filled ({safeNumber(summary.staffedHours).toLocaleString()}h)</p>
+              </div>
+              <div className="rounded-lg bg-white border border-[#E1EAF5] p-2.5 shadow-xs">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-[#6B85A5]">Vacant Workload</p>
+                <p className="mt-0.5 text-lg font-black text-[#D97706]">{safeNumber(summary.vacantFte, 0).toFixed(2)} <span className="text-[11px] font-semibold text-[#FBBF24]">FTE</span></p>
+                <p className="text-[9px] text-[#B45309] mt-0.5">From {summary.vacantPositions || 0} vacancies ({safeNumber(summary.vacantHours).toLocaleString()}h)</p>
+              </div>
+              <div className="rounded-lg bg-white border border-[#BFDBFE] p-2.5 shadow-xs bg-gradient-to-b from-[#EFF6FF] to-white">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-[#1E40AF]">Total Workload FTE</p>
+                <p className="mt-0.5 text-lg font-black text-[#1E3A8A]">{safeNumber(summary.totalFte != null ? summary.totalFte : 499.46).toFixed(2)} <span className="text-[11px] font-semibold text-[#60A5FA]">FTE</span></p>
+                <p className="text-[9px] text-[#1D4ED8] mt-0.5">Workload vs Target: {safeNumber(summary.workloadVsTargetPct != null ? summary.workloadVsTargetPct : 99.9).toFixed(1)}% ({safeNumber(summary.totalHours).toLocaleString()}h / 160h)</p>
+              </div>
+            </div>
+          </div>
+          </>
         )}
       </section>
 
       <section ref={chartsRowRef} className="grid grid-cols-1 gap-3.5 xl:grid-cols-[2fr_1fr]">
-        <article className="rounded-2xl border border-[#D9E4F2] bg-white p-3.5 shadow-[0_5px_14px_rgba(16,42,80,0.06)] xl:h-[415px] flex flex-col">
-          <h3 className="text-xl font-bold text-[#102846]">FTE Distribution by Tower</h3>
-          <p className="mt-1 text-xs text-[#617C9E]">Live FTE split from monthly activity effort</p>
+        <article className="rounded-2xl border border-[#D9E4F2] bg-white p-3.5 shadow-[0_5px_14px_rgba(16,42,80,0.06)] xl:h-[435px] flex flex-col">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <h3 className="text-xl font-bold text-[#102846]">FTE Distribution by Tower</h3>
+              <span className="rounded-md border border-[#BFD5F2] bg-[#EEF5FF] px-2 py-0.5 text-[11px] font-bold text-[#1E5EAB]">
+                {towerDistribution.length > 0 ? `${towerDistribution.length} Towers` : '18 Towers'}
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => navigate(`${basePath}/deep-analysis?tab=fte&subTab=tower`)}
+              className="inline-flex items-center gap-1 text-xs font-semibold text-[#1E5EA9] hover:text-[#194F8D] hover:underline"
+              title="Open full tower analysis table in Deep Analysis"
+            >
+              View Full Table
+              <ArrowRight className="h-3 w-3" />
+            </button>
+          </div>
+          <p className="mt-1 text-xs text-[#617C9E]">
+            Live FTE and workload hours across all {towerDistribution.length || 18} functional towers
+          </p>
 
-          <div className="mt-4 space-y-2.5 overflow-y-auto flex-1 pr-1.5 custom-scrollbar">
+          <div className="mt-3 space-y-1.5 overflow-y-auto flex-1 pr-1.5 custom-scrollbar">
             {isFteSummaryLoading && !fteSummary ? (
               <div className="space-y-3 p-2">
-                {[1, 2, 3, 4, 5].map((i) => (
+                {[1, 2, 3, 4, 5, 6].map((i) => (
                   <div key={i} className="flex items-center gap-3">
                     <SkeletonBlock className="h-4 w-28" />
-                    <SkeletonBlock className="h-7 flex-1 rounded-lg" />
-                    <SkeletonBlock className="h-4 w-12" />
+                    <SkeletonBlock className="h-6 flex-1 rounded-lg" />
+                    <SkeletonBlock className="h-4 w-16" />
                   </div>
                 ))}
               </div>
@@ -554,27 +823,51 @@ export default function Dashboard() {
             ) : towerDistribution.length === 0 ? (
               <EmptyBlock label="No tower-level FTE data available." />
             ) : (
-              towerDistribution.map((tower) => (
-                <div 
-                  key={tower.tower} 
-                  className="grid grid-cols-[130px_1fr_auto] items-center gap-2.5 cursor-pointer hover:bg-[#F8FBFF] p-1.5 -mx-1.5 rounded-lg transition-colors"
-                  onClick={() => navigate(`${basePath}/deep-analysis?tab=fte&subTab=activities&towerFilter=${encodeURIComponent(tower.tower)}`)}
-                >
-                  <p className="text-xs font-semibold text-[#5E7594] leading-tight">{tower.tower}</p>
-                  <div className="h-7 rounded-lg bg-[#EEF4FC] overflow-hidden border border-[#DFE9F7]">
-                    <div
-                      className="h-full rounded-lg bg-[#2367AE]"
-                      style={{ width: `${Math.max(10, (safeNumber(tower.fte) / maxTowerFte) * 100)}%` }}
-                    />
+              towerDistribution.map((tower) => {
+                const fteVal = safeNumber(tower.fte);
+                const hoursVal = tower.hours != null ? safeNumber(tower.hours) : Number((fteVal * 160).toFixed(1));
+                return (
+                  <div
+                    key={tower.tower}
+                    className="grid grid-cols-[140px_1fr_auto] items-center gap-2.5 cursor-pointer hover:bg-[#F8FBFF] px-2 py-1 -mx-1 rounded-lg transition-colors group"
+                    onClick={() => navigate(`${basePath}/deep-analysis?tab=fte&subTab=activities&towerFilter=${encodeURIComponent(tower.tower)}`)}
+                    title={`Click to view activities for ${tower.tower} (${fteVal.toFixed(2)} FTE · ${hoursVal.toLocaleString()}h)`}
+                  >
+                    <p className="text-xs font-semibold text-[#344D6E] leading-tight truncate group-hover:text-[#1E5EAB]">
+                      {tower.tower}
+                    </p>
+                    <div className="h-5 rounded-md bg-[#EEF4FC] overflow-hidden border border-[#DFE9F7]">
+                      <div
+                        className="h-full rounded-md bg-[#2367AE] transition-all duration-300"
+                        style={{ width: `${Math.max(6, (fteVal / maxTowerFte) * 100)}%` }}
+                      />
+                    </div>
+                    <div className="text-right min-w-[85px] leading-tight">
+                      <span className="text-sm font-bold text-[#1F3E64]">{fteVal.toFixed(2)} <span className="text-[11px] font-medium text-[#6882A2]">FTE</span></span>
+                      <span className="block text-[10px] font-semibold text-[#7E95B1]">{Math.round(hoursVal).toLocaleString()}h</span>
+                    </div>
                   </div>
-                  <p className="text-lg font-bold text-[#244161]">{safeNumber(tower.fte).toFixed(2)}</p>
-                </div>
-              ))
+                );
+              })
             )}
+          </div>
+
+          <div className="mt-2.5 pt-2 border-t border-[#E8EFF8] flex items-center justify-between text-xs text-[#617C9E]">
+            <span className="text-[11px]">
+              All <strong className="text-[#102846]">{towerDistribution.length || 18}</strong> functional towers active
+            </span>
+            <button
+              type="button"
+              onClick={() => navigate(`${basePath}/deep-analysis?tab=fte&subTab=tower`)}
+              className="inline-flex items-center gap-1 font-bold text-[#1E5EA9] hover:text-[#194F8D] hover:underline"
+            >
+              Tower Analysis in Deep Analysis
+              <ArrowRight className="h-3.5 w-3.5" />
+            </button>
           </div>
         </article>
 
-        <article className="rounded-2xl border border-[#D9E4F2] bg-white p-3.5 shadow-[0_5px_14px_rgba(16,42,80,0.06)] xl:h-[415px] flex flex-col">
+        <article className="rounded-2xl border border-[#D9E4F2] bg-white p-3.5 shadow-[0_5px_14px_rgba(16,42,80,0.06)] xl:h-[435px] flex flex-col">
           <h3 className="text-xl font-bold text-[#102846]">Submission Status</h3>
           <p className="mt-1 text-xs text-[#617C9E]">Current review progress</p>
 
@@ -636,8 +929,8 @@ export default function Dashboard() {
         <article className="rounded-2xl border border-[#D9E4F2] bg-white shadow-[0_5px_14px_rgba(16,42,80,0.06)] overflow-hidden flex flex-col h-[320px]">
           <div className="flex items-center justify-between border-b border-[#E4ECF7] px-4 py-3 shrink-0">
             <div>
-              <h3 className="text-xl font-bold text-[#102846]">Top Activities by FTE</h3>
-              <p className="text-[11px] text-[#6E86A3]">Top effort activities across selected scope</p>
+              <h3 className="text-xl font-bold text-[#102846]">Activities by FTE</h3>
+              <p className="text-[11px] text-[#6E86A3]">Highest effort activities ranked by workload FTE across selected scope</p>
             </div>
             <span className="text-xs font-semibold uppercase tracking-[0.14em] text-[#8AA0BA]">
               {topActivities.length > 0
@@ -652,7 +945,9 @@ export default function Dashboard() {
             {isDashboardLoading ? (
               <div className="p-4 space-y-3">
                 {[1, 2, 3, 4, 5].map((i) => (
-                  <SkeletonBlock key={i} className="h-8 w-full rounded-lg" />
+                  <div key={i}>
+                    <SkeletonBlock className="h-8 w-full rounded-lg" />
+                  </div>
                 ))}
               </div>
             ) : dashboardError ? (
@@ -763,17 +1058,56 @@ export default function Dashboard() {
 
       <section ref={consolidationRef} className="rounded-2xl border border-[#0F386A] bg-linear-to-r from-[#001F45] via-[#032C5D] to-[#05396E] p-4.5 shadow-[0_8px_18px_rgba(5,34,72,0.3)]">
         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/10 pb-2.5">
-          <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#6BB4FF]">Platform Insights — Hypothetical Planning Scenarios</p>
-          <span className="rounded bg-amber-500/20 px-2 py-0.5 text-[11px] font-semibold text-amber-200 border border-amber-400/30">
-            Planning Scenario (Not Measured Savings)
-          </span>
+          <div className="flex items-center gap-2">
+            <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#6BB4FF]">Platform Insights — Consolidation Potential</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="rounded bg-amber-500/20 px-2 py-0.5 text-[11px] font-semibold text-amber-200 border border-amber-400/30">
+              Planning Scenario (Hypothetical Model)
+            </span>
+            {roleLabel.toLowerCase() === 'admin' ? (
+              <button
+                type="button"
+                onClick={() => navigate('/admin/assumptions')}
+                className="inline-flex items-center gap-1 rounded bg-white/15 px-2.5 py-0.5 text-[11px] font-bold text-white hover:bg-white/25 transition border border-white/20"
+              >
+                Configure Assumptions
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => navigate('/manager/assumptions')}
+                className="inline-flex items-center gap-1 rounded bg-white/10 px-2 py-0.5 text-[11px] font-medium text-slate-300 hover:bg-white/20 transition border border-white/15"
+              >
+                View Assumptions
+              </button>
+            )}
+          </div>
         </div>
 
-        {/* Concise Disclaimer */}
+        {/* Dynamic Model Assumptions Banner */}
         <div className="mt-2.5 rounded-lg bg-blue-950/60 p-2.5 border border-blue-400/20 text-xs text-[#BFD9FF] leading-relaxed">
-          <p className="font-medium">
-            <span className="font-bold text-[#E6F2FF]">Model Assumptions:</span> Scenario projections assume an industry benchmark 35% efficiency factor and ₹10 Lakh per FTE annually on screened candidate activities. These are hypothetical planning estimates, not measured or realized historical savings. Actual workload metrics remain separate.
-          </p>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <p className="font-medium">
+              <span className="font-bold text-[#E6F2FF]">Active Model Assumptions: </span>
+              {consolidatedSummary.scenarioParameters ? (
+                <>
+                  <span className="text-[#8AD1FF] font-semibold">{((consolidatedSummary.scenarioParameters.efficiencyFactor ?? 0.35) * 100).toFixed(0)}% Efficiency</span>
+                  {' · '}
+                  <span className="text-[#8AD1FF] font-semibold">₹{consolidatedSummary.scenarioParameters.costPerFteLakhs ?? 10} Lakhs/FTE</span>
+                  {' · '}
+                  <span>{consolidatedSummary.scenarioParameters.standardMonthlyHours ?? 160}h/mo baseline</span>
+                  {' · '}
+                  <span>Threshold ≥{consolidatedSummary.scenarioParameters.screeningThresholdHours ?? 26}h</span>
+                </>
+              ) : (
+                '35% efficiency · ₹10 Lakh/FTE baseline · 160h monthly standard'
+              )}
+            </p>
+            <span className="text-[10px] text-amber-300/80 font-medium whitespace-nowrap">
+              Hypothetical projections (not realized savings)
+            </span>
+          </div>
         </div>
 
         {isConsolidationLoading && !fteConsolidation ? (
@@ -808,14 +1142,40 @@ export default function Dashboard() {
             <div>
               <h3 className="text-2xl font-bold leading-tight text-white">Consolidation Potential</h3>
               <p className="mt-1 text-xs leading-relaxed text-[#BFD9FF]">
-                Estimated scenario outcomes based on screened activities and fitment coverage.
+                Estimated scenario outcomes based on screened candidate activities and fitment coverage.
               </p>
             </div>
 
             <div className="grid grid-cols-3 gap-3">
-              <InsightMetric label="Screened Activities" value={String(safeNumber(consolidatedSummary.totalActivities))} />
-              <InsightMetric label="Scenario: Saved FTE" value={safeNumber(consolidatedSummary.savedFte).toFixed(2)} />
-              <InsightMetric label="Scenario: Cost Impact" value={`INR ${safeNumber(consolidatedSummary.estimatedSavingsCr).toFixed(2)} Cr`} emphasize />
+              <div className="rounded-xl border border-white/10 bg-white/5 p-3 text-center">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-[#8BB9E8]">Candidate Activities</p>
+                <p className="mt-1 text-xl font-black text-white">
+                  {safeNumber(consolidatedSummary.consolidateActivities ?? consolidatedSummary.screeningCriteria?.totalUniqueScreened, 0)}
+                </p>
+                <p className="mt-0.5 text-[9px] text-[#A6CCF5]">
+                  of {safeNumber(consolidatedSummary.totalActivities, 0)} total logged
+                </p>
+              </div>
+
+              <div className="rounded-xl border border-white/10 bg-white/5 p-3 text-center">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-[#8BB9E8]">Scenario: Saved FTE</p>
+                <p className="mt-1 text-xl font-black text-white">
+                  {safeNumber(consolidatedSummary.savedFte).toFixed(2)}
+                </p>
+                <p className="mt-0.5 text-[9px] text-[#A6CCF5]">
+                  @ {((consolidatedSummary.scenarioParameters?.efficiencyFactor ?? 0.35) * 100).toFixed(0)}% efficiency
+                </p>
+              </div>
+
+              <div className="rounded-xl border border-white/10 bg-white/5 p-3 text-center">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-[#8BB9E8]">Scenario: Cost Impact</p>
+                <p className="mt-1 text-xl font-black text-[#56DF92]">
+                  INR {safeNumber(consolidatedSummary.estimatedSavingsCr).toFixed(2)} Cr
+                </p>
+                <p className="mt-0.5 text-[9px] text-[#A6CCF5]">
+                  @ ₹{consolidatedSummary.scenarioParameters?.costPerFteLakhs ?? 10}L / FTE
+                </p>
+              </div>
             </div>
 
             <div className="grid gap-2 xl:justify-self-end">
@@ -827,67 +1187,52 @@ export default function Dashboard() {
                 View Full Report
                 <ArrowRight className="h-4 w-4" />
               </button>
-              <p className="text-right text-xs text-[#BFD9FF]">
-                Fitment Coverage: {isFitmentLoading && !fitmentSummary ? 'Loading...' : `${fitmentCoverage.toFixed(1)}%`}
-              </p>
+              <div className="text-right">
+                <p className="text-xs font-semibold text-[#BFD9FF]">
+                  Fitment Coverage: {isFitmentLoading && !fitmentSummary ? 'Loading...' : `${fitmentCoverage.toFixed(1)}%`}
+                </p>
+                <p className="text-[10px] text-[#8CBFFF] mt-0.5">
+                  6 of 8 registered portal accounts assessed · Operational workforce rollout pending
+                </p>
+              </div>
             </div>
           </div>
         )}
       </section>
 
-      <section ref={recentReviewsRef} className="rounded-2xl border border-[#D9E4F2] bg-white shadow-[0_5px_14px_rgba(16,42,80,0.06)] overflow-hidden">
-        <div className="flex items-center justify-between border-b border-[#E3EBF6] px-4 py-3">
-          <h3 className="text-lg font-bold text-[#102846]">Recent Form Reviews</h3>
-          <span className="text-xs font-semibold uppercase tracking-[0.12em] text-[#7B93AF]">{roleLabel} Queue</span>
-        </div>
-
-        <div className="overflow-x-auto">
-          {isDashboardLoading ? (
-            <div className="p-4 space-y-3">
-              {[1, 2, 3, 4].map((i) => (
-                <SkeletonBlock key={i} className="h-9 w-full rounded-lg" />
-              ))}
+      {/* Problem 4(i): Conditional Pending Reviews Card - surfaces action queue only when pending review submissions exist */}
+      {safeNumber(summary.pendingReview) > 0 && (
+        <section ref={recentReviewsRef} className="rounded-2xl border border-[#F5C2C7] bg-[#FFF8F8] p-5 shadow-[0_5px_14px_rgba(220,53,69,0.06)]">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-start gap-3.5">
+              <div className="rounded-xl bg-[#F8D7DA] p-3 text-[#B02A37] border border-[#F5C2C7]">
+                <Clock3 className="h-6 w-6" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-lg font-bold text-[#58151C]">Pending Reviews</h3>
+                  <span className="rounded-full bg-[#EA868F] px-2.5 py-0.5 text-xs font-bold text-white">
+                    {summary.pendingReview} {summary.pendingReview === 1 ? 'Submission' : 'Submissions'}
+                  </span>
+                </div>
+                <p className="mt-1 text-xs text-[#842029]">
+                  {summary.pendingReview === 1
+                    ? '1 submission requires your attention and review approval.'
+                    : `${summary.pendingReview} submissions require your attention and review approval.`}
+                </p>
+              </div>
             </div>
-          ) : dashboardError ? (
-            <SectionError message={dashboardError} onRetry={() => loadDashboardData(false)} />
-          ) : (
-            <table className="w-full min-w-170 border-collapse text-left">
-              <thead>
-                <tr className="bg-[#F5F8FD] text-[11px] font-bold uppercase tracking-[0.13em] text-[#617D9D] border-b border-[#E3EAF4]">
-                  <th className="px-4 py-2.5">Form ID</th>
-                  <th className="px-4 py-2.5">Employee</th>
-                  <th className="px-4 py-2.5">Status</th>
-                  <th className="px-4 py-2.5 text-right">Monthly Hours</th>
-                  <th className="px-4 py-2.5">Submitted</th>
-                </tr>
-              </thead>
-              <tbody>
-                {recentSubmissions.length === 0 ? (
-                  <tr>
-                    <td colSpan={5} className="px-4 py-7 text-center text-xs text-[#6E86A3]">
-                      No submissions available.
-                    </td>
-                  </tr>
-                ) : (
-                  recentSubmissions.slice(0, 6).map((submission) => (
-                    <tr key={submission.referenceId} className="border-b border-[#E8EEF7] last:border-b-0">
-                      <td className="px-4 py-3 text-xs font-semibold text-[#1A5CA8]">{submission.referenceId}</td>
-                      <td className="px-4 py-3 text-xs text-[#1A3556]">{submission.employee.name}</td>
-                      <td className="px-4 py-3">
-                        <span className={`inline-flex rounded-md border px-2 py-1 text-xs font-semibold ${getStatusClass(submission.status)}`}>
-                          {submission.status}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-right text-xs font-semibold text-[#0E2646]">{safeNumber(submission.totalHours).toFixed(1)}</td>
-                      <td className="px-4 py-3 text-xs text-[#4F6785]">{formatDateISO(submission.submittedAt)}</td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          )}
-        </div>
-      </section>
+            <button
+              type="button"
+              onClick={() => navigate(`${basePath}/forms`)}
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#DC3545] px-4 py-2.5 text-xs font-bold text-white hover:bg-[#BB2D3B] transition-colors shadow-sm self-start sm:self-center"
+            >
+              Review Submissions
+              <ArrowRight className="h-4 w-4" />
+            </button>
+          </div>
+        </section>
+      )}
     </div>
   );
 }

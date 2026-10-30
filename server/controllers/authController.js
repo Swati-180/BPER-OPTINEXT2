@@ -667,75 +667,219 @@ const uploadUsers = async (req, res) => {
     if (!Array.isArray(users)) {
       return res.status(400).json({ message: 'Users array is required.' });
     }
-    console.log("Incoming bulk upload users payload:", JSON.stringify(users, null, 2));
-    
+
     let added = 0;
     let updated = 0;
+    let skipped = 0;
+    let failed = 0;
     const errors = [];
-    
+
+    // Intra-file duplicate tracking sets
+    const seenEmailsInFile = new Set();
+    const seenEmpIdsInFile = new Set();
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
     for (const [index, userData] of users.entries()) {
+      const rowNum = index + 1;
       try {
-        if (!userData.email) {
-          errors.push(`Row ${index + 1}: Email is required.`);
+        if (!userData || typeof userData !== 'object') {
+          skipped++;
           continue;
         }
-        
-        const emailToSearch = userData.email.toLowerCase().trim();
-        let user = await User.findOne({ email: emailToSearch });
-        
-        if (user) {
-          // Update
-          user.name = userData.name || user.name;
-          user.organization = userData.organization || user.organization;
-          user.designation = userData.designation || user.designation;
-          user.location = userData.location || user.location;
-          user.supervisorName = userData.supervisorName || user.supervisorName;
-          await user.save();
-          updated++;
-        } else {
-          // Create
-          let newEmployeeId = userData.employeeId ? userData.employeeId.toString().trim() : null;
-          if (!newEmployeeId) {
-            newEmployeeId = await getNextBperEmployeeId();
-          }
-          
-          let emailPrefix = userData.email.split('@')[0];
-          let defaultPassword = userData.employeeId || (emailPrefix + "123");
-          
-          await User.create({
-            name: userData.name || 'Unknown',
-            email: userData.email.toLowerCase().trim(),
-            employeeId: newEmployeeId,
-            password: defaultPassword,
-            role: 'employee',
-            organization: userData.organization || '',
-            designation: userData.designation || '',
-            location: userData.location || '',
-            supervisorName: userData.supervisorName || '',
-            isActive: true
-          });
-          added++;
+
+        const rawName = userData.name != null ? String(userData.name).trim() : '';
+        const rawEmail = userData.email != null ? String(userData.email).trim().toLowerCase() : '';
+        const rawEmpId = userData.employeeId != null ? String(userData.employeeId).trim() : '';
+
+        // If row is completely empty (no name, email, employee ID, or profile fields)
+        const hasAnyField = Boolean(
+          rawName || rawEmail || rawEmpId ||
+          userData.organization || userData.designation ||
+          userData.location || userData.supervisorName
+        );
+        if (!hasAnyField) {
+          skipped++;
+          continue;
         }
+
+        // Validate required fields
+        if (!rawName) {
+          failed++;
+          errors.push(`Row ${rowNum}: Name is required.`);
+          continue;
+        }
+
+        if (!rawEmail) {
+          failed++;
+          errors.push(`Row ${rowNum}: Email is required.`);
+          continue;
+        }
+
+        if (!emailRegex.test(rawEmail)) {
+          failed++;
+          errors.push(`Row ${rowNum}: Invalid email format "${rawEmail}".`);
+          continue;
+        }
+
+        // Intra-file duplicate detection
+        if (seenEmailsInFile.has(rawEmail)) {
+          failed++;
+          errors.push(`Row ${rowNum}: Duplicate email "${rawEmail}" within upload file.`);
+          continue;
+        }
+
+        if (rawEmpId && seenEmpIdsInFile.has(rawEmpId)) {
+          failed++;
+          errors.push(`Row ${rowNum}: Duplicate employee ID "${rawEmpId}" within upload file.`);
+          continue;
+        }
+
+        seenEmailsInFile.add(rawEmail);
+        if (rawEmpId) {
+          seenEmpIdsInFile.add(rawEmpId);
+        }
+
+        // Dual database resolution
+        const userByEmail = await User.findOne({ email: rawEmail });
+        const userByEmpId = rawEmpId ? await User.findOne({ employeeId: rawEmpId }) : null;
+
+        // Case 1: Conflict - Employee ID and Email resolve to two distinct users
+        if (userByEmail && userByEmpId && !userByEmail._id.equals(userByEmpId._id)) {
+          failed++;
+          errors.push(
+            `Row ${rowNum}: Identifier conflict - Employee ID "${rawEmpId}" belongs to "${userByEmpId.name}", but email "${rawEmail}" belongs to "${userByEmail.name}". Cannot merge distinct records.`
+          );
+          continue;
+        }
+
+        const matchedUser = userByEmail || userByEmpId;
+
+        // Protect vacant positions from modification or conversion
+        if (matchedUser && (matchedUser.isVacant || matchedUser.role === 'position')) {
+          failed++;
+          errors.push(
+            `Row ${rowNum}: Employee ID "${rawEmpId || matchedUser.employeeId}" is a vacant position and cannot be modified via bulk user upload.`
+          );
+          continue;
+        }
+
+        // Protect archived demo accounts from modification or reactivation
+        if (matchedUser && (matchedUser.isArchivedDemo || matchedUser.role === 'archived_demo')) {
+          failed++;
+          errors.push(
+            `Row ${rowNum}: Employee ID "${rawEmpId || matchedUser.employeeId}" is an archived demo account and cannot be modified via bulk user upload.`
+          );
+          continue;
+        }
+
+        // Case 2: Exact match - Both identifiers resolve to the same user
+        if (userByEmail && userByEmpId && userByEmail._id.equals(userByEmpId._id)) {
+          userByEmail.name = rawName || userByEmail.name;
+          if (userData.organization) userByEmail.organization = userData.organization;
+          if (userData.designation) userByEmail.designation = userData.designation;
+          if (userData.location) userByEmail.location = userData.location;
+          if (userData.supervisorName) userByEmail.supervisorName = userData.supervisorName;
+          await userByEmail.save();
+          updated++;
+          continue;
+        }
+
+        // Case 3: Matched by employee ID (email newly provided / linking roster staff)
+        if (userByEmpId && !userByEmail) {
+          // If existing user already has a different registered email, reject to prevent account hijacking
+          if (userByEmpId.email && userByEmpId.email.toLowerCase() !== rawEmail) {
+            failed++;
+            errors.push(
+              `Row ${rowNum}: Employee ID "${rawEmpId}" is already registered to "${userByEmpId.email}". Reassignment to "${rawEmail}" is not permitted.`
+            );
+            continue;
+          }
+
+          // Link newly provided email and update profile data
+          userByEmpId.email = rawEmail;
+          userByEmpId.name = rawName || userByEmpId.name;
+          if (userData.organization) userByEmpId.organization = userData.organization;
+          if (userData.designation) userByEmpId.designation = userData.designation;
+          if (userData.location) userByEmpId.location = userData.location;
+          if (userData.supervisorName) userByEmpId.supervisorName = userData.supervisorName;
+          // NOTE: Secure account provisioning: do NOT assign predictable default passwords
+          // or prematurely clear isRosterOnly. Employees must establish passwords via the established invite flow.
+          await userByEmpId.save();
+          updated++;
+          continue;
+        }
+
+        // Case 4: Matched by email (employee ID provided or already existing)
+        if (userByEmail && !userByEmpId) {
+          // If upload provides an employee ID and existing user already has a different employee ID
+          if (rawEmpId && userByEmail.employeeId && userByEmail.employeeId !== rawEmpId) {
+            failed++;
+            errors.push(
+              `Row ${rowNum}: User "${rawEmail}" already has employee ID "${userByEmail.employeeId}". Cannot reassign to "${rawEmpId}".`
+            );
+            continue;
+          }
+
+          if (rawEmpId && !userByEmail.employeeId) {
+            userByEmail.employeeId = rawEmpId;
+          }
+          userByEmail.name = rawName || userByEmail.name;
+          if (userData.organization) userByEmail.organization = userData.organization;
+          if (userData.designation) userByEmail.designation = userData.designation;
+          if (userData.location) userByEmail.location = userData.location;
+          if (userData.supervisorName) userByEmail.supervisorName = userData.supervisorName;
+          await userByEmail.save();
+          updated++;
+          continue;
+        }
+
+        // Case 5: Neither exists -> Create new employee roster record
+        let newEmployeeId = rawEmpId;
+        if (!newEmployeeId) {
+          newEmployeeId = await getNextBperEmployeeId();
+        }
+
+        await User.create({
+          name: rawName,
+          email: rawEmail,
+          employeeId: newEmployeeId,
+          role: 'employee',
+          organization: userData.organization || '',
+          designation: userData.designation || '',
+          location: userData.location || '',
+          supervisorName: userData.supervisorName || '',
+          isActive: true,
+          isRosterOnly: true,
+          isVacant: false,
+          isArchivedDemo: false,
+          formAccessGranted: false
+        });
+        added++;
+
       } catch (err) {
-        console.error(`Error on row ${index + 1}:`, err);
-        errors.push(`Row ${index + 1}: ${err.message}`);
+        console.error(`Error on row ${rowNum}:`, err);
+        failed++;
+        errors.push(`Row ${rowNum}: ${err.message}`);
       }
     }
-    
+
     await logAction({
-        req,
-        action: 'USERS_BULK_UPLOADED',
-        targetType: 'User',
-        targetId: 'bulk',
-        description: `Bulk uploaded users. Added: ${added}, Updated: ${updated}`,
-        next: { added, updated, errorCount: errors.length }
+      req,
+      action: 'USERS_BULK_UPLOADED',
+      targetType: 'User',
+      targetId: 'bulk',
+      description: `Bulk uploaded users. Added: ${added}, Updated: ${updated}, Skipped: ${skipped}, Failed: ${failed}`,
+      next: { added, updated, skipped, failed, errorCount: errors.length }
     });
-    
+
     invalidateFitmentSummaryCache();
     return res.json({ 
-      message: `Upload complete. Added: ${added}, Updated: ${updated}.`,
+      message: `Upload complete. Added: ${added}, Updated: ${updated}, Skipped: ${skipped}, Failed: ${failed}.`,
       added,
       updated,
+      skipped,
+      failed,
       errors: errors.length > 0 ? errors : undefined
     });
   } catch (err) {
