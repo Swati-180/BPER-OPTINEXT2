@@ -180,8 +180,8 @@ export function FTEBandChart({ data, title, height = 220 }: FTEBandChartProps) {
       {/* Dynamic Capacity Distribution Summary */}
       <div className="mt-3 rounded-lg bg-[#F8FBFF] p-3 text-sm text-[#4B6889] border border-[#E3EBF7]">
         <p className="leading-relaxed">
-          Distribution across <strong className="text-[#102846]">{totalEligible} employee{totalEligible === 1 ? '' : 's'}</strong>:{' '}
-          <strong className="text-[#102846]">{fullCapacityCount} employee{fullCapacityCount === 1 ? '' : 's'}</strong> ({fullCapacityPct}%) are at full capacity (1.0+ FTE), and{' '}
+          Distribution across <strong className="text-[#102846]">{totalEligible} distinct named employee{totalEligible === 1 ? '' : 's'}</strong> (excludes vacant positions):{' '}
+          <strong className="text-[#102846]">{fullCapacityCount} employee{fullCapacityCount === 1 ? '' : 's'}</strong> ({fullCapacityPct}%) recorded activity effort at or exceeding the 160-hour monthly baseline (1.0+ FTE), while{' '}
           <strong className="text-[#102846]">{underCapacityCount} employee{underCapacityCount === 1 ? '' : 's'}</strong> ({underCapacityPct}%) are below 0.5 FTE.
         </p>
       </div>
@@ -233,7 +233,14 @@ export function FTEBandChart({ data, title, height = 220 }: FTEBandChartProps) {
                 {pagedItems.map((item, i) => (
                   <tr key={`${item.employeeId}-${i}`} className="hover:bg-[#F8FBFF] transition-colors">
                     <td className="px-4 py-2.5 font-mono font-medium text-[#496587]">{item.employeeId}</td>
-                    <td className="px-4 py-2.5 font-semibold text-[#102846]">{item.name}</td>
+                    <td className="px-4 py-2.5 font-semibold text-[#102846]">
+                      {item.name}
+                      {item.totalHours > 160 && (
+                        <span className="ml-2 inline-flex items-center rounded bg-amber-50 border border-amber-200 px-1.5 py-0.5 text-[9px] font-bold text-amber-700">
+                          &gt;160h Baseline
+                        </span>
+                      )}
+                    </td>
                     <td className="px-4 py-2.5 text-right text-[#344E6F]">{item.totalHours.toFixed(2)} hrs</td>
                     <td className="px-4 py-2.5 text-right font-bold text-[#1E5EAB]">{item.fte.toFixed(2)}</td>
                     <td className="px-4 py-2.5 text-right font-bold text-[#102846]">{item.capacityPct.toFixed(1)}%</td>

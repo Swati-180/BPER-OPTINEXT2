@@ -16,7 +16,8 @@ import {
   Layers,
   Grid3X3,
   Calculator,
-  GitCompare
+  GitCompare,
+  Sliders
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { motion } from 'motion/react';
@@ -69,11 +70,13 @@ export default function ManagerLayout({ children, user, onLogout }: ManagerLayou
         { name: 'Deep Analysis', path: `${basePath}/deep-analysis`, icon: Activity },
         { name: 'Process Operations', path: `${basePath}/process-operations`, icon: Layers },
         { name: 'Calculation Center', path: `${basePath}/calculation-center`, icon: Calculator },
+        { name: 'Assumptions', path: `${basePath}/assumptions`, icon: Sliders },
       ]
     : [
         { name: 'Forms', path: `${basePath}/forms`, icon: FileText },
         { name: 'Users', path: `${basePath}/users`, icon: Users },
         { name: 'Employee Invites', path: `${basePath}/employee-invites`, icon: Mail },
+        { name: 'Assumptions', path: `${basePath}/assumptions`, icon: Sliders },
       ];
 
   const isSidebarExpanded = isSidebarOpen || isSidebarHovered;
@@ -211,7 +214,7 @@ export default function ManagerLayout({ children, user, onLogout }: ManagerLayou
 
         {/* Sidebar Footer - Logout */}
         <div className="p-3 border-t border-white/5 shrink-0">
-          {user.role !== 'employee' && (
+          {user.role === 'manager' && (
             <motion.button
               type="button"
               onClick={() => navigate('/choose-portal')}

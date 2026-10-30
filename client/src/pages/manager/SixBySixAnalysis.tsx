@@ -1,9 +1,10 @@
 import { useMemo, useState, useEffect } from 'react';
 import { apiFetch, exportToExcelClient } from '../../lib/api';
-import { Download, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Download, ChevronLeft, ChevronRight, AlertCircle, RefreshCw } from 'lucide-react';
+import { SkeletonBlock } from '../../components/PortalSkeletons';
 
 type Department = 'Finance & Accounting' | 'HR' | 'Logistics' | 'SCM';
-type CriteriaValue = 'H' | 'M' | 'L';
+type CriteriaValue = 'H' | 'M' | 'L' | '-';
 type AnalysisTab = 'overview' | 'matrix' | 'distribution';
 
 type ProcessRow = {
@@ -122,24 +123,34 @@ export default function SixBySixAnalysisPage() {
 	const [draftRows, setDraftRows] = useState<ProcessRow[]>([]);
 	const [isLoading, setIsLoading] = useState(true);
 	const [isSaving, setIsSaving] = useState(false);
+	const [fetchError, setFetchError] = useState<string | null>(null);
+
+	const fetchData = async () => {
+		setIsLoading(true);
+		setFetchError(null);
+		try {
+			const response = await apiFetch(`/analysis/six-by-six?department=${encodeURIComponent(departmentFilter)}`);
+			const data = await response.json().catch(() => null);
+			if (response.ok) {
+				if (!Array.isArray(data)) {
+					setFetchError('Invalid response received from 6x6 analysis service.');
+					return;
+				}
+				const safeRows = data.map(normalizeRow);
+				setProcessData(safeRows);
+				setDraftRows(safeRows);
+			} else {
+				setFetchError(data?.message || `Failed to load 6x6 data (${response.status})`);
+			}
+		} catch (error: any) {
+			console.error('Failed to fetch 6x6 data:', error);
+			setFetchError(error?.message || 'Network error while loading 6x6 analysis data.');
+		} finally {
+			setIsLoading(false);
+		}
+	};
 
 	useEffect(() => {
-		const fetchData = async () => {
-			setIsLoading(true);
-			try {
-				const response = await apiFetch(`/analysis/six-by-six?department=${encodeURIComponent(departmentFilter)}`);
-				const data = await response.json().catch(() => null);
-				if (response.ok) {
-					const safeRows = Array.isArray(data) ? data.map(normalizeRow) : [];
-					setProcessData(safeRows);
-					setDraftRows(safeRows);
-				}
-			} catch (error) {
-				console.error('Failed to fetch 6x6 data:', error);
-			} finally {
-				setIsLoading(false);
-			}
-		};
 		fetchData();
 	}, [departmentFilter]);
 
@@ -438,7 +449,8 @@ export default function SixBySixAnalysisPage() {
 						<select
 							value={departmentFilter}
 							onChange={(event) => setDepartmentFilter(event.target.value as 'All Departments' | Department)}
-							className="h-9 w-full min-w-0 rounded-xl border border-[#C8D7EC] bg-white px-3 text-xs font-semibold text-[#2B4467] outline-none focus:border-[#6E97CB]"
+							disabled={isLoading}
+							className="h-9 w-full min-w-0 rounded-xl border border-[#C8D7EC] bg-white px-3 text-xs font-semibold text-[#2B4467] outline-none focus:border-[#6E97CB] disabled:opacity-60 disabled:cursor-not-allowed"
 						>
 							{departments.map((department) => (
 								<option key={department} value={department}>
@@ -447,27 +459,27 @@ export default function SixBySixAnalysisPage() {
 							))}
 						</select>
 
-						<select value={towerFilter} onChange={e => setTowerFilter(e.target.value)} className="h-9 w-full min-w-0 rounded-xl border border-[#C8D7EC] bg-white px-3 text-xs font-semibold text-[#2B4467] outline-none focus:border-[#6E97CB]">
+						<select value={towerFilter} onChange={e => setTowerFilter(e.target.value)} disabled={isLoading} className="h-9 w-full min-w-0 rounded-xl border border-[#C8D7EC] bg-white px-3 text-xs font-semibold text-[#2B4467] outline-none focus:border-[#6E97CB] disabled:opacity-60 disabled:cursor-not-allowed">
 							<option value="All">All Towers</option>
 							{uniqueTowers.filter(t => t !== 'All').map(t => (
 								<option key={t} value={t}>{t.length > 20 ? t.substring(0,20) + '...' : t}</option>
 							))}
 						</select>
 
-						<select value={processFilter} onChange={e => setProcessFilter(e.target.value)} className="h-9 w-full min-w-0 rounded-xl border border-[#C8D7EC] bg-white px-3 text-xs font-semibold text-[#2B4467] outline-none focus:border-[#6E97CB]">
+						<select value={processFilter} onChange={e => setProcessFilter(e.target.value)} disabled={isLoading} className="h-9 w-full min-w-0 rounded-xl border border-[#C8D7EC] bg-white px-3 text-xs font-semibold text-[#2B4467] outline-none focus:border-[#6E97CB] disabled:opacity-60 disabled:cursor-not-allowed">
 							<option value="All">All Processes</option>
 							{uniqueProcesses.filter(p => p !== 'All').map(p => (
 								<option key={p} value={p}>{p.length > 25 ? p.substring(0,25) + '...' : p}</option>
 							))}
 						</select>
 
-						<select value={typeFilter} onChange={e => setTypeFilter(e.target.value)} className="h-9 w-full min-w-0 rounded-xl border border-[#C8D7EC] bg-white px-3 text-xs font-semibold text-[#2B4467] outline-none focus:border-[#6E97CB]">
+						<select value={typeFilter} onChange={e => setTypeFilter(e.target.value)} disabled={isLoading} className="h-9 w-full min-w-0 rounded-xl border border-[#C8D7EC] bg-white px-3 text-xs font-semibold text-[#2B4467] outline-none focus:border-[#6E97CB] disabled:opacity-60 disabled:cursor-not-allowed">
 							{ACTIVITY_TYPES.map(t => (
 								<option key={t} value={t}>{t === 'All' ? 'Activity Type (All)' : t}</option>
 							))}
 						</select>
 
-						<select value={scoreRangeFilter} onChange={e => setScoreRangeFilter(e.target.value as typeof scoreRangeFilter)} className="h-9 w-full min-w-0 rounded-xl border border-[#C8D7EC] bg-white px-3 text-xs font-semibold text-[#2B4467] outline-none focus:border-[#6E97CB]">
+						<select value={scoreRangeFilter} onChange={e => setScoreRangeFilter(e.target.value as typeof scoreRangeFilter)} disabled={isLoading} className="h-9 w-full min-w-0 rounded-xl border border-[#C8D7EC] bg-white px-3 text-xs font-semibold text-[#2B4467] outline-none focus:border-[#6E97CB] disabled:opacity-60 disabled:cursor-not-allowed">
 							<option value="All">Score Range (All)</option>
 							<option value="0-4">Low (0-4)</option>
 							<option value="5-6">Medium (5-6)</option>
@@ -475,7 +487,7 @@ export default function SixBySixAnalysisPage() {
 							<option value="9-12">Optimal (9-12)</option>
 						</select>
 
-						<select value={consolidationFilter} onChange={e => setConsolidationFilter(e.target.value as typeof consolidationFilter)} className="h-9 w-full min-w-0 rounded-xl border border-[#C8D7EC] bg-white px-3 text-xs font-semibold text-[#2B4467] outline-none focus:border-[#6E97CB]">
+						<select value={consolidationFilter} onChange={e => setConsolidationFilter(e.target.value as typeof consolidationFilter)} disabled={isLoading} className="h-9 w-full min-w-0 rounded-xl border border-[#C8D7EC] bg-white px-3 text-xs font-semibold text-[#2B4467] outline-none focus:border-[#6E97CB] disabled:opacity-60 disabled:cursor-not-allowed">
 							<option value="All">All Consolidation</option>
 							<option value="consolidate">Consolidatable</option>
 							<option value="not">Not Consolidatable</option>
@@ -497,7 +509,30 @@ export default function SixBySixAnalysisPage() {
 				</div>
 			</section>
 
-			{activeTab === 'overview' && (
+			{fetchError ? (
+				<div className="rounded-2xl border border-red-200 bg-red-50 p-6 text-center space-y-3">
+					<div className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-red-100 text-red-600 mb-1">
+						<AlertCircle className="h-6 w-6" />
+					</div>
+					<h3 className="text-base font-bold text-red-900">Failed to Load 6x6 Analysis Data</h3>
+					<p className="text-xs text-red-700 max-w-md mx-auto">{fetchError}</p>
+					<button
+						type="button"
+						onClick={() => fetchData()}
+						className="inline-flex items-center gap-2 rounded-xl bg-red-600 px-4 py-2 text-xs font-bold text-white shadow-sm hover:bg-red-700 transition-colors"
+					>
+						<RefreshCw className="h-3.5 w-3.5" /> Retry
+					</button>
+				</div>
+			) : isLoading ? (
+				activeTab === 'overview' ? (
+					<SixBySixOverviewSkeleton />
+				) : activeTab === 'matrix' ? (
+					<SixBySixMatrixSkeleton />
+				) : (
+					<SixBySixDistributionSkeleton />
+				)
+			) : activeTab === 'overview' ? (
 				<div className="space-y-3">
 					<section className="grid grid-cols-1 gap-3 xl:grid-cols-2">
 							<article className="flex min-h-[420px] flex-col rounded-2xl border border-[#D9E4F2] bg-white p-3.5 shadow-[0_5px_14px_rgba(16,42,80,0.05)]">
@@ -781,9 +816,7 @@ export default function SixBySixAnalysisPage() {
 						</div>
 					</section>
 				</div>
-			)}
-
-			{activeTab === 'matrix' && (
+			) : activeTab === 'matrix' ? (
 				<section className="rounded-2xl border border-[#D9E4F2] bg-white shadow-[0_5px_14px_rgba(16,42,80,0.05)] overflow-hidden">
 					<div className="border-b border-[#E4ECF7] px-4 py-3.5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
 						<div>
@@ -1017,9 +1050,7 @@ export default function SixBySixAnalysisPage() {
 						</div>
 					)}
 				</section>
-			)}
-
-			{activeTab === 'distribution' && (
+			) : (
 				<section className="rounded-2xl border border-[#D9E4F2] bg-white p-3.5 shadow-[0_5px_14px_rgba(16,42,80,0.05)]">
 					<div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
 						<div>
@@ -1102,5 +1133,142 @@ function EmptyState() {
 		<div className="flex h-full items-center justify-center text-xs text-[#8AA0BA]">
 			No data for selected department
 		</div>
+	);
+}
+
+function SixBySixOverviewSkeleton() {
+	return (
+		<div className="space-y-3" aria-busy="true" aria-label="Loading 6x6 overview data">
+			{/* Top Charts Section */}
+			<section className="grid grid-cols-1 gap-3 xl:grid-cols-2">
+				{/* Bar Chart Card Skeleton */}
+				<article className="flex min-h-[420px] flex-col rounded-2xl border border-[#D9E4F2] bg-white p-3.5 shadow-[0_5px_14px_rgba(16,42,80,0.05)]">
+					<SkeletonBlock className="h-5 w-52" />
+					<div className="mt-3.5 flex-1 rounded-xl border border-dashed border-[#E3EBF6] bg-[#FBFDFF] p-4 flex flex-col justify-end">
+						<div className="flex items-end justify-around gap-4 h-[260px] pb-4">
+							{[1, 2, 3, 4].map((col) => (
+								<div key={col} className="flex flex-col items-center gap-2 w-20">
+									<div className="flex items-end justify-center gap-1.5 h-[220px] w-full">
+										<SkeletonBlock className="w-5 h-[65%] rounded-t-md" />
+										<SkeletonBlock className="w-5 h-[40%] rounded-t-md" />
+										<SkeletonBlock className="w-5 h-[80%] rounded-t-md" />
+									</div>
+									<SkeletonBlock className="h-3 w-16" />
+								</div>
+							))}
+						</div>
+					</div>
+					<div className="mt-3 flex items-center gap-4">
+						<SkeletonBlock className="h-3.5 w-24 rounded" />
+						<SkeletonBlock className="h-3.5 w-28 rounded" />
+						<SkeletonBlock className="h-3.5 w-32 rounded" />
+					</div>
+				</article>
+
+				{/* Grand Total Donut Card Skeleton */}
+				<article className="flex min-h-[420px] flex-col rounded-2xl border border-[#D9E4F2] bg-white p-3.5 shadow-[0_5px_14px_rgba(16,42,80,0.05)]">
+					<SkeletonBlock className="h-5 w-32" />
+					<div className="mt-4 flex flex-col items-center justify-center gap-6 flex-1">
+						{/* Donut Silhouette */}
+						<div className="relative h-48 w-48 rounded-full border-12 border-slate-200/80 bg-slate-50 flex items-center justify-center">
+							<div className="flex flex-col items-center gap-1.5">
+								<SkeletonBlock className="h-8 w-16" />
+								<SkeletonBlock className="h-3 w-24" />
+							</div>
+						</div>
+
+						{/* 3 Metrics Cards */}
+						<div className="grid w-full grid-cols-3 gap-2">
+							{[1, 2, 3].map((card) => (
+								<div key={card} className="rounded-xl border border-[#DDE7F3] bg-[#F8FBFF] p-3 text-center space-y-1.5">
+									<SkeletonBlock className="h-2.5 w-16 mx-auto" />
+									<SkeletonBlock className="h-6 w-12 mx-auto" />
+									<SkeletonBlock className="h-3 w-14 mx-auto" />
+								</div>
+							))}
+						</div>
+					</div>
+				</article>
+			</section>
+
+			{/* Department Summary Table Skeleton */}
+			<section className="rounded-2xl border border-[#D9E4F2] bg-white shadow-[0_5px_14px_rgba(16,42,80,0.05)] overflow-hidden">
+				<div className="border-b border-[#E4ECF7] px-4 py-3 flex items-center justify-between">
+					<SkeletonBlock className="h-5 w-44" />
+					<SkeletonBlock className="h-8 w-20 rounded-xl" />
+				</div>
+				<div className="p-4 space-y-3">
+					{[1, 2, 3, 4].map((row) => (
+						<div key={row}>
+							<SkeletonBlock className="h-9 w-full rounded-lg" />
+						</div>
+					))}
+				</div>
+			</section>
+
+			{/* Process Table Skeleton */}
+			<section className="rounded-2xl border border-[#D9E4F2] bg-white shadow-[0_5px_14px_rgba(16,42,80,0.05)] overflow-hidden">
+				<div className="border-b border-[#E4ECF7] px-4 py-3 flex items-center justify-between">
+					<SkeletonBlock className="h-5 w-52" />
+					<SkeletonBlock className="h-8 w-20 rounded-xl" />
+				</div>
+				<div className="p-4 space-y-3">
+					{[1, 2, 3, 4, 5].map((row) => (
+						<div key={row}>
+							<SkeletonBlock className="h-10 w-full rounded-lg" />
+						</div>
+					))}
+				</div>
+			</section>
+		</div>
+	);
+}
+
+function SixBySixMatrixSkeleton() {
+	return (
+		<section className="rounded-2xl border border-[#D9E4F2] bg-white shadow-[0_5px_14px_rgba(16,42,80,0.05)] overflow-hidden" aria-busy="true" aria-label="Loading 6x6 matrix data">
+			<div className="border-b border-[#E4ECF7] px-4 py-3.5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+				<div>
+					<SkeletonBlock className="h-6 w-48" />
+					<SkeletonBlock className="h-3 w-80 mt-1" />
+				</div>
+				<SkeletonBlock className="h-10 w-24 rounded-xl" />
+			</div>
+			<div className="p-4 space-y-3">
+				<SkeletonBlock className="h-8 w-full rounded-md" />
+				{[1, 2, 3, 4, 5, 6, 7, 8].map((row) => (
+					<div key={row}>
+						<SkeletonBlock className="h-10 w-full rounded-lg" />
+					</div>
+				))}
+			</div>
+		</section>
+	);
+}
+
+function SixBySixDistributionSkeleton() {
+	return (
+		<section className="rounded-2xl border border-[#D9E4F2] bg-white p-3.5 shadow-[0_5px_14px_rgba(16,42,80,0.05)]" aria-busy="true" aria-label="Loading score distribution data">
+			<div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+				<div>
+					<SkeletonBlock className="h-6 w-48" />
+					<SkeletonBlock className="h-3 w-72 mt-1" />
+				</div>
+				<div className="flex items-center gap-2">
+					<SkeletonBlock className="h-10 w-24 rounded-xl" />
+					<SkeletonBlock className="h-10 w-24 rounded-xl" />
+				</div>
+			</div>
+			<div className="mt-4 rounded-xl border border-dashed border-[#E3EBF6] bg-[#FBFDFF] p-6 h-64 flex items-end justify-around gap-4">
+				{[1, 2, 3, 4, 5, 6].map((bucket) => (
+					<div key={bucket} className="flex flex-col items-center gap-2 w-20">
+						<div className="w-16 flex items-end" style={{ height: `${25 + bucket * 12}%` }}>
+							<SkeletonBlock className="w-full h-full rounded-t-md" />
+						</div>
+						<SkeletonBlock className="h-3 w-12" />
+					</div>
+				))}
+			</div>
+		</section>
 	);
 }

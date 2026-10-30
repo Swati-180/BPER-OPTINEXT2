@@ -6,13 +6,22 @@ export default function PortalSelectionPage() {
   const navigate = useNavigate();
   const user = loadAuthUser();
 
-  if (!user || user.role === 'employee') {
-    navigate(user ? '/employee-portal' : '/auth/login');
+  if (!user) {
+    navigate('/auth/login');
     return null;
   }
 
-  const isManager = user.role === 'manager';
-  const isAdmin = user.role === 'admin';
+  // Administrators do not belong to the portal selection screen
+  if (user.role === 'admin') {
+    navigate('/admin-portal');
+    return null;
+  }
+
+  // Ordinary employees go directly to the employee portal
+  if (user.role === 'employee') {
+    navigate('/employee-portal');
+    return null;
+  }
 
   return (
     <div className="min-h-screen bg-[#EAF2FB] px-4 py-10 flex items-center justify-center">
@@ -27,7 +36,7 @@ export default function PortalSelectionPage() {
           <button
             type="button"
             onClick={() => navigate('/employee-portal')}
-            className="group rounded-3xl border border-[#D9E4F2] bg-white p-6 text-left shadow-[0_8px_24px_rgba(16,42,80,0.08)] transition-transform hover:-translate-y-1"
+            className="group rounded-3xl border border-[#D9E4F2] bg-white p-6 text-left shadow-[0_8px_24px_rgba(16,42,80,0.08)] transition-transform hover:-translate-y-1 cursor-pointer"
           >
             <div className="flex items-center justify-between">
               <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#EAF4FF] text-[#1E5EAB]">
@@ -41,43 +50,22 @@ export default function PortalSelectionPage() {
             </p>
           </button>
 
-          {isManager && (
-            <button
-              type="button"
-              onClick={() => navigate('/manager-portal')}
-              className="group rounded-3xl border border-[#D9E4F2] bg-white p-6 text-left shadow-[0_8px_24px_rgba(16,42,80,0.08)] transition-transform hover:-translate-y-1"
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#EAF4FF] text-[#1E5EAB]">
-                  <ShieldCheck className="h-7 w-7" />
-                </div>
-                <ArrowRight className="h-5 w-5 text-[#90A4BC] transition-transform group-hover:translate-x-1" />
+          <button
+            type="button"
+            onClick={() => navigate('/manager-portal')}
+            className="group rounded-3xl border border-[#D9E4F2] bg-white p-6 text-left shadow-[0_8px_24px_rgba(16,42,80,0.08)] transition-transform hover:-translate-y-1 cursor-pointer"
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#EAF4FF] text-[#1E5EAB]">
+                <ShieldCheck className="h-7 w-7" />
               </div>
-              <h2 className="mt-5 text-2xl font-bold text-[#102846]">Manager Portal</h2>
-              <p className="mt-2 text-sm leading-relaxed text-[#607A9A]">
-                Access forms, user management, and employee invites.
-              </p>
-            </button>
-          )}
-
-          {isAdmin && (
-            <button
-              type="button"
-              onClick={() => navigate('/admin-portal')}
-              className="group rounded-3xl border border-[#D9E4F2] bg-white p-6 text-left shadow-[0_8px_24px_rgba(16,42,80,0.08)] transition-transform hover:-translate-y-1"
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#EAF4FF] text-[#1E5EAB]">
-                  <ShieldCheck className="h-7 w-7" />
-                </div>
-                <ArrowRight className="h-5 w-5 text-[#90A4BC] transition-transform group-hover:translate-x-1" />
-              </div>
-              <h2 className="mt-5 text-2xl font-bold text-[#102846]">Admin Portal</h2>
-              <p className="mt-2 text-sm leading-relaxed text-[#607A9A]">
-                Access the full system including analytics, records, and admin invite management.
-              </p>
-            </button>
-          )}
+              <ArrowRight className="h-5 w-5 text-[#90A4BC] transition-transform group-hover:translate-x-1" />
+            </div>
+            <h2 className="mt-5 text-2xl font-bold text-[#102846]">Manager Portal</h2>
+            <p className="mt-2 text-sm leading-relaxed text-[#607A9A]">
+              Access forms, user management, and employee invites.
+            </p>
+          </button>
         </div>
       </div>
     </div>

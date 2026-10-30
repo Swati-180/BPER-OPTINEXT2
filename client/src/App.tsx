@@ -43,6 +43,7 @@ const EmployeeInvites = lazy(() => import('./pages/manager/EmployeeInvites'));
 const InviteRegistration = lazy(() => import('./pages/InviteRegistration'));
 const CalculationCenter = lazy(() => import('./pages/manager/CalculationCenter'));
 const WorkforceCapacityPlanning = lazy(() => import('./pages/manager/WorkforceCapacityPlanning'));
+const OrganizationAssumptions = lazy(() => import('./pages/manager/OrganizationAssumptions'));
 
 import Unauthorized from './pages/Unauthorized';
 import { clearActiveUnderReviewReferenceId } from './pages/employee/bperSubmissionStorage';
@@ -132,10 +133,12 @@ function LoginPage({ onLogin }: { onLogin: (user: AppAuthUser) => void }) {
       saveAuthUser(nextUser);
 
       onLogin(nextUser);
-      if (nextUser.role === 'employee') {
-        navigate('/employee-portal', { replace: true });
-      } else {
+      if (nextUser.role === 'admin') {
+        navigate('/admin-portal', { replace: true });
+      } else if (nextUser.role === 'manager') {
         navigate('/choose-portal', { replace: true });
+      } else {
+        navigate('/employee-portal', { replace: true });
       }
     } catch (err: any) {
       setGeneralError(err.message || 'Invalid credentials. Please check your email and password.');
@@ -257,6 +260,10 @@ function LoginPage({ onLogin }: { onLogin: (user: AppAuthUser) => void }) {
 function ManagerChoosePortalRoute({ user }: { user: AppAuthUser | null }) {
   if (!user) {
     return <Navigate to="/auth/login" replace />;
+  }
+
+  if (user.role === 'admin') {
+    return <Navigate to="/admin-portal" replace />;
   }
 
   if (user.role === 'employee') {
@@ -382,6 +389,7 @@ export default function App() {
                     <Route path="users" element={<ManagerUsers />} />
                     <Route path="forms" element={<ManagerForms />} />
                     <Route path="employee-invites" element={<EmployeeInvites />} />
+                    <Route path="assumptions" element={<OrganizationAssumptions />} />
                     <Route path="dashboard" element={<Navigate to="/manager/forms" replace />} />
                     <Route path="*" element={<Navigate to="/manager/forms" replace />} />
                   </Routes>
@@ -419,6 +427,7 @@ export default function App() {
                     <Route path="process-analytics" element={<ProcessOperationsHub />} />
                     <Route path="employee-360" element={<PersonalProfile />} />
                     <Route path="calculation-center" element={<CalculationCenter />} />
+                    <Route path="assumptions" element={<OrganizationAssumptions />} />
                     <Route path="*" element={<Navigate to="/admin/dashboard" replace />} />
                   </Routes>
                 </Suspense>

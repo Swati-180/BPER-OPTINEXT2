@@ -5,6 +5,7 @@ const ProcessAnalysis = require('../models/ProcessAnalysis');
 const Taxonomy = require('../models/Taxonomy');
 
 const { standardizeGrade, SYSTEM_TEST_ACCOUNT_IDS } = require('../utils/gradeStandardizer');
+const { getEffectiveAssumptions, resolveReportParameters, registerReportCacheInvalidator } = require('../services/assumptionsService');
 
 const STANDARD_MONTHLY_HOURS = 160;
 
@@ -159,16 +160,20 @@ function flattenRows(submissions) {
   });
 }
 
-function classifyScreeningSignals(row) {
+function classifyScreeningSignals(row, screeningThresholdHours = 26, screeningKeywords = ['automation', 'rpa', 'repeat']) {
   const comment = String(row.comments || '').toLowerCase();
-  const isHighVolume = row.monthlyHours >= 26;
-  const hasKeyword = comment.includes('automation') || comment.includes('rpa') || comment.includes('repeat');
+  const threshold = Number.isFinite(screeningThresholdHours) ? screeningThresholdHours : 26;
+  const isHighVolume = row.monthlyHours >= threshold;
+  const keywords = Array.isArray(screeningKeywords) && screeningKeywords.length > 0
+    ? screeningKeywords
+    : ['automation', 'rpa', 'repeat'];
+  const hasKeyword = keywords.some(k => comment.includes(String(k).toLowerCase()));
 
   let screeningSignal = 'None';
   if (isHighVolume && hasKeyword) {
     screeningSignal = 'High Volume & Keyword';
   } else if (isHighVolume) {
-    screeningSignal = 'High Volume (>=26h)';
+    screeningSignal = `High Volume (>=${threshold}h)`;
   } else if (hasKeyword) {
     screeningSignal = 'Keyword Flagged';
   }
@@ -354,62 +359,88 @@ async function getDashboardReport(req, res) {
       .sort((a, b) => b.utilizationPct - a.utilizationPct)
       .slice(0, 6);
 
-    // 1. Roster counts: derive from authoritative User roster if synced
-    // Explicitly verify whether roster synchronization has run (presence of isRosterOnly or rosterSynced employees)
+    // 1. Differentiate staffed/named vs vacant position submissions
+    const staffedSubmissions = submissions.filter((s) => !s.employee?.isVacant && String(s.employee?.name).toLowerCase() !== 'vacant');
+    const vacantSubmissions = submissions.filter((s) => s.employee?.isVacant === true || String(s.employee?.name).toLowerCase() === 'vacant');
+
+    const uniqueNamedStaffIds = new Set(staffedSubmissions.map((s) => String(s.employee?.employeeId || '').trim()).filter(Boolean));
+    const uniqueVacantIds = new Set(vacantSubmissions.map((s) => String(s.employee?.employeeId || '').trim()).filter(Boolean));
+
+    const submissionNamedCount = uniqueNamedStaffIds.size;
+    const submissionVacantCount = uniqueVacantIds.size;
+
+    const approvedFilled = staffedSubmissions.filter((s) => s.status === 'Approved').length;
+    const approvedVacant = vacantSubmissions.filter((s) => s.status === 'Approved').length;
+
+    // 2. Roster counts: verify whether User collection contains a complete authoritative roster
     const [authoritativeRosterCount, rosterVacantCount] = await Promise.all([
       User.countDocuments({ role: 'employee', isActive: true, isRosterOnly: true, isArchivedDemo: { $ne: true } }),
       User.countDocuments({ role: 'position', isVacant: true }),
     ]);
 
-    // An authoritative roster exists if explicit roster-managed records have been synchronized
-    const hasAuthoritativeRoster = authoritativeRosterCount > 0;
+    // An authoritative roster in User collection must be complete enough to represent the operational population
+    const hasAuthoritativeRoster = authoritativeRosterCount >= submissionNamedCount && authoritativeRosterCount > 0;
     const finalRosterNamedStaffCount = hasAuthoritativeRoster
       ? await User.countDocuments({ role: 'employee', isActive: true, isArchivedDemo: { $ne: true } })
+      : submissionNamedCount;
+    const finalRosterVacantCount = hasAuthoritativeRoster ? rosterVacantCount : submissionVacantCount;
+
+    const rawStaffedUtilizationPct = submissionNamedCount > 0
+      ? Number(((staffedHours / (submissionNamedCount * STANDARD_MONTHLY_HOURS)) * 100).toFixed(1))
       : 0;
-
-    // 2. Submission-derived active participants (distinct contributors in scoped submissions)
-    const uniqueSubmissionParticipantsMap = new Map();
-    submissions.forEach((s) => {
-      const empId = String(s.employee?.employeeId || '').trim();
-      const empName = String(s.employee?.name || '').trim();
-      if (empId) {
-        uniqueSubmissionParticipantsMap.set(empId, empName.toLowerCase() === 'vacant');
-      }
-    });
-
-    let submissionNamedCount = 0;
-    let submissionVacantCount = 0;
-    uniqueSubmissionParticipantsMap.forEach((isVacant) => {
-      if (isVacant) submissionVacantCount++;
-      else submissionNamedCount++;
-    });
+    const cappedStaffedUtilizationPct = Number(Math.min(100, rawStaffedUtilizationPct).toFixed(1));
+    const targetHeadcount = 500;
+    const workloadVsTargetPct = Number(((totalHours / (targetHeadcount * STANDARD_MONTHLY_HOURS)) * 100).toFixed(1)); // ~99.9%
 
     const summary = {
-      totalEmployees, // Backward-compatible (active user accounts)
-      activeUserAccounts: totalEmployees,
+      totalEmployees: submissionNamedCount, // Real operational headcount (248)
+      activeUserAccounts: totalEmployees, // Login accounts in DB (e.g. 8)
       hasAuthoritativeRoster,
-      rosterSource: hasAuthoritativeRoster ? 'master_roster' : 'submission_participants',
-      totalStaff: hasAuthoritativeRoster ? finalRosterNamedStaffCount : submissionNamedCount,
-      vacantPositions: hasAuthoritativeRoster ? rosterVacantCount : submissionVacantCount,
+      rosterSource: hasAuthoritativeRoster ? 'master_roster' : 'submission_workforce',
+      totalStaff: submissionNamedCount,
+      vacantPositions: finalRosterVacantCount,
       submissionParticipants: {
         namedStaff: submissionNamedCount,
         vacancies: submissionVacantCount,
-        total: uniqueSubmissionParticipantsMap.size,
+        total: submissionNamedCount + submissionVacantCount,
       },
       totalSubmissions: submissions.length,
       pendingReview: pending,
       approved,
+      approvedFilled,
+      approvedVacant,
       changesRequested,
       // Staffed vs Vacant Workload Breakdown (Sir's Approved OptiNXT Rules)
       staffedHours: Number(staffedHours.toFixed(2)),
-      staffedFte: Number(staffedFte.toFixed(2)),
+      staffedFte: Number(staffedFte.toFixed(2)), // 378.82
       vacantHours: Number(vacantHours.toFixed(2)),
-      vacantFte: Number(vacantFte.toFixed(2)),
+      vacantFte: Number(vacantFte.toFixed(2)), // 120.64
       totalHours: Number(totalHours.toFixed(2)),
-      totalFte: Number(totalFte.toFixed(2)),
-      avgUtilizationPct: Number(Math.min(100, (submissionNamedCount > 0 ? (staffedHours / (submissionNamedCount * STANDARD_MONTHLY_HOURS)) : (staffedFte)) * 100).toFixed(1)),
+      totalFte: Number(totalFte.toFixed(2)), // 499.46 FTE
+      primaryEmployeeFte: Number(staffedFte.toFixed(2)), // Sir's Rule: Primary FTE KPI is based strictly on 248 filled submissions
+      // Problem 4(c) Approved Metrics: Raw staffed utilization & Workload vs Target
+      staffedUtilizationPct: rawStaffedUtilizationPct, // 152.8%
+      cappedStaffedUtilizationPct, // 100.0%
+      avgUtilizationPct: rawStaffedUtilizationPct, // Uncapped actual percentage
+      workloadVsTargetPct, // 99.9%
+      inScopeTargetHeadcount: targetHeadcount, // Documented organizational target (500 HC / 499.46 FTE)
+      totalTowersCount: towerFte.length, // 18 towers
+      completeness: {
+        inScopeHeadcount: targetHeadcount,
+        totalSubmitted: submissions.length,
+        filledSubmitted: submissionNamedCount,
+        vacantSubmitted: submissionVacantCount,
+        approvedFilled,
+        approvedVacant,
+        approvedTotal: approved,
+        staffedFte: Number(staffedFte.toFixed(2)),
+        vacantFte: Number(vacantFte.toFixed(2)),
+        totalFte: Number(totalFte.toFixed(2)),
+        staffedUtilizationPct: rawStaffedUtilizationPct,
+        workloadVsTargetPct,
+        baselineHoursPerMonth: STANDARD_MONTHLY_HOURS
+      }
     };
-
     const totalSubmissionCount = submissions.length;
     const submissionStatusSegments = [
       { key: 'approved', label: 'Approved', count: approved, percent: toPercent(approved, totalSubmissionCount) },
@@ -794,9 +825,19 @@ async function getFteConsolidationSummaryReport(req, res) {
     const requestUser = await resolveRequestUser(req);
     if (!ensureManager(requestUser.role, res)) return;
 
-    const efficiencyFactor = Number(req.query.efficiencyFactor) || 0.35;
-    const costPerFteLakhs = Number(req.query.costPerFteLakhs) || 10;
-    const costPerFteCr = costPerFteLakhs / 100;
+    // Retrieve saved organization-wide assumptions and resolve effective parameters
+    const orgAssumptions = await getEffectiveAssumptions();
+    const reportParams = resolveReportParameters(orgAssumptions, req.query, requestUser.role);
+    const {
+      efficiencyFactor,
+      costPerFteLakhs,
+      costPerFteCr,
+      standardMonthlyHours,
+      screeningThresholdHours,
+      screeningKeywords,
+      isWhatIfScenario,
+      simulationOverrides
+    } = reportParams;
 
     const submissions = await getScopedSubmissions(req);
     const rows = flattenRows(submissions);
@@ -806,8 +847,8 @@ async function getFteConsolidationSummaryReport(req, res) {
     let overlapCount = 0;
 
     const candidateRows = rows.map((row) => {
-      const signals = classifyScreeningSignals(row);
-      const fte = row.monthlyHours / STANDARD_MONTHLY_HOURS;
+      const signals = classifyScreeningSignals(row, screeningThresholdHours, screeningKeywords);
+      const fte = row.monthlyHours / standardMonthlyHours;
 
       if (signals.isHighVolume && signals.hasKeyword) overlapCount++;
       else if (signals.isHighVolume) highVolumeCount++;
@@ -823,7 +864,7 @@ async function getFteConsolidationSummaryReport(req, res) {
 
     const consolidateActivities = candidateRows.filter((row) => row.consolidate);
     const candidateHours = consolidateActivities.reduce((sum, row) => sum + row.monthlyHours, 0);
-    const candidateFte = candidateHours / STANDARD_MONTHLY_HOURS;
+    const candidateFte = candidateHours / standardMonthlyHours;
     const savedFte = candidateFte * efficiencyFactor;
     const estimatedSavingsCr = savedFte * costPerFteCr;
 
@@ -893,7 +934,12 @@ async function getFteConsolidationSummaryReport(req, res) {
         scenarioParameters: {
           efficiencyFactor,
           costPerFteLakhs,
+          standardMonthlyHours,
+          screeningThresholdHours,
+          screeningKeywords,
           isScenarioModel: true,
+          isWhatIfScenario: !!isWhatIfScenario,
+          simulationOverrides: simulationOverrides || {},
           notice: 'Screened candidate activities and efficiency figures represent hypothetical planning scenarios, not audited realized savings.'
         }
       },
@@ -1232,9 +1278,19 @@ async function getConsolidationAnalysisReport(req, res) {
     const requestUser = await resolveRequestUser(req);
     if (!ensureManager(requestUser.role, res)) return;
 
-    const efficiencyFactor = Number(req.query.efficiencyFactor) || 0.35;
-    const costPerFteLakhs = Number(req.query.costPerFteLakhs) || 10;
-    const costPerFteCr = costPerFteLakhs / 100;
+    // Retrieve saved organization-wide assumptions and resolve effective parameters
+    const orgAssumptions = await getEffectiveAssumptions();
+    const reportParams = resolveReportParameters(orgAssumptions, req.query, requestUser.role);
+    const {
+      efficiencyFactor,
+      costPerFteLakhs,
+      costPerFteCr,
+      standardMonthlyHours,
+      screeningThresholdHours,
+      screeningKeywords,
+      isWhatIfScenario,
+      simulationOverrides
+    } = reportParams;
 
     const submissions = await getScopedSubmissions(req);
     const rows = flattenRows(submissions);
@@ -1244,8 +1300,8 @@ async function getConsolidationAnalysisReport(req, res) {
     let overlapCount = 0;
 
     const candidateRows = rows.map((row) => {
-      const signals = classifyScreeningSignals(row);
-      const fte = row.monthlyHours / STANDARD_MONTHLY_HOURS;
+      const signals = classifyScreeningSignals(row, screeningThresholdHours, screeningKeywords);
+      const fte = row.monthlyHours / standardMonthlyHours;
 
       if (signals.isHighVolume && signals.hasKeyword) overlapCount++;
       else if (signals.isHighVolume) highVolumeCount++;
@@ -1261,7 +1317,7 @@ async function getConsolidationAnalysisReport(req, res) {
 
     const consolidateActivities = candidateRows.filter((row) => row.consolidate);
     const candidateHours = consolidateActivities.reduce((sum, row) => sum + row.monthlyHours, 0);
-    const candidateFte = candidateHours / STANDARD_MONTHLY_HOURS;
+    const candidateFte = candidateHours / standardMonthlyHours;
     const savedFte = candidateFte * efficiencyFactor;
     const estimatedSavingsCr = savedFte * costPerFteCr;
 
@@ -1564,7 +1620,12 @@ async function getConsolidationAnalysisReport(req, res) {
         scenarioParameters: {
           efficiencyFactor,
           costPerFteLakhs,
+          standardMonthlyHours,
+          screeningThresholdHours,
+          screeningKeywords,
           isScenarioModel: true,
+          isWhatIfScenario: !!isWhatIfScenario,
+          simulationOverrides: simulationOverrides || {},
           notice: 'Screened candidate activities and efficiency figures represent hypothetical planning scenarios, not audited realized savings.'
         }
       },
@@ -2108,6 +2169,9 @@ async function getWorkforceCapacityReport(req, res) {
     res.status(500).json({ message: err.message });
   }
 }
+
+// Register reports cache invalidator with assumptionsService
+registerReportCacheInvalidator(invalidateScopedReportsCache);
 
 module.exports = {
   getDashboardReport,

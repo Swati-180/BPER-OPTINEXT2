@@ -32,8 +32,33 @@ const submitWDT = async (req, res) => {
     const maxHours = submittingUser?.maxMonthlyHours || 160;
 
     const rows = Array.isArray(payload?.rows) ? payload.rows : [];
-    const totalHours = rows.reduce((sum, row) => sum + Number(row.timeTakenHoursPerMonth || 0), 0);
 
+    // Phase 4 Validation Rule: Reject truly blank submissions
+    if (rows.length === 0) {
+      return res.status(400).json({
+        message: 'Cannot submit a blank form. Please log at least one activity with valid hours.'
+      });
+    }
+
+    // Phase 4 Validation Rule: Validate numeric hours and reject invalid or negative values
+    let totalHours = 0;
+    for (const [idx, row] of rows.entries()) {
+      const h = Number(row.timeTakenHoursPerMonth != null ? row.timeTakenHoursPerMonth : row.hours);
+      if (!Number.isFinite(h) || h < 0) {
+        return res.status(400).json({
+          message: `Row ${idx + 1}: Activity hours must be a valid non-negative number.`
+        });
+      }
+      totalHours += h;
+    }
+
+    if (totalHours <= 0) {
+      return res.status(400).json({
+        message: 'Cannot submit a blank form with 0 total hours. Please log valid activity time.'
+      });
+    }
+
+    // Phase 4 Validation Rule: Enforce configured maximum monthly hours (defaults to 160)
     if (!isAdmin && totalHours > maxHours) {
       return res.status(400).json({
         message: `Total submitted hours (${totalHours.toFixed(1)}h) exceeds your configured monthly limit of ${maxHours}h. Please review your entries.`
@@ -213,6 +238,17 @@ const updateSubmissionStatus = async (req, res) => {
     if (status === 'Grant Edit') {
        finalStatus = 'Changes Requested';
        actualComment = '[Administrative Unlock] ' + comment;
+    }
+
+    // Phase 4 Integrity Rule: Do not permit a submission to become approved if truly blank
+    if (finalStatus === 'Approved') {
+      const submissionRows = Array.isArray(submission?.payload?.rows) ? submission.payload.rows : [];
+      const submissionHours = Number(submission.totalHours) || 0;
+      if (submissionRows.length === 0 || submissionHours <= 0) {
+        return res.status(400).json({
+          message: 'Cannot approve a blank submission. Submission must contain logged activities with valid hours.'
+        });
+      }
     }
 
     submission.status = finalStatus;

@@ -15,6 +15,7 @@ const activitiesRoutes = require('./routes/activities');
 const exportRoutes = require('./routes/export');
 const inviteRoutes = require('./routes/invite');
 const adminWhitelistRoutes = require('./routes/adminWhitelist');
+const configRoutes = require('./routes/config');
 
 const app = express();
 
@@ -50,6 +51,7 @@ app.use('/api/activity-requests', require('./routes/activityRequests'));
 app.use('/api/export', exportRoutes);
 app.use('/api/invite', inviteRoutes);
 app.use('/api/admin-whitelist', adminWhitelistRoutes);
+app.use('/api/config', configRoutes);
 
 async function startServer() {
   const fs = require('fs');

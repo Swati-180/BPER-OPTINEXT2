@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Check, Download, Flag, Printer, X } from 'lucide-react';
-import { apiFetch, exportToCSV } from '../../lib/api';
+import { Check, Download, Flag, Printer, X, FileSpreadsheet } from 'lucide-react';
+import { apiFetch, exportToCSV, exportToExcelClient } from '../../lib/api';
 import { loadAuthUser } from '../../lib/authStorage';
 import { TableLoadingRow, TablePageSkeleton } from '../../components/PortalSkeletons';
 import {
@@ -264,6 +264,28 @@ export default function FormsPage() {
 		window.print();
 	}
 
+		function handleExportExcelSelectedRecord() {
+		if (!selectedRecord || selectedRows.length === 0) return;
+
+		const rowsForExport = selectedRows.map((row, index) => ({
+			'#': index + 1,
+			'Form ID': selectedRecord.referenceId,
+			'Employee ID': selectedRecord.employee.employeeId,
+			'Employee Name': selectedRecord.employee.name,
+			'Major Process': row.majorProcess || '',
+			'Process': row.process || '',
+			'Sub Process': row.subProcess || '',
+			'Frequency': row.frequency || '',
+			'Monthly Volume': Number(row.volumePerMonth || 0),
+			'Time Taken (Mins)': Number(row.timeTakenMins || 0),
+			'Monthly Workload Hours': Number(row.timeTakenHoursPerMonth || 0),
+			'Applications Used': row.applicationsUsed || '',
+			'Comments / Notes': row.comments || '',
+		}));
+
+		exportToExcelClient(rowsForExport, `wdt-${selectedRecord.referenceId}`);
+	}
+
 	function handleExportSelectedRecord() {
 		if (!selectedRecord || selectedRows.length === 0) return;
 
@@ -481,6 +503,14 @@ export default function FormsPage() {
 											className="h-9 w-9 rounded-lg border border-[#D2DEED] bg-white text-[#6D85A5] flex items-center justify-center hover:bg-[#F7FAFF]"
 										>
 											<Printer className="h-4 w-4" />
+										</button>
+										<button
+											type="button"
+											onClick={handleExportExcelSelectedRecord}
+											title="Export WDT activities to Excel (.xlsx)"
+											className="h-9 w-9 rounded-lg border border-[#D2DEED] bg-white text-[#107C41] flex items-center justify-center hover:bg-[#F0FDF4] transition-colors shadow-2xs"
+										>
+											<FileSpreadsheet className="h-4 w-4" />
 										</button>
 										<button
 											type="button"
