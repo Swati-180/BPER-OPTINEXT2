@@ -3,7 +3,7 @@
  *
  * Implements:
  * 1. Monotonic invalidation generation tracking to prevent in-flight race conditions
- * 2. Targeted invalidation by endpoint/pattern without purging unrelated entries
+ * 2. Truly targeted invalidation by endpoint/pattern without purging unrelated entries
  * 3. Scope isolation (scoped by user email, role, reporting period, filters)
  * 4. In-flight request deduplication (coalesces identical simultaneous calls)
  * 5. Automatic cache invalidation on mutations or logout
@@ -26,15 +26,20 @@ export interface QueryCacheOptions {
   forceRefresh?: boolean; // Bypass cache and fetch fresh
 }
 
+interface InvalidationRule {
+  pattern: RegExp | string;
+  generation: number;
+}
+
 const DEFAULT_STALE_TIME_MS = 60_000; // 60 seconds for analytics/operational data
 const STATIC_STALE_TIME_MS = 5 * 60_000; // 5 minutes for reference data (taxonomy, assumptions)
 
-class QueryCacheManager {
+export class QueryCacheManager {
   private cache = new Map<string, CacheEntry<any>>();
   private inFlight = new Map<string, Promise<any>>();
-  // Endpoint/pattern-scoped monotonic generation tracker
-  private routeGenerations = new Map<string, number>();
-  private globalGeneration = 1;
+  // History of targeted invalidation rules
+  private invalidations: InvalidationRule[] = [];
+  private baseEpoch = 1;
 
   constructor() {
     if (typeof window !== 'undefined') {
@@ -58,10 +63,24 @@ class QueryCacheManager {
   }
 
   /**
-   * Returns current monotonic generation for an endpoint.
+   * Helper to test if an endpoint matches a string or regex pattern.
+   */
+  private matchesPattern(endpoint: string, pattern: RegExp | string): boolean {
+    return typeof pattern === 'string' ? endpoint.includes(pattern) : pattern.test(endpoint);
+  }
+
+  /**
+   * Returns current monotonic generation for an endpoint based strictly on matching invalidations.
+   * Unrelated endpoints are NOT affected when other endpoints are invalidated.
    */
   public getGeneration(endpoint: string): number {
-    return (this.routeGenerations.get(endpoint) || 0) + this.globalGeneration;
+    let gen = this.baseEpoch;
+    for (const rule of this.invalidations) {
+      if (this.matchesPattern(endpoint, rule.pattern)) {
+        gen += rule.generation;
+      }
+    }
+    return gen;
   }
 
   /**
@@ -166,41 +185,35 @@ class QueryCacheManager {
 
   /**
    * Invalidate cache matching an endpoint prefix or regex pattern.
-   * Increments the generation for matching endpoints so in-flight calls are discarded,
+   * Increments the generation specifically for matching endpoints so in-flight calls are discarded,
    * while leaving unrelated cached entries intact.
    */
   public invalidateMatching(pattern: RegExp | string): void {
+    // 1. Evict any matching cached entries
     for (const [key] of this.cache.entries()) {
-      if (typeof pattern === 'string' ? key.includes(pattern) : pattern.test(key)) {
+      // Key format: email::role::endpoint
+      const parts = key.split('::');
+      const endpoint = parts.slice(2).join('::');
+      if (this.matchesPattern(endpoint, pattern)) {
         this.cache.delete(key);
       }
     }
 
-    // Increment generation for matched endpoints in routeGenerations
-    for (const [endpoint, gen] of this.routeGenerations.entries()) {
-      if (typeof pattern === 'string' ? endpoint.includes(pattern) : pattern.test(endpoint)) {
-        this.routeGenerations.set(endpoint, gen + 1);
-      }
-    }
-
-    // Also register an explicit bumped generation if not already mapped
-    if (typeof pattern === 'string') {
-      const current = this.routeGenerations.get(pattern) || 0;
-      this.routeGenerations.set(pattern, current + 1);
-    } else {
-      // For regex patterns, bump global generation fallback for matching routes
-      this.globalGeneration += 1;
-    }
+    // 2. Add an invalidation rule that affects all matching endpoints (current & future/in-flight)
+    this.invalidations.push({
+      pattern,
+      generation: 1
+    });
   }
 
   /**
-   * Purge the entire cache and increment global generation.
+   * Purge the entire cache and increment base epoch.
    */
   public clearAll(): void {
     this.cache.clear();
     this.inFlight.clear();
-    this.routeGenerations.clear();
-    this.globalGeneration += 1;
+    this.invalidations = [];
+    this.baseEpoch += 1;
   }
 }
 
