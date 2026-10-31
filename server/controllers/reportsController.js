@@ -1355,9 +1355,12 @@ async function getConsolidationAnalysisReport(req, res) {
       }))
       .sort((a, b) => b.savedFte - a.savedFte);
 
-    // All Consolidation Candidates Detail
+    // Consolidation Candidates Detail: Filter exclusively to screened candidates meeting criteria (consolidate === true)
+    // and provide dual activityName/name mapping for full compatibility with both DeepAnalysis and ConsolidationAnalysis.
     const allCandidates = candidateRows
+      .filter((row) => row.consolidate)
       .map((row) => ({
+        name: row.subProcess,
         activityName: row.subProcess,
         tower: row.tower,
         department: row.department,
@@ -1370,7 +1373,7 @@ async function getConsolidationAnalysisReport(req, res) {
         consolidationSignal: row.screeningSignal,
         isHighVolume: row.isHighVolume,
         hasKeyword: row.hasKeyword,
-        comment: row.comments,
+        comment: row.comments || '',
       }))
       .sort((a, b) => b.monthlyHours - a.monthlyHours);
 

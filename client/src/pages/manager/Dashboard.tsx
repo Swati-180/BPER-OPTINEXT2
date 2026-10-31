@@ -529,6 +529,10 @@ export default function Dashboard() {
     };
 
     const refreshInterval = window.setInterval(() => {
+      // Only refresh if tab is currently visible to prevent redundant background queries
+      if (typeof document !== 'undefined' && document.hidden) {
+        return;
+      }
       loadAllReports(true);
     }, 120_000);
 
