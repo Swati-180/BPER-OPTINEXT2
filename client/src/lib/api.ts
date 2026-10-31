@@ -6,6 +6,7 @@
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 import * as XLSX from 'xlsx';
 import { clearAuthUser } from './authStorage';
+import { queryCache, DEFAULT_STALE_TIME_MS, STATIC_STALE_TIME_MS, type QueryCacheOptions } from './queryCache';
 
 const BASE_URL = `${API_BASE_URL}/api`;
 
@@ -52,20 +53,26 @@ export async function apiFetch(endpoint: string, options: RequestInit = {}) {
   }
 }
 
-export async function apiGetJson<T>(endpoint: string): Promise<T> {
-  const response = await apiFetch(endpoint);
-  const contentType = response.headers.get('content-type') || '';
-  const data = contentType.includes('application/json')
-    ? await response.json().catch(() => null)
-    : null;
+export async function apiGetJson<T>(endpoint: string, cacheOptions?: QueryCacheOptions): Promise<T> {
+  return queryCache.fetchWithCache<T>(
+    endpoint,
+    async () => {
+      const response = await apiFetch(endpoint);
+      const contentType = response.headers.get('content-type') || '';
+      const data = contentType.includes('application/json')
+        ? await response.json().catch(() => null)
+        : null;
 
-  if (!response.ok) {
-    const message = data?.message || `Request failed with status ${response.status}`;
-    console.error(`API Error [${endpoint}]:`, { status: response.status, message, data });
-    throw new Error(message);
-  }
+      if (!response.ok) {
+        const message = data?.message || `Request failed with status ${response.status}`;
+        console.error(`API Error [${endpoint}]:`, { status: response.status, message, data });
+        throw new Error(message);
+      }
 
-  return data as T;
+      return data as T;
+    },
+    cacheOptions
+  );
 }
 
 export function getDashboardReport(department?: string) {
@@ -195,6 +202,14 @@ export function getUtilizationAnalysisReport(department?: string) {
 }
 
 // Process Management - Activities API
+
+export interface TaxonomyItem {
+  _id?: string;
+  majorProcess: string;
+  process: string;
+  subProcesses: string[];
+  department?: string;
+}
 export interface Tower {
   name: string;
   processCount: number;
@@ -533,3 +548,5 @@ export async function updateOrganizationAssumptions(
     'Failed to update organization assumptions.'
   );
 }
+
+export { queryCache };

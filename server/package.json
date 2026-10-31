@@ -12,6 +12,7 @@
   "dependencies": {
     "@xenova/transformers": "^2.17.2",
     "bcryptjs": "^2.4.3",
+    "compression": "^1.8.2",
     "cors": "^2.8.5",
     "dotenv": "^16.0.3",
     "exceljs": "^3.4.0",

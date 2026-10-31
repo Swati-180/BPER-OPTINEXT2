@@ -126,40 +126,8 @@ export default function FormsPage() {
 						}
 					});
 			} else {
-				// If not cached as privileged, verify once profile resolves
-				queuePromise.then((profileData) => {
-					if (isCancelled) return;
-					if (profileData && (profileData.role === 'admin' || profileData.userType === 'manager')) {
-						apiFetch('/auth/users')
-							.then(async (lateUsersRes) => {
-								if (isCancelled) return;
-								if (lateUsersRes && lateUsersRes.ok) {
-									const users = await lateUsersRes.json().catch(() => []);
-									const rawList = Array.isArray(users) ? users : (users.users || users.data || []);
-									const pending = rawList.filter((u: any) =>
-										u.role === 'employee' && u.formAccessGranted === false
-									);
-									setPendingUserApprovals(pending.map((u: any) => ({
-										id: u._id,
-										name: u.name,
-										email: u.email,
-										role: u.role,
-										requestedRole: 'Employee'
-									})));
-								}
-							})
-							.catch((err) => {
-								console.error('Pending user approvals fallback loading error:', err);
-							})
-							.finally(() => {
-								if (!isCancelled) {
-									setIsPendingUsersLoading(false);
-								}
-							});
-					} else {
-						setIsPendingUsersLoading(false);
-					}
-				});
+				// If not privileged, do not fetch user approvals list
+				setIsPendingUsersLoading(false);
 			}
 		}
 
