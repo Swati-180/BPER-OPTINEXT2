@@ -4,10 +4,13 @@
  * Implements:
  * 1. Monotonic invalidation generation tracking to prevent in-flight race conditions
  * 2. Truly targeted invalidation by endpoint/pattern without purging unrelated entries
- * 3. Scope isolation (scoped by user email, role, reporting period, filters)
- * 4. In-flight request deduplication (coalesces identical simultaneous calls)
- * 5. Automatic cache invalidation on mutations or logout
- * 6. Configurable staleTime and TTL expiration
+ * 3. Prevention of new callers joining invalidated in-flight requests
+ * 4. Identity-safe in-flight cleanup to prevent older requests from unregistering newer promises
+ * 5. Deterministic RegExp matching by stripping/resetting stateful flags ('g', 'y')
+ * 6. Bounded, deduplicated invalidation rules to prevent memory growth
+ * 7. Scope isolation (scoped by user email, role, reporting period, filters)
+ * 8. Automatic cache invalidation on mutations or logout
+ * 9. Configurable staleTime and TTL expiration
  */
 
 import { loadAuthUser } from './authStorage';
@@ -18,6 +21,11 @@ interface CacheEntry<T> {
   expiresAt: number;
   userEmail: string;
   userRole: string;
+  generation: number;
+}
+
+interface InFlightEntry<T> {
+  promise: Promise<T>;
   generation: number;
 }
 
@@ -36,8 +44,8 @@ const STATIC_STALE_TIME_MS = 5 * 60_000; // 5 minutes for reference data (taxono
 
 export class QueryCacheManager {
   private cache = new Map<string, CacheEntry<any>>();
-  private inFlight = new Map<string, Promise<any>>();
-  // History of targeted invalidation rules
+  private inFlight = new Map<string, InFlightEntry<any>>();
+  // History of targeted invalidation rules, deduplicated by pattern identity
   private invalidations: InvalidationRule[] = [];
   private baseEpoch = 1;
 
@@ -64,9 +72,20 @@ export class QueryCacheManager {
 
   /**
    * Helper to test if an endpoint matches a string or regex pattern.
+   * Strips stateful regex flags ('g', 'y') to guarantee deterministic matching.
    */
-  private matchesPattern(endpoint: string, pattern: RegExp | string): boolean {
-    return typeof pattern === 'string' ? endpoint.includes(pattern) : pattern.test(endpoint);
+  public matchesPattern(endpoint: string, pattern: RegExp | string): boolean {
+    if (typeof pattern === 'string') {
+      return endpoint.includes(pattern);
+    }
+    if (pattern instanceof RegExp) {
+      if (pattern.global || pattern.sticky) {
+        const cleanFlags = pattern.flags.replace(/[gy]/g, '');
+        return new RegExp(pattern.source, cleanFlags).test(endpoint);
+      }
+      return pattern.test(endpoint);
+    }
+    return false;
   }
 
   /**
@@ -148,6 +167,7 @@ export class QueryCacheManager {
   ): Promise<T> {
     const { staleTime = DEFAULT_STALE_TIME_MS, forceRefresh = false } = options;
     const key = this.buildScopeKey(endpoint);
+    const currentGen = this.getGeneration(endpoint);
 
     // 1. Check cache if not forcing refresh
     if (!forceRefresh) {
@@ -157,15 +177,17 @@ export class QueryCacheManager {
       }
     }
 
-    // 2. Check in-flight promise to deduplicate identical concurrent calls
-    if (this.inFlight.has(key)) {
-      return this.inFlight.get(key) as Promise<T>;
+    // 2. Check in-flight promise: only join if it was started in the CURRENT generation
+    const existingInFlight = this.inFlight.get(key);
+    if (existingInFlight && existingInFlight.generation === currentGen) {
+      return existingInFlight.promise as Promise<T>;
     }
 
     // Capture generation at request start
-    const requestGen = this.getGeneration(endpoint);
+    const requestGen = currentGen;
 
-    // 3. Initiate request and track promise
+    // 3. Initiate request and track promise with generation identity
+    let inFlightEntry: InFlightEntry<T>;
     const promise = (async () => {
       try {
         const data = await fetcher();
@@ -175,11 +197,16 @@ export class QueryCacheManager {
         }
         return data;
       } finally {
-        this.inFlight.delete(key);
+        // Identity-safe cleanup: only delete if inFlight still points to THIS exact promise entry
+        const currentEntry = this.inFlight.get(key);
+        if (currentEntry === inFlightEntry) {
+          this.inFlight.delete(key);
+        }
       }
     })();
 
-    this.inFlight.set(key, promise);
+    inFlightEntry = { promise, generation: requestGen };
+    this.inFlight.set(key, inFlightEntry);
     return promise;
   }
 
@@ -187,6 +214,7 @@ export class QueryCacheManager {
    * Invalidate cache matching an endpoint prefix or regex pattern.
    * Increments the generation specifically for matching endpoints so in-flight calls are discarded,
    * while leaving unrelated cached entries intact.
+   * Deduplicates pattern rules to prevent unbounded memory growth.
    */
   public invalidateMatching(pattern: RegExp | string): void {
     // 1. Evict any matching cached entries
@@ -199,11 +227,21 @@ export class QueryCacheManager {
       }
     }
 
-    // 2. Add an invalidation rule that affects all matching endpoints (current & future/in-flight)
-    this.invalidations.push({
-      pattern,
-      generation: 1
+    // 2. Deduplicate invalidation rule to prevent unbounded array growth
+    const patternKey = typeof pattern === 'string' ? pattern : pattern.toString();
+    const existingRule = this.invalidations.find(rule => {
+      const k = typeof rule.pattern === 'string' ? rule.pattern : rule.pattern.toString();
+      return k === patternKey;
     });
+
+    if (existingRule) {
+      existingRule.generation += 1;
+    } else {
+      this.invalidations.push({
+        pattern,
+        generation: 1
+      });
+    }
   }
 
   /**
