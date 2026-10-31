@@ -2,11 +2,12 @@
  * Centralized Client-Side Query Cache for BPER-OPTINEXT2
  *
  * Implements:
- * 1. Configurable staleTime and garbage collection (gcTime)
- * 2. In-flight request deduplication (coalesces identical simultaneous calls)
+ * 1. Monotonic invalidation generation tracking to prevent in-flight race conditions
+ * 2. Targeted invalidation by endpoint/pattern without purging unrelated entries
  * 3. Scope isolation (scoped by user email, role, reporting period, filters)
- * 4. Automatic cache invalidation on mutations or logout
- * 5. Preservation across route transitions (immediate 0ms response for warm cache)
+ * 4. In-flight request deduplication (coalesces identical simultaneous calls)
+ * 5. Automatic cache invalidation on mutations or logout
+ * 6. Configurable staleTime and TTL expiration
  */
 
 import { loadAuthUser } from './authStorage';
@@ -17,6 +18,7 @@ interface CacheEntry<T> {
   expiresAt: number;
   userEmail: string;
   userRole: string;
+  generation: number;
 }
 
 export interface QueryCacheOptions {
@@ -30,7 +32,9 @@ const STATIC_STALE_TIME_MS = 5 * 60_000; // 5 minutes for reference data (taxono
 class QueryCacheManager {
   private cache = new Map<string, CacheEntry<any>>();
   private inFlight = new Map<string, Promise<any>>();
-  private globalInvalidatedAt = 0;
+  // Endpoint/pattern-scoped monotonic generation tracker
+  private routeGenerations = new Map<string, number>();
+  private globalGeneration = 1;
 
   constructor() {
     if (typeof window !== 'undefined') {
@@ -54,6 +58,13 @@ class QueryCacheManager {
   }
 
   /**
+   * Returns current monotonic generation for an endpoint.
+   */
+  public getGeneration(endpoint: string): number {
+    return (this.routeGenerations.get(endpoint) || 0) + this.globalGeneration;
+  }
+
+  /**
    * Get cached data if valid and fresh.
    */
   public get<T>(endpoint: string): T | null {
@@ -62,18 +73,19 @@ class QueryCacheManager {
     if (!entry) return null;
 
     const user = loadAuthUser();
-    if (entry.userEmail !== (user?.email || 'anonymous')) {
+    if (entry.userEmail !== (user?.email || 'anonymous') || entry.userRole !== (user?.role || 'guest')) {
       this.cache.delete(key);
       return null;
     }
 
-    if (entry.timestamp <= this.globalInvalidatedAt) {
+    // Monotonic generation check: discard if invalidated since cached
+    if (entry.generation !== this.getGeneration(endpoint)) {
       this.cache.delete(key);
       return null;
     }
 
     if (Date.now() > entry.expiresAt) {
-      // Stale - can still be returned for stale-while-revalidate, but expired for strict get
+      this.cache.delete(key);
       return null;
     }
 
@@ -81,9 +93,20 @@ class QueryCacheManager {
   }
 
   /**
-   * Set cached data with calculated expiration.
+   * Set cached data with generation tag and calculated expiration.
    */
-  public set<T>(endpoint: string, data: T, staleTimeMs: number = DEFAULT_STALE_TIME_MS): void {
+  public set<T>(
+    endpoint: string,
+    data: T,
+    staleTimeMs: number = DEFAULT_STALE_TIME_MS,
+    capturedGeneration?: number
+  ): void {
+    const currentGen = this.getGeneration(endpoint);
+    // If request was initiated in a previous generation, discard it
+    if (capturedGeneration !== undefined && capturedGeneration !== currentGen) {
+      return;
+    }
+
     const key = this.buildScopeKey(endpoint);
     const user = loadAuthUser();
     this.cache.set(key, {
@@ -91,7 +114,8 @@ class QueryCacheManager {
       timestamp: Date.now(),
       expiresAt: Date.now() + staleTimeMs,
       userEmail: user?.email || 'anonymous',
-      userRole: user?.role || 'guest'
+      userRole: user?.role || 'guest',
+      generation: currentGen
     });
   }
 
@@ -119,12 +143,16 @@ class QueryCacheManager {
       return this.inFlight.get(key) as Promise<T>;
     }
 
+    // Capture generation at request start
+    const requestGen = this.getGeneration(endpoint);
+
     // 3. Initiate request and track promise
     const promise = (async () => {
       try {
         const data = await fetcher();
         if (data !== null && data !== undefined) {
-          this.set(endpoint, data, staleTime);
+          // Only cache if generation still matches when resolved
+          this.set(endpoint, data, staleTime, requestGen);
         }
         return data;
       } finally {
@@ -138,23 +166,41 @@ class QueryCacheManager {
 
   /**
    * Invalidate cache matching an endpoint prefix or regex pattern.
+   * Increments the generation for matching endpoints so in-flight calls are discarded,
+   * while leaving unrelated cached entries intact.
    */
   public invalidateMatching(pattern: RegExp | string): void {
-    this.globalInvalidatedAt = Date.now();
     for (const [key] of this.cache.entries()) {
       if (typeof pattern === 'string' ? key.includes(pattern) : pattern.test(key)) {
         this.cache.delete(key);
       }
     }
+
+    // Increment generation for matched endpoints in routeGenerations
+    for (const [endpoint, gen] of this.routeGenerations.entries()) {
+      if (typeof pattern === 'string' ? endpoint.includes(pattern) : pattern.test(endpoint)) {
+        this.routeGenerations.set(endpoint, gen + 1);
+      }
+    }
+
+    // Also register an explicit bumped generation if not already mapped
+    if (typeof pattern === 'string') {
+      const current = this.routeGenerations.get(pattern) || 0;
+      this.routeGenerations.set(pattern, current + 1);
+    } else {
+      // For regex patterns, bump global generation fallback for matching routes
+      this.globalGeneration += 1;
+    }
   }
 
   /**
-   * Purge the entire cache.
+   * Purge the entire cache and increment global generation.
    */
   public clearAll(): void {
     this.cache.clear();
     this.inFlight.clear();
-    this.globalInvalidatedAt = Date.now();
+    this.routeGenerations.clear();
+    this.globalGeneration += 1;
   }
 }
 
