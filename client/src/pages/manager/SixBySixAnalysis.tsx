@@ -121,6 +121,7 @@ export default function SixBySixAnalysisPage() {
 	const [pageSize, setPageSize] = useState<number>(50);
 	const [processData, setProcessData] = useState<ProcessRow[]>([]);
 	const [draftRows, setDraftRows] = useState<ProcessRow[]>([]);
+	const [dirtyRowIds, setDirtyRowIds] = useState<Set<string>>(new Set());
 	const [isLoading, setIsLoading] = useState(true);
 	const [isSaving, setIsSaving] = useState(false);
 	const [fetchError, setFetchError] = useState<string | null>(null);
@@ -217,6 +218,7 @@ export default function SixBySixAnalysisPage() {
 	}, [filteredRows, currentPage, pageSize]);
 
 	const handleCriteriaToggle = (processId: string, colIndex: number) => {
+		setDirtyRowIds(prev => new Set(prev).add(processId));
 		setDraftRows(prev => prev.map(row => {
 			if ((row._id || row.process) !== processId) return row;
 			const currentVal = row.criteria[colIndex];
@@ -253,15 +255,16 @@ export default function SixBySixAnalysisPage() {
 	const saveChanges = async () => {
 		setIsSaving(true);
 		try {
+			const changedRows = draftRows.filter(r => dirtyRowIds.has(r._id || r.process));
+			const payload = changedRows.length > 0 ? changedRows : draftRows;
 			const response = await apiFetch('/analysis/six-by-six', {
 				method: 'PUT',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ rows: draftRows })
+				body: JSON.stringify({ rows: payload })
 			});
 			if (response.ok) {
-				const saved = await response.json().catch(() => null);
-				// Ideally refetch or just sync
 				setProcessData(draftRows);
+				setDirtyRowIds(new Set());
 			}
 		} catch (error) {
 			console.error('Failed to save scores:', error);
@@ -412,6 +415,23 @@ export default function SixBySixAnalysisPage() {
 		[assessedRows]
 	);
 
+		const consolidatedFte = useMemo(() => {
+		return filteredRows
+			.filter((item) => item.consolidated === true)
+			.reduce((sum, item) => sum + (typeof item.fte === 'number' ? item.fte : 0), 0);
+	}, [filteredRows]);
+
+	const notConsolidatedFte = useMemo(() => {
+		return filteredRows
+			.filter((item) => item.consolidated === false)
+			.reduce((sum, item) => sum + (typeof item.fte === 'number' ? item.fte : 0), 0);
+	}, [filteredRows]);
+
+	const totalFte = useMemo(() => {
+		return filteredRows
+			.reduce((sum, item) => sum + (typeof item.fte === 'number' ? item.fte : 0), 0);
+	}, [filteredRows]);
+
 	const total = filteredRows.length;
 	const consolidatedCount = filteredRows.filter((item) => item.consolidated === true).length;
 	const notConsolidatedCount = filteredRows.filter((item) => item.consolidated === false).length;
@@ -435,6 +455,69 @@ export default function SixBySixAnalysisPage() {
 						</p>
 					</div>
 				</div>
+				{/* Executive Summary Cards: Alignment with Dashboard Consolidation Potential */}
+				<div className="mt-3.5 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
+					<div className="rounded-xl border border-emerald-200 bg-emerald-50/50 p-3.5 flex flex-col justify-between">
+						<div className="flex items-center justify-between">
+							<span className="text-[11px] font-bold uppercase tracking-wider text-emerald-800">Consolidation Potential</span>
+							<span className="rounded bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-800 border border-emerald-200">
+								Score ≥ 7
+							</span>
+						</div>
+						<div className="mt-2">
+							<p className="text-2xl font-black text-emerald-900">{consolidatedCount}</p>
+							<p className="text-xs text-emerald-700 mt-0.5 font-medium">
+								{consolidatedFte.toFixed(2)} FTE · Candidate processes
+							</p>
+						</div>
+					</div>
+
+					<div className="rounded-xl border border-rose-200 bg-rose-50/50 p-3.5 flex flex-col justify-between">
+						<div className="flex items-center justify-between">
+							<span className="text-[11px] font-bold uppercase tracking-wider text-rose-800">Retained in Operations</span>
+							<span className="rounded bg-rose-100 px-2 py-0.5 text-[10px] font-bold text-rose-800 border border-rose-200">
+								Score &lt; 7 / Exception
+							</span>
+						</div>
+						<div className="mt-2">
+							<p className="text-2xl font-black text-rose-900">{notConsolidatedCount}</p>
+							<p className="text-xs text-rose-700 mt-0.5 font-medium">
+								{notConsolidatedFte.toFixed(2)} FTE · Decentralized tasks
+							</p>
+						</div>
+					</div>
+
+					<div className="rounded-xl border border-slate-200 bg-slate-50/60 p-3.5 flex flex-col justify-between">
+						<div className="flex items-center justify-between">
+							<span className="text-[11px] font-bold uppercase tracking-wider text-slate-700">Pending Assessment</span>
+							<span className="rounded bg-slate-200/70 px-2 py-0.5 text-[10px] font-bold text-slate-700 border border-slate-300">
+								Unassessed
+							</span>
+						</div>
+						<div className="mt-2">
+							<p className="text-2xl font-black text-slate-900">{pendingCount}</p>
+							<p className="text-xs text-slate-600 mt-0.5 font-medium">
+								Awaiting criteria scoring & audit
+							</p>
+						</div>
+					</div>
+
+					<div className="rounded-xl border border-[#CCE0F8] bg-[#F2F7FD] p-3.5 flex flex-col justify-between">
+						<div className="flex items-center justify-between">
+							<span className="text-[11px] font-bold uppercase tracking-wider text-[#1C5393]">Scope Overview</span>
+							<span className="rounded bg-[#DCEBFC] px-2 py-0.5 text-[10px] font-bold text-[#1C5393] border border-[#BAD7F8]">
+								{departmentFilter}
+							</span>
+						</div>
+						<div className="mt-2">
+							<p className="text-2xl font-black text-[#103056]">{total}</p>
+							<p className="text-xs text-[#315783] mt-0.5 font-medium">
+								{totalFte.toFixed(2)} Total FTE in view
+							</p>
+						</div>
+					</div>
+				</div>
+
 
 				<div className="mt-3 flex flex-col gap-3">
 					<div className="flex flex-wrap items-center gap-2">
@@ -488,10 +571,10 @@ export default function SixBySixAnalysisPage() {
 						</select>
 
 						<select value={consolidationFilter} onChange={e => setConsolidationFilter(e.target.value as typeof consolidationFilter)} disabled={isLoading} className="h-9 w-full min-w-0 rounded-xl border border-[#C8D7EC] bg-white px-3 text-xs font-semibold text-[#2B4467] outline-none focus:border-[#6E97CB] disabled:opacity-60 disabled:cursor-not-allowed">
-							<option value="All">All Consolidation</option>
-							<option value="consolidate">Consolidatable</option>
-							<option value="not">Not Consolidatable</option>
-							<option value="pending">Pending Assessment</option>
+							<option value="All">All Statuses ({total})</option>
+							<option value="consolidate">Consolidatable ({consolidatedCount})</option>
+							<option value="not">Not Consolidatable ({notConsolidatedCount})</option>
+							<option value="pending">Pending Assessment ({pendingCount})</option>
 						</select>
 					</div>
 					<div className="flex items-center gap-3">

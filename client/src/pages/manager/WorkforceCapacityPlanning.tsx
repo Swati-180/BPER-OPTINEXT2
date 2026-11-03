@@ -189,7 +189,7 @@ export default function WorkforceCapacityPlanning() {
                   <div className="border-b border-[#E3EAF4] px-5 py-4 flex items-center justify-between">
                     <div>
                       <h3 className="font-bold text-[#0F2649]">Staffed Workload by Standardized Grade Band</h3>
-                      <p className="text-xs text-[#637F9F]">All six approved grade bands ({gradePerspective === 'historical' ? 'Submission-Time Grade' : 'Current Grade'})</p>
+                      <p className="text-xs text-[#637F9F]">Approved standardized grade bands ({gradePerspective === 'historical' ? 'Submission-Time Grade' : 'Current Grade'})</p>
                     </div>
                     <button
                       type="button"

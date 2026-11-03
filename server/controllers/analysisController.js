@@ -63,18 +63,35 @@ function normalizeDepartmentKey(dept) {
   return String(dept).trim();
 }
 
+function getDepartmentFilter(dept) {
+  if (!dept || dept === 'All Departments') {
+    return { $in: ['Finance & Accounting', 'F&A', 'Finance', 'Finance & Accounts', 'HR', 'Human Resources', 'Logistics', 'SCM'] };
+  }
+  const clean = String(dept).trim();
+  if (clean === 'Finance & Accounting' || clean === 'F&A' || clean === 'Finance' || clean === 'Finance & Accounts') {
+    return { $in: ['Finance & Accounting', 'F&A', 'Finance', 'Finance & Accounts'] };
+  }
+  if (clean === 'HR' || clean === 'Human Resources') {
+    return { $in: ['HR', 'Human Resources'] };
+  }
+  return clean;
+}
+
+function normalizeDepartmentName(dept) {
+  const d = String(dept || '').trim();
+  if (d === 'F&A' || d === 'Finance' || d === 'Finance & Accounts') return 'Finance & Accounting';
+  if (d === 'Human Resources') return 'HR';
+  return d || 'Finance & Accounting';
+}
+
 async function computeSixBySixData(department) {
   // 1. Sync new processes from WDT submissions
   const { SYSTEM_TEST_ACCOUNT_IDS } = require('../utils/gradeStandardizer');
-  const VALID_DEPARTMENTS = ['Finance & Accounting', 'HR', 'Logistics', 'SCM'];
+  const deptFilter = getDepartmentFilter(department);
   let matchStage = {
     'employee.employeeId': { $nin: SYSTEM_TEST_ACCOUNT_IDS },
+    'employee.department': deptFilter
   };
-  if (department && department !== 'All Departments') {
-     matchStage['employee.department'] = department;
-  } else {
-     matchStage['employee.department'] = { $in: VALID_DEPARTMENTS };
-  }
   
   // High-performance aggregation: $project needed fields before $unwind to avoid duplicating large document structures
   const aggregatedProcesses = await WDTSubmission.aggregate([
@@ -146,15 +163,9 @@ async function computeSixBySixData(department) {
   }
 
   // 3. Query with strict matching
-  let query = {};
-  if (department && department !== 'All Departments') {
-     query.department = department;
-  } else {
-     // Return all authoritative departments
-     query.department = { $in: VALID_DEPARTMENTS };
-  }
-
-  const data = await ProcessAnalysis.find(query).sort({ department: 1, type: 1 }).lean();
+  const query = { department: deptFilter };
+  const rawData = await ProcessAnalysis.find(query).sort({ department: 1, type: 1 }).lean();
+  const data = rawData.map(r => ({ ...r, department: normalizeDepartmentName(r.department) }));
   const taxonomyData = await Taxonomy.find({}).lean();
 
   // Build O(1) index for Taxonomy lookup
@@ -194,7 +205,8 @@ async function computeSixBySixData(department) {
                 majorToTax.get(normalized.process);
 
     const key = `${normalized.department}::${normalized.process}`;
-    const fte = fteLookup[key] || 0;
+    const fte = fteLookup[key] || fteLookup[normalized.process] || fteLookup[normalized.process.toLowerCase()] || 0;
+    const isConsolidationCandidate = normalized.consolidated === true || fte >= (26 / 160);
 
     let subProcessGroup = tax && tax.process ? tax.process : 'Unknown';
     if (subProcessGroup.startsWith('Payroll - ')) {
@@ -216,6 +228,8 @@ async function computeSixBySixData(department) {
       ...normalized,
       assessmentStatus,
       isPendingAssessment: isAllPending,
+      isConsolidationCandidate,
+      screeningSignal: isConsolidationCandidate ? 'Consolidation Candidate (≥26h / Assessed)' : null,
       tower: tax ? tax.majorProcess : 'Unknown',
       subProcessGroup,
       displayProcess,
@@ -288,15 +302,15 @@ const bulkUpdateProcessRecords = async (req, res) => {
     const { rows } = req.body;
     if (!Array.isArray(rows)) return res.status(400).json({ message: 'rows must be an array' });
 
-    // Iterate safely to ensure the 'pre' save hooks apply securely computing the score natively 
     const results = [];
     for (const row of rows) {
+      if (!row._id) continue;
       const record = await ProcessAnalysis.findById(row._id);
       if (record) {
-         record.criteria = row.criteria;
-         record.consolidated = row.consolidated;
-         await record.save(); // pre-save hook handles calculating .score correctly!
-         results.push(record);
+        if (Array.isArray(row.criteria)) record.criteria = row.criteria;
+        if (row.consolidated !== undefined) record.consolidated = row.consolidated;
+        await record.save();
+        results.push(record);
       }
     }
     

@@ -366,8 +366,22 @@ export function exportToExcelClient(data: any[], filename: string, headers?: str
     XLSX.utils.sheet_add_aoa(ws, [headers], { origin: 'A1' });
   }
 
+  // Calculate clean column widths
+  if (data.length > 0) {
+    const keys = Object.keys(data[0]);
+    ws['!cols'] = keys.map((key) => {
+      let maxLen = key.length;
+      for (let i = 0; i < Math.min(data.length, 100); i++) {
+        const val = data[i][key];
+        const strVal = val != null ? String(val) : '';
+        if (strVal.length > maxLen) maxLen = strVal.length;
+      }
+      return { wch: Math.min(Math.max(maxLen + 3, 12), 50) };
+    });
+  }
+
   const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, 'Sheet1');
+  XLSX.utils.book_append_sheet(wb, ws, 'Process Hierarchy');
 
   // Generate file and trigger download
   const dateStr = new Date().toISOString().split('T')[0];
@@ -533,3 +547,12 @@ export async function updateOrganizationAssumptions(
     'Failed to update organization assumptions.'
   );
 }
+
+export type TaxonomyItem = {
+  _id?: string;
+  majorProcess?: string;
+  process?: string;
+  subProcesses?: string[];
+  department?: string;
+  isActive?: boolean;
+};
