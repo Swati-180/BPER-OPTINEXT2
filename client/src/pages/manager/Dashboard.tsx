@@ -805,7 +805,7 @@ export default function Dashboard() {
           </p>
 
           <div className="mt-3 space-y-1.5 overflow-y-auto flex-1 pr-1.5 custom-scrollbar">
-            {isFteSummaryLoading && !fteSummary ? (
+            {towerDistribution.length === 0 && (isFteSummaryLoading || isDashboardLoading) ? (
               <div className="space-y-3 p-2">
                 {[1, 2, 3, 4, 5, 6].map((i) => (
                   <div key={i} className="flex items-center gap-3">
@@ -815,8 +815,8 @@ export default function Dashboard() {
                   </div>
                 ))}
               </div>
-            ) : fteSummaryError && !fteSummary ? (
-              <SectionError message={fteSummaryError} onRetry={() => loadFteSummaryData(false)} />
+            ) : towerDistribution.length === 0 && (fteSummaryError || dashboardError) ? (
+              <SectionError message={fteSummaryError || dashboardError || 'Failed to load tower distribution.'} onRetry={() => { loadFteSummaryData(false); loadDashboardData(false); }} />
             ) : towerDistribution.length === 0 ? (
               <EmptyBlock label="No tower-level FTE data available." />
             ) : (

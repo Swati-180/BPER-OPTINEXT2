@@ -231,10 +231,12 @@ function getSubmissionWindowStatus() {
 
 // --- In-Memory Scoped Reports Cache with Scope Isolation ---
 const scopedSubmissionsCache = new Map();
+const scopedFlattenedRowsCache = new Map();
 const CACHE_TTL_MS = 60 * 1000; // 60 seconds TTL
 
 function invalidateScopedReportsCache() {
   scopedSubmissionsCache.clear();
+  scopedFlattenedRowsCache.clear();
   fitmentSummaryCache.clear();
 }
 
@@ -286,6 +288,25 @@ async function getScopedSubmissions(req) {
   return queryPromise;
 }
 
+function getScopedFlattenedRows(req, submissions, categoryMap) {
+  const { department, month, year } = req.query;
+  const match = buildScopeMatch(department, month, year);
+  const cacheKey = JSON.stringify(match);
+
+  const now = Date.now();
+  const cached = scopedFlattenedRowsCache.get(cacheKey);
+  if (cached && cached.expiresAt > now && Array.isArray(cached.rows)) {
+    return cached.rows;
+  }
+
+  const rows = flattenRows(submissions, categoryMap);
+  scopedFlattenedRowsCache.set(cacheKey, {
+    rows,
+    expiresAt: now + CACHE_TTL_MS,
+  });
+  return rows;
+}
+
 async function getDashboardReport(req, res) {
   try {
     const requestUser = await resolveRequestUser(req);
@@ -298,7 +319,7 @@ async function getDashboardReport(req, res) {
       getEffectiveCategoryMap()
     ]);
 
-    const rows = flattenRows(submissions, categoryMap);
+    const rows = getScopedFlattenedRows(req, submissions, categoryMap);
     
     // Sir's Rule: Exclude vacant positions from actual employee-level workload & utilization
     const staffedRows = rows.filter((row) => !row.isVacant);
@@ -561,7 +582,7 @@ async function getUtilizationReport(req, res) {
       getScopedSubmissions(req),
       getEffectiveCategoryMap()
     ]);
-    const rows = flattenRows(submissions, categoryMap);
+    const rows = getScopedFlattenedRows(req, submissions, categoryMap);
 
     const totalHours = rows.reduce((sum, row) => sum + row.monthlyHours, 0);
     const totalSubmissions = submissions.length;
@@ -858,7 +879,7 @@ async function getFteSummaryReport(req, res) {
       getScopedSubmissions(req),
       getEffectiveCategoryMap()
     ]);
-    const rows = flattenRows(submissions, categoryMap);
+    const rows = getScopedFlattenedRows(req, submissions, categoryMap);
 
     const totalHours = rows.reduce((sum, row) => sum + row.monthlyHours, 0);
     const totalFte = totalHours / standardMonthlyHours;
@@ -950,7 +971,7 @@ async function getFteConsolidationSummaryReport(req, res) {
       getScopedSubmissions(req),
       getEffectiveCategoryMap()
     ]);
-    const rows = flattenRows(submissions, categoryMap);
+    const rows = getScopedFlattenedRows(req, submissions, categoryMap);
 
     let highVolumeCount = 0;
     let keywordCount = 0;
@@ -1255,7 +1276,7 @@ async function getFteAnalysisReport(req, res) {
       getScopedSubmissions(req),
       getEffectiveCategoryMap()
     ]);
-    const rows = flattenRows(submissions, categoryMap);
+    const rows = getScopedFlattenedRows(req, submissions, categoryMap);
 
     const totalHours = rows.reduce((sum, row) => sum + row.monthlyHours, 0);
     const totalFte = totalHours / standardMonthlyHours;
@@ -1410,7 +1431,7 @@ async function getConsolidationAnalysisReport(req, res) {
       getScopedSubmissions(req),
       getEffectiveCategoryMap()
     ]);
-    const rows = flattenRows(submissions, categoryMap);
+    const rows = getScopedFlattenedRows(req, submissions, categoryMap);
 
     let highVolumeCount = 0;
     let keywordCount = 0;
@@ -1909,7 +1930,7 @@ async function getUtilizationAnalysisReport(req, res) {
       getScopedSubmissions(req),
       getEffectiveCategoryMap()
     ]);
-    const rows = flattenRows(submissions, categoryMap);
+    const rows = getScopedFlattenedRows(req, submissions, categoryMap);
 
     const totalHours = rows.reduce((sum, row) => sum + row.monthlyHours, 0);
     const totalSubmissions = submissions.length;
@@ -2134,7 +2155,7 @@ async function getWorkforceCapacityReport(req, res) {
       getScopedSubmissions(req),
       getEffectiveCategoryMap()
     ]);
-    const rows = flattenRows(submissions, categoryMap);
+    const rows = getScopedFlattenedRows(req, submissions, categoryMap);
 
     // Fetch user map for live current grades if requested
     const userMap = new Map(
