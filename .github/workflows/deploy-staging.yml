@@ -1,0 +1,362 @@
+name: Deploy to Staging (Review Points 1-10)
+
+on:
+  workflow_dispatch:
+
+# Concurrency protection: prevent simultaneous staging deployments from overlapping
+concurrency:
+  group: bper-staging-deployment
+  cancel-in-progress: false
+
+env:
+  # Staging ACR & Separate Image Repository (never overwrites production image tags)
+  AZURE_CONTAINER_REGISTRY: bperacr
+  BACKEND_IMAGE_NAME: bper-backend-staging
+
+  # Dedicated Staging Azure Resource Identifiers
+  CONTAINER_APP_NAME: bper-backend-staging
+  CONTAINER_APP_RESOURCE_GROUP: bper-staging-rg
+  CONTAINER_APP_ENVIRONMENT_NAME: bper-staging-env
+
+jobs:
+  pre-flight-guard:
+    name: Validate Staging Safeguards & Environment Approval
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - name: Validate Isolation & Parse Staging MongoDB URI Safely
+        env:
+          BRANCH_REF: ${{ github.ref }}
+          STAGING_MONGO_URI: ${{ secrets.MONGODB_URI_STAGING }}
+          STAGING_JWT_SECRET: ${{ secrets.JWT_SECRET_STAGING }}
+          STAGING_SWA_TOKEN: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_STAGING }}
+          STAGING_AZURE_CREDS: ${{ secrets.AZURE_CREDENTIALS_STAGING }}
+        run: |
+          set -euo pipefail
+          echo "Starting pre-flight security and isolation check..."
+
+          # 1. Assert exact review branch
+          if [ "$BRANCH_REF" != "refs/heads/review/bper-portal-points-1-10" ]; then
+            echo "::error::deploy-staging.yml must only be run on branch review/bper-portal-points-1-10"
+            exit 1
+          fi
+
+          # 2. Assert staging credentials presence
+          if [ -z "${STAGING_AZURE_CREDS:-}" ]; then
+            echo "::error::AZURE_CREDENTIALS_STAGING secret is missing. Dedicated staging deployment identity required."
+            exit 1
+          fi
+
+          if [ -z "${STAGING_MONGO_URI:-}" ]; then
+            echo "::error::MONGODB_URI_STAGING secret is missing. Halting to protect production."
+            exit 1
+          fi
+
+          if [ -z "${STAGING_JWT_SECRET:-}" ]; then
+            echo "::error::JWT_SECRET_STAGING secret is missing. Halting to protect production."
+            exit 1
+          fi
+
+          if [ -z "${STAGING_SWA_TOKEN:-}" ]; then
+            echo "::error::AZURE_STATIC_WEB_APPS_API_TOKEN_STAGING secret is missing."
+            echo "Dedicated Azure Static Web App (bper-frontend-staging) token required."
+            exit 1
+          fi
+
+          # 3. Safe Node.js URI parsing: require exact database 'BPER_STAGING', forbid production database names
+          node - << 'EOF'
+          const uri = process.env.STAGING_MONGO_URI;
+          try {
+            const normalized = uri.replace(/^mongodb(?:\+srv)?:\/\//i, 'http://');
+            const parsed = new URL(normalized);
+            const pathname = parsed.pathname.replace(/^\//, '').split('?')[0].trim();
+
+            if (!pathname) {
+              console.error("::error::Staging MongoDB URI is missing database name. Must target 'BPER_STAGING'.");
+              process.exit(1);
+            }
+
+            if (pathname !== 'BPER_STAGING') {
+              console.error(`::error::Invalid database '${pathname}'. Staging database name must be EXACTLY 'BPER_STAGING'.`);
+              process.exit(1);
+            }
+
+            if (/^bper$/i.test(pathname)) {
+              console.error("::error::CRITICAL: Staging MongoDB URI targets production database. Aborting.");
+              process.exit(1);
+            }
+
+            console.log("Staging MongoDB URI verified: targets isolated 'BPER_STAGING' database.");
+          } catch (err) {
+            console.error("::error::Failed to parse MONGODB_URI_STAGING:", err.message);
+            process.exit(1);
+          }
+          EOF
+
+  provision-staging-infrastructure:
+    name: Provision & Validate Staging Azure Resources
+    runs-on: ubuntu-latest
+    needs: [pre-flight-guard]
+    environment: staging
+    outputs:
+      backend_fqdn: ${{ steps.save-backend-fqdn.outputs.backend_fqdn }}
+    steps:
+      - name: Log in to Azure with Staging Credentials
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS_STAGING }}
+
+      - name: Ensure Dedicated Staging Resource Group & Environment Exist
+        run: |
+          set -euo pipefail
+          echo "Checking dedicated staging resource group: $CONTAINER_APP_RESOURCE_GROUP"
+          if ! az group show -n "$CONTAINER_APP_RESOURCE_GROUP" &>/dev/null; then
+            echo "Creating dedicated staging resource group ($CONTAINER_APP_RESOURCE_GROUP)..."
+            az group create -n "$CONTAINER_APP_RESOURCE_GROUP" -l centralus
+          fi
+
+          echo "Checking dedicated staging Container Apps environment: $CONTAINER_APP_ENVIRONMENT_NAME"
+          if ! az containerapp env show -n "$CONTAINER_APP_ENVIRONMENT_NAME" -g "$CONTAINER_APP_RESOURCE_GROUP" &>/dev/null; then
+            echo "Creating dedicated staging Container Apps environment ($CONTAINER_APP_ENVIRONMENT_NAME)..."
+            az containerapp env create \
+              -n "$CONTAINER_APP_ENVIRONMENT_NAME" \
+              -g "$CONTAINER_APP_RESOURCE_GROUP" \
+              -l centralus
+          fi
+
+      - name: Calculate Staging Backend Ingress FQDN
+        id: save-backend-fqdn
+        run: |
+          set -euo pipefail
+          ENV_DEFAULT_DOMAIN=$(az containerapp env show \
+            -n "$CONTAINER_APP_ENVIRONMENT_NAME" \
+            -g "$CONTAINER_APP_RESOURCE_GROUP" \
+            --query properties.defaultDomain \
+            -o tsv)
+          STAGING_FQDN="https://${CONTAINER_APP_NAME}.${ENV_DEFAULT_DOMAIN}"
+          echo "backend_fqdn=${STAGING_FQDN}" >> "$GITHUB_OUTPUT"
+          echo "Target Staging Backend FQDN: ${STAGING_FQDN}"
+
+  deploy-frontend-staging:
+    name: Build & Deploy Frontend (Dedicated Staging SWA)
+    runs-on: ubuntu-latest
+    needs: [pre-flight-guard, provision-staging-infrastructure]
+    environment: staging
+    outputs:
+      swa_staging_url: ${{ steps.deploy-swa-staging.outputs.static_web_app_url }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: client/package-lock.json
+
+      - name: Install client dependencies
+        working-directory: client
+        run: npm ci
+
+      - name: Build client with Staging Backend URL
+        working-directory: client
+        env:
+          VITE_API_URL: ${{ needs.provision-staging-infrastructure.outputs.backend_fqdn }}
+        run: npm run build
+
+      - name: Verify Bundle API Isolation (Anti-Production Leak Guard)
+        working-directory: client/dist
+        run: |
+          set -euo pipefail
+          echo "Scanning client build bundle for production URLs..."
+          PROD_ACA_DOMAIN="bper-backend.proudgrass-13b30fc3.centralus.azurecontainerapps.io"
+          PROD_SWA_DOMAIN="yellow-moss-02f0c3c1e.2.azurestaticapps.net"
+
+          if grep -rq "$PROD_ACA_DOMAIN" assets/ ; then
+            echo "::error::CRITICAL: Production backend URL leaked into client bundle!"
+            exit 1
+          fi
+
+          if grep -rq "$PROD_SWA_DOMAIN" assets/ ; then
+            echo "::error::CRITICAL: Production SWA URL found in client bundle!"
+            exit 1
+          fi
+          echo "Client bundle verified: strictly targeted to staging backend."
+
+      - name: Deploy to Dedicated Staging Azure Static Web App
+        id: deploy-swa-staging
+        uses: Azure/static-web-apps-deploy@v1
+        with:
+          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_STAGING }}
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          action: upload
+          app_location: client/dist
+          output_location: ''
+          skip_app_build: true
+          skip_api_build: true
+
+  deploy-backend-staging:
+    name: Build & Deploy Backend (Dedicated ACA Staging)
+    runs-on: ubuntu-latest
+    needs: [pre-flight-guard, provision-staging-infrastructure, deploy-frontend-staging]
+    environment: staging
+    outputs:
+      backend_fqdn: ${{ steps.save-backend-url.outputs.backend_fqdn }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to Azure with Staging Credentials
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS_STAGING }}
+
+      - name: Log in to Azure Container Registry
+        run: az acr login --name "$AZURE_CONTAINER_REGISTRY"
+
+      - name: Build and push Staging Docker image to Dedicated Image Repository
+        run: |
+          IMAGE_TAG="${AZURE_CONTAINER_REGISTRY}.azurecr.io/${BACKEND_IMAGE_NAME}:staging-${{ github.sha }}"
+          docker build \
+            -f server/Dockerfile \
+            -t "$IMAGE_TAG" \
+            server/
+          docker push "$IMAGE_TAG"
+
+      - name: Deploy Staging Container App to Dedicated Resource Group
+        env:
+          AZURE_CREDS: ${{ secrets.AZURE_CREDENTIALS_STAGING }}
+          STAGING_MONGO_URI: ${{ secrets.MONGODB_URI_STAGING }}
+          STAGING_JWT_SECRET: ${{ secrets.JWT_SECRET_STAGING }}
+          SWA_STAGING_ORIGIN: ${{ needs.deploy-frontend-staging.outputs.swa_staging_url }}
+        run: |
+          set -euo pipefail
+          IMAGE="${AZURE_CONTAINER_REGISTRY}.azurecr.io/${BACKEND_IMAGE_NAME}:staging-${{ github.sha }}"
+          SP_CLIENT_ID=$(echo "$AZURE_CREDS" | jq -r '.clientId')
+          SP_CLIENT_SECRET=$(echo "$AZURE_CREDS" | jq -r '.clientSecret')
+
+          echo "Configuring Staging Container App: $CONTAINER_APP_NAME in resource group $CONTAINER_APP_RESOURCE_GROUP"
+          echo "Staging Frontend Origin: $SWA_STAGING_ORIGIN"
+
+          REQUIRED_VARS=(
+            "NODE_ENV=production"
+            "PORT=5000"
+            "MONGODB_URI=$STAGING_MONGO_URI"
+            "JWT_SECRET=$STAGING_JWT_SECRET"
+            "FRONTEND_URL=$SWA_STAGING_ORIGIN"
+            "CORS_ORIGIN=$SWA_STAGING_ORIGIN"
+            "GMAIL_USER="
+            "GMAIL_APP_PASSWORD="
+          )
+
+          if az containerapp show -n "$CONTAINER_APP_NAME" -g "$CONTAINER_APP_RESOURCE_GROUP" &>/dev/null; then
+            echo "Sanitizing existing Staging Container App environment variables..."
+            EXISTING_VARS=$(az containerapp show \
+              -n "$CONTAINER_APP_NAME" \
+              -g "$CONTAINER_APP_RESOURCE_GROUP" \
+              --query 'properties.template.containers[0].env[].name' \
+              -o tsv || true)
+
+            ALLOWED_KEYS=("NODE_ENV" "PORT" "MONGODB_URI" "JWT_SECRET" "FRONTEND_URL" "CORS_ORIGIN" "GMAIL_USER" "GMAIL_APP_PASSWORD")
+            REMOVE_KEYS=()
+
+            for var in $EXISTING_VARS; do
+              IS_ALLOWED=false
+              for allowed in "${ALLOWED_KEYS[@]}"; do
+                if [ "$var" = "$allowed" ]; then
+                  IS_ALLOWED=true
+                  break
+                fi
+              done
+              if [ "$IS_ALLOWED" = false ]; then
+                echo "Removing non-whitelisted variable from staging: $var"
+                REMOVE_KEYS+=("$var")
+              fi
+            done
+
+            UPDATE_CMD=(az containerapp update -n "$CONTAINER_APP_NAME" -g "$CONTAINER_APP_RESOURCE_GROUP" --image "$IMAGE" --set-env-vars "${REQUIRED_VARS[@]}")
+            if [ ${#REMOVE_KEYS[@]} -gt 0 ]; then
+              UPDATE_CMD+=(--remove-env-vars "${REMOVE_KEYS[@]}")
+            fi
+
+            "${UPDATE_CMD[@]}"
+          else
+            echo "Creating new Staging Container App in dedicated environment..."
+            az containerapp create \
+              -n "$CONTAINER_APP_NAME" \
+              -g "$CONTAINER_APP_RESOURCE_GROUP" \
+              --environment "$CONTAINER_APP_ENVIRONMENT_NAME" \
+              --image "$IMAGE" \
+              --registry-server "${AZURE_CONTAINER_REGISTRY}.azurecr.io" \
+              --registry-username "$SP_CLIENT_ID" \
+              --registry-password "$SP_CLIENT_SECRET" \
+              --ingress external \
+              --target-port 5000 \
+              --min-replicas 0 \
+              --max-replicas 1 \
+              --cpu 0.5 \
+              --memory 1.0Gi \
+              --env-vars "${REQUIRED_VARS[@]}"
+          fi
+
+      - name: Save Staging ACA Backend URL
+        id: save-backend-url
+        run: |
+          FQDN=$(az containerapp show \
+            -n "$CONTAINER_APP_NAME" \
+            -g "$CONTAINER_APP_RESOURCE_GROUP" \
+            --query properties.configuration.ingress.fqdn \
+            -o tsv)
+          echo "backend_fqdn=https://${FQDN}" >> "$GITHUB_OUTPUT"
+
+  post-deploy-smoke-test:
+    name: Staging Health & Database Readiness Smoke Test
+    runs-on: ubuntu-latest
+    needs: [deploy-backend-staging, deploy-frontend-staging]
+    environment: staging
+    steps:
+      - name: Verify Staging Health, Auth Guard, and Database Query Readiness
+        run: |
+          set -euo pipefail
+          BACKEND_URL="${{ needs.deploy-backend-staging.outputs.backend_fqdn }}"
+          FRONTEND_URL="${{ needs.deploy-frontend-staging.outputs.swa_staging_url }}"
+          echo "Smoke testing Staging Backend: $BACKEND_URL"
+          echo "Smoke testing Staging Frontend: $FRONTEND_URL"
+
+          # 1. Server routing & JWT Auth Guard probe
+          AUTH_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$BACKEND_URL/api/auth/me")
+          echo "Probe GET /api/auth/me HTTP Code: $AUTH_STATUS"
+          if [ "$AUTH_STATUS" -ne 401 ]; then
+            echo "::error::Server probe failed: expected HTTP 401 from unauthenticated /api/auth/me, received $AUTH_STATUS"
+            exit 1
+          fi
+
+          # 2. Database Query Execution Probe
+          # Queries EmployeeInvite.findOne({ inviteToken: 'readiness-check-probe-token' })
+          DB_RESP=$(curl -s -w "\n%{http_code}" "$BACKEND_URL/api/invite/register/readiness-check-probe-token")
+          DB_CODE=$(echo "$DB_RESP" | tail -n1)
+          DB_BODY=$(echo "$DB_RESP" | sed '$d')
+          echo "Database readiness query returned HTTP: $DB_CODE"
+
+          if [ "$DB_CODE" -ne 404 ]; then
+            echo "::error::Database readiness check failed! Expected HTTP 404 from EmployeeInvite query, got $DB_CODE"
+            exit 1
+          fi
+
+          # Generic payload check without echoing database details or response body
+          if ! echo "$DB_BODY" | grep -qi "invalid or expired"; then
+            echo "::error::Database readiness probe returned unexpected response structure. Halting."
+            exit 1
+          fi
+          echo "Database connectivity & Mongoose query engine verified successfully."
+
+          # 3. Probe Dedicated Staging Frontend SWA
+          FE_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$FRONTEND_URL")
+          echo "Probe Frontend SWA HTTP Code: $FE_STATUS"
+          if [ "$FE_STATUS" -ne 200 ]; then
+            echo "::error::Frontend staging probe failed: expected HTTP 200, received $FE_STATUS"
+            exit 1
+          fi
+
+          echo "All staging deployment health and database readiness checks passed successfully."
