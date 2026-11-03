@@ -8,6 +8,12 @@ function canAddCustom(userRole) {
   return ['admin', 'manager'].includes(userRole);
 }
 
+function isHRTower(majorProcess) {
+  if (!majorProcess) return false;
+  const m = String(majorProcess).toLowerCase();
+  return /human|hr\b|talent|recruit|people|employee|performance|records management|workforce|onboard/i.test(m);
+}
+
 /**
  * GET /api/activities/towers/:deptId
  * Returns towers for a department (lazy loading)
@@ -28,8 +34,39 @@ router.get('/towers/:deptId', verifyToken, async (req, res) => {
       ]
     };
     
-    if (deptId !== 'All') {
-      query.department = deptId || { $exists: false };
+    if (deptId && deptId !== 'All') {
+      const isHR = /^(hr|human\s*resources)$/i.test(deptId.trim());
+      const isFinance = /^(finance|finance & accounting|finance & accounts|f&a)/i.test(deptId.trim());
+
+      if (isHR) {
+        query.$and = [
+          {
+            $or: [
+              { department: { $in: ['HR', 'Human Resources'] } },
+              { department: { $regex: /^hr|^human\s*resources/i } },
+              {
+                department: { $in: [null, '', undefined] },
+                majorProcess: { $regex: /human|hr\b|talent|recruit|people|employee|performance|records management|workforce|onboard/i }
+              }
+            ]
+          }
+        ];
+      } else if (isFinance) {
+        query.$and = [
+          {
+            $or: [
+              { department: { $in: ['Finance & Accounting', 'F&A', 'Finance', 'Finance & Accounts'] } },
+              { department: { $regex: /^fin|account|f&a/i } },
+              {
+                department: { $in: [null, '', undefined] },
+                majorProcess: { $not: { $regex: /human|hr\b|talent|recruit|people|employee|performance|records management|workforce|onboard/i } }
+              }
+            ]
+          }
+        ];
+      } else {
+        query.department = deptId;
+      }
     }
     
     const data = await Taxonomy.find(query);

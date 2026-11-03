@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useCallback, useRef } from 'react';
+import React, { useEffect, useMemo, useState, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import {
   AlertCircle,
@@ -10,6 +10,11 @@ import {
   List,
   FolderTree,
   Download,
+  Workflow,
+  ListChecks,
+  Zap,
+  Building2,
+  RefreshCw,
 } from 'lucide-react';
 import {
   getTowersForDepartment,
@@ -33,6 +38,94 @@ const DEPARTMENTS = [
   { id: 'HR', label: 'HR' },
   { id: 'Finance & Accounting', label: 'Finance & Accounts' },
 ];
+
+function isHRTower(majorProcess: string): boolean {
+  if (!majorProcess) return false;
+  return /human|hr\b|talent|recruit|people|employee|performance|records management|workforce|onboard/i.test(
+    majorProcess.toLowerCase()
+  );
+}
+
+function ProcessKpiCard({
+  icon: Icon,
+  label,
+  value,
+  helper,
+  badge,
+  highlight,
+  loading,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+  value: number | string;
+  helper: string;
+  badge?: string;
+  highlight?: boolean;
+  loading?: boolean;
+}) {
+  return (
+    <article
+      className={`group relative overflow-hidden rounded-xl border p-4 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md ${
+        highlight
+          ? 'border-[#1E5296] bg-gradient-to-br from-[#102B52] via-[#163D77] to-[#1F5AA6] text-white shadow-[0_4px_12px_rgba(16,43,82,0.15)]'
+          : 'border-[#D9E4F2] bg-white text-[#0F2649] shadow-[0_2px_8px_rgba(16,42,80,0.04)]'
+      }`}
+    >
+      <div className="flex items-center justify-between">
+        <div
+          className={`flex h-9 w-9 items-center justify-center rounded-lg transition-transform group-hover:scale-105 ${
+            highlight
+              ? 'bg-white/15 text-white'
+              : 'border border-[#D4E2F4] bg-[#F0F6FF] text-[#2367AE]'
+          }`}
+        >
+          <Icon className="h-4.5 w-4.5" />
+        </div>
+        {badge && (
+          <span
+            className={`rounded-md px-2 py-0.5 text-[10px] font-bold tracking-wider uppercase ${
+              highlight
+                ? 'bg-white/20 text-white'
+                : 'border border-[#BFD5F2] bg-[#EEF5FF] text-[#1E5EAB]'
+            }`}
+          >
+            {badge}
+          </span>
+        )}
+      </div>
+
+      <div className="mt-3">
+        <p
+          className={`text-[11px] font-bold uppercase tracking-wider ${
+            highlight ? 'text-[#D0E2FF]' : 'text-[#647D9D]'
+          }`}
+        >
+          {label}
+        </p>
+
+        {loading ? (
+          <div className="mt-2 h-7 w-20 animate-pulse rounded bg-slate-200" />
+        ) : (
+          <p
+            className={`mt-1 text-2xl font-black tracking-tight ${
+              highlight ? 'text-white' : 'text-[#0F2649]'
+            }`}
+          >
+            {value}
+          </p>
+        )}
+
+        <p
+          className={`mt-1 text-[11px] truncate ${
+            highlight ? 'text-[#BFD9FF]' : 'text-[#7B93B0]'
+          }`}
+        >
+          {helper}
+        </p>
+      </div>
+    </article>
+  );
+}
 
 type ExpandedState = {
   towers: Set<string>;
@@ -64,6 +157,28 @@ export default function ProcessManagementPage() {
   });
   const [flatData, setFlatData] = useState<any[]>([]);
 
+  // Executive KPI stats for Summary Dashboard
+  type ProcessStats = {
+    totalTowers: number;
+    totalProcesses: number;
+    totalSubProcesses: number;
+    totalActivities: number;
+    departmentScope: string;
+    hrCount: number;
+    financeCount: number;
+  };
+
+  const [stats, setStats] = useState<ProcessStats>({
+    totalTowers: 0,
+    totalProcesses: 0,
+    totalSubProcesses: 0,
+    totalActivities: 0,
+    departmentScope: 'Organization-Wide',
+    hrCount: 0,
+    financeCount: 0,
+  });
+  const [isStatsLoading, setIsStatsLoading] = useState(true);
+
   const hasLoadedRef = useRef(false);
   const modalRoot = typeof document !== 'undefined' ? document.body : null;
 
@@ -71,51 +186,99 @@ export default function ProcessManagementPage() {
     localStorage.setItem('bper.processManagement.viewMode', viewMode);
   }, [viewMode]);
 
-  // Load flat data if view mode is list
-  useEffect(() => {
-    if (viewMode === 'list') {
-      setIsContentLoading(true);
-      getTaxonomyProcesses(department)
-        .then(data => {
-          const flattened: any[] = [];
-          data.forEach(item => {
-            flattened.push({
-              _id: `major-${item._id}-${item.majorProcess}`,
-              name: item.majorProcess,
-              tower: item.majorProcess,
-              department: item.department || 'All',
-              level: 'Major Process',
-              category: '-',
-            });
-            flattened.push({
-              _id: `proc-${item._id}-${item.process}`,
-              name: item.process,
-              tower: item.majorProcess,
-              department: item.department || 'All',
-              level: 'Process',
-              category: '-',
-            });
-            (item.subProcesses || []).forEach((sub: string) => {
-              flattened.push({
-                _id: `sub-${item._id}-${sub}`,
-                name: sub,
-                tower: item.majorProcess,
-                department: item.department || 'All',
-                level: 'Sub-Process',
-                category: 'Core',
-              });
-            });
+  // Load and compute taxonomy hierarchy and KPI statistics
+  const loadTaxonomyAndStats = useCallback(async (dept: string) => {
+    setIsStatsLoading(true);
+    try {
+      const data = await getTaxonomyProcesses(dept);
+
+      const towersSet = new Set<string>();
+      const processesSet = new Set<string>();
+      let subProcessCount = 0;
+      let hrCount = 0;
+      let financeCount = 0;
+
+      const flattened: any[] = [];
+
+      data.forEach((item) => {
+        const majorName = String(item.majorProcess || '').trim();
+        const procName = String(item.process || '').trim();
+        const subs: string[] = Array.isArray(item.subProcesses) ? item.subProcesses : [];
+
+        if (majorName) towersSet.add(majorName);
+        if (majorName && procName) processesSet.add(`${majorName}:::${procName}`);
+        subProcessCount += subs.length;
+
+        const deptStr = String(item.department || '').toLowerCase();
+        if (deptStr.includes('hr')) {
+          hrCount++;
+        } else if (deptStr.includes('fin') || deptStr.includes('account') || deptStr.includes('f&a')) {
+          financeCount++;
+        }
+
+        const deptDisplayName =
+          item.department ||
+          (dept === 'HR' ? 'HR' : dept === 'Finance & Accounting' ? 'Finance & Accounts' : 'All');
+
+        flattened.push({
+          _id: `major-${item._id}-${majorName}`,
+          name: majorName,
+          tower: majorName,
+          department: deptDisplayName,
+          level: 'Major Process',
+          category: '-',
+        });
+
+        if (procName) {
+          flattened.push({
+            _id: `proc-${item._id}-${procName}`,
+            name: procName,
+            tower: majorName,
+            department: deptDisplayName,
+            level: 'Process',
+            category: '-',
           });
-          const unique = flattened.filter((v, i, a) => a.findIndex(t => t.name === v.name && t.level === v.level && t.tower === v.tower) === i);
-          setFlatData(unique);
-        })
-        .catch(err => {
-          console.error('Error loading flat processes:', err);
-          setError(err?.message || 'Failed to load flat process list');
-        })
-        .finally(() => setIsContentLoading(false));
+        }
+
+        subs.forEach((sub: string) => {
+          flattened.push({
+            _id: `sub-${item._id}-${sub}`,
+            name: sub,
+            tower: majorName,
+            department: deptDisplayName,
+            level: 'Sub-Process',
+            category: 'Core',
+          });
+        });
+      });
+
+      const uniqueFlat = flattened.filter(
+        (v, i, a) => a.findIndex((t) => t.name === v.name && t.level === v.level && t.tower === v.tower) === i
+      );
+      setFlatData(uniqueFlat);
+
+      const scopeLabel =
+        dept === 'All'
+          ? 'Organization-Wide'
+          : dept === 'HR'
+          ? 'HR Department'
+          : 'Finance & Accounts';
+
+      setStats({
+        totalTowers: towersSet.size,
+        totalProcesses: processesSet.size,
+        totalSubProcesses: subProcessCount,
+        totalActivities: subProcessCount,
+        departmentScope: scopeLabel,
+        hrCount,
+        financeCount,
+      });
+    } catch (err: any) {
+      console.error('Error loading taxonomy stats:', err);
+    } finally {
+      setIsStatsLoading(false);
     }
-  }, [viewMode, department]);
+  }, []);
 
   const filteredFlatData = useMemo(() => {
     if (!searchTerm.trim()) return flatData;
@@ -126,52 +289,51 @@ export default function ProcessManagementPage() {
     );
   }, [flatData, searchTerm]);
 
-  // Load towers on department change
-  useEffect(() => {
-    async function loadTowers() {
-      const isFirstLoad = !hasLoadedRef.current;
+  // Load towers and refresh taxonomy stats on department change
+  const loadAll = useCallback(async () => {
+    const isFirstLoad = !hasLoadedRef.current;
 
-      if (isFirstLoad) {
-        setIsLoading(true);
-      } else {
-        setIsContentLoading(true);
-      }
-
-      setError(null);
-      setSearchTerm('');
-      setSearchResults([]);
-      setExpanded({ towers: new Set(), processes: new Set() });
-
-      try {
-        console.log('Fetching towers for department:', department);
-        const towers = await getTowersForDepartment(department);
-        console.log('Received towers:', towers);
-        
-        if (!towers || towers.length === 0) {
-          console.warn('No towers returned from API');
-          setTreeData({ towers: {} });
-        } else {
-          const towerData: TreeData = { towers: {} };
-          towers.forEach((tower) => {
-            towerData.towers[tower.name] = {
-              data: tower,
-            };
-          });
-          console.log('Setting tree data with towers:', Object.keys(towerData.towers));
-          setTreeData(towerData);
-        }
-      } catch (err: any) {
-        console.error('Error loading towers:', err);
-        setError(err?.message || 'Failed to load towers');
-      } finally {
-        setIsLoading(false);
-        setIsContentLoading(false);
-        hasLoadedRef.current = true;
-      }
+    if (isFirstLoad) {
+      setIsLoading(true);
+    } else {
+      setIsContentLoading(true);
     }
 
-    loadTowers();
-  }, [department]);
+    setError(null);
+    setSearchTerm('');
+    setSearchResults([]);
+    setExpanded({ towers: new Set(), processes: new Set() });
+
+    try {
+      const [towers] = await Promise.all([
+        getTowersForDepartment(department),
+        loadTaxonomyAndStats(department),
+      ]);
+
+      if (!towers || towers.length === 0) {
+        setTreeData({ towers: {} });
+      } else {
+        const towerData: TreeData = { towers: {} };
+        towers.forEach((tower) => {
+          towerData.towers[tower.name] = {
+            data: tower,
+          };
+        });
+        setTreeData(towerData);
+      }
+    } catch (err: any) {
+      console.error('Error loading towers:', err);
+      setError(err?.message || 'Failed to load towers');
+    } finally {
+      setIsLoading(false);
+      setIsContentLoading(false);
+      hasLoadedRef.current = true;
+    }
+  }, [department, loadTaxonomyAndStats]);
+
+  useEffect(() => {
+    loadAll();
+  }, [loadAll]);
 
   // Debounced search
   useEffect(() => {
@@ -373,14 +535,57 @@ export default function ProcessManagementPage() {
     setIsExporting(true);
     try {
       const data = await getTaxonomyProcesses(department);
-      const exportData = data.map((item) => ({
-        'Major Process': item.majorProcess,
-        'Process': item.process,
-        'Sub Processes': (item.subProcesses || []).join('; '),
-        'Department': item.department || 'All',
-      }));
-      const filename = `processes-${department === 'All' ? 'all' : department.toLowerCase().replace(/\s+/g, '-')}-${new Date().toISOString().split('T')[0]}`;
-      exportToExcelClient(exportData, filename);
+      
+      const deptFallback =
+        department === 'HR'
+          ? 'HR'
+          : department === 'Finance & Accounting'
+          ? 'Finance & Accounts'
+          : '';
+
+      const exportRows: any[] = [];
+      data.forEach((item) => {
+        let deptLabel = item.department;
+        if (!deptLabel || deptLabel === 'All' || deptLabel === 'All Departments') {
+          const m = String(item.majorProcess || '').toLowerCase();
+          const isHR = isHRTower(m);
+          deptLabel = deptFallback || (isHR ? 'HR' : 'Finance & Accounts');
+        } else if (deptLabel.toLowerCase().includes('hr')) {
+          deptLabel = 'HR';
+        } else if (
+          deptLabel.toLowerCase().includes('fin') ||
+          deptLabel.toLowerCase().includes('account') ||
+          deptLabel.toLowerCase().includes('f&a')
+        ) {
+          deptLabel = 'Finance & Accounts';
+        }
+
+        const subs = Array.isArray(item.subProcesses) && item.subProcesses.length > 0
+          ? item.subProcesses
+          : ['-'];
+
+        subs.forEach((subName: string, idx: number) => {
+          exportRows.push({
+            'Department': deptLabel,
+            'Major Process / Tower': item.majorProcess || '-',
+            'Process Group': item.process || '-',
+            'Sub-Process / Activity': subName,
+            'Activity #': idx + 1,
+            'Total Sub-Processes': subs.length,
+            'Status': item.isActive !== false ? 'Active' : 'Inactive',
+          });
+        });
+      });
+
+      const cleanDeptSlug =
+        department === 'All'
+          ? 'all-departments'
+          : department.toLowerCase().includes('hr')
+          ? 'hr'
+          : 'finance-and-accounts';
+
+      const filename = `bper-processes-${cleanDeptSlug}`;
+      exportToExcelClient(exportRows, filename);
     } catch (err: any) {
       console.error('Failed to export processes:', err);
     } finally {
@@ -437,21 +642,96 @@ export default function ProcessManagementPage() {
 
         {/* Department Tabs */}
         <div className="border-b border-[#E3EBF6] px-4 py-3">
-          <div className="inline-flex flex-wrap gap-2 rounded-xl bg-[#F3F8FF] p-1.5">
-            {DEPARTMENTS.map((dept) => (
-              <button
-                key={dept.id}
-                onClick={() => setDepartment(dept.id)}
-                disabled={isContentLoading}
-                className={`min-w-24 sm:w-40 rounded-lg border px-3 py-2 text-sm font-semibold text-center transition-all ${
-                  department === dept.id
-                    ? 'border-[#2367AE] bg-[#2367AE] text-white shadow-sm'
-                    : 'border-[#CFE0F6] bg-white text-[#5E7594] hover:border-[#9FC0E8] hover:bg-[#F8FBFF]'
-                }`}
-              >
-                {dept.label}
-              </button>
-            ))}
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="inline-flex flex-wrap gap-2 rounded-xl bg-[#F3F8FF] p-1.5">
+              {DEPARTMENTS.map((dept) => (
+                <button
+                  key={dept.id}
+                  onClick={() => setDepartment(dept.id)}
+                  disabled={isContentLoading || isStatsLoading}
+                  className={`min-w-24 sm:w-40 rounded-lg border px-3 py-2 text-sm font-semibold text-center transition-all ${
+                    department === dept.id
+                      ? 'border-[#2367AE] bg-[#2367AE] text-white shadow-sm'
+                      : 'border-[#CFE0F6] bg-white text-[#5E7594] hover:border-[#9FC0E8] hover:bg-[#F8FBFF]'
+                  }`}
+                >
+                  {dept.label}
+                </button>
+              ))}
+            </div>
+
+            <div className="flex items-center gap-2 text-xs font-semibold text-[#637F9F]">
+              <span className="inline-flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+              <span>Live Taxonomy Hierarchy</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Executive KPI Summary Dashboard Grid */}
+        <div className="border-b border-[#E3EBF6] bg-[#F8FAFD] p-4">
+          <div className="mb-3 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold uppercase tracking-wider text-[#607A9B]">
+                Process Architecture Summary
+              </span>
+              <span className="rounded-md border border-[#BFD5F2] bg-[#EEF5FF] px-2 py-0.5 text-[10px] font-bold text-[#1E5EAB]">
+                {department === 'All' ? 'Organization-Wide' : department === 'HR' ? 'HR Scope' : 'Finance Scope'}
+              </span>
+            </div>
+            {isStatsLoading && (
+              <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#2367AE]">
+                <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                Updating metrics...
+              </span>
+            )}
+          </div>
+
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 lg:grid-cols-5">
+            <ProcessKpiCard
+              icon={FolderTree}
+              label="Major Processes"
+              value={stats.totalTowers}
+              helper="Business functional towers"
+              badge="Level 1"
+              loading={isStatsLoading}
+            />
+            <ProcessKpiCard
+              icon={Workflow}
+              label="Processes"
+              value={stats.totalProcesses}
+              helper="Operational workflows"
+              badge="Level 2"
+              loading={isStatsLoading}
+            />
+            <ProcessKpiCard
+              icon={ListChecks}
+              label="Sub-Processes"
+              value={stats.totalSubProcesses}
+              helper="Standard operating procedures"
+              badge="Level 3"
+              loading={isStatsLoading}
+            />
+            <ProcessKpiCard
+              icon={Zap}
+              label="Activities"
+              value={stats.totalActivities}
+              helper="Granular task activities"
+              badge="Tasks"
+              loading={isStatsLoading}
+            />
+            <ProcessKpiCard
+              icon={Building2}
+              label="Current Scope"
+              value={stats.departmentScope}
+              helper={
+                department === 'All'
+                  ? `${stats.hrCount} HR • ${stats.financeCount} Finance`
+                  : `${stats.totalProcesses} active processes in scope`
+              }
+              badge="Active Scope"
+              highlight
+              loading={isStatsLoading}
+            />
           </div>
         </div>
 
@@ -751,7 +1031,13 @@ export default function ProcessManagementPage() {
 
       {/* Modal */}
       {showModal && modalRoot && createPortal(
-        <AddCustomProcessModal onClose={() => setShowModal(false)} onSuccess={() => {}} />,
+        <AddCustomProcessModal
+          onClose={() => setShowModal(false)}
+          onSuccess={() => {
+            setShowModal(false);
+            loadAll();
+          }}
+        />,
         modalRoot
       )}
     </div>
