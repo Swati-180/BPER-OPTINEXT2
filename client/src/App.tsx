@@ -45,6 +45,7 @@ const CalculationCenter = lazy(() => import('./pages/manager/CalculationCenter')
 const WorkforceCapacityPlanning = lazy(() => import('./pages/manager/WorkforceCapacityPlanning'));
 const OrganizationAssumptions = lazy(() => import('./pages/manager/OrganizationAssumptions'));
 const UtilizationAnalysis = lazy(() => import('./pages/manager/UtilizationAnalysis'));
+const ManagerFitmentAnalytics = lazy(() => import('./pages/manager/FitmentAnalytics'));
 
 import Unauthorized from './pages/Unauthorized';
 import { clearActiveUnderReviewReferenceId } from './pages/employee/bperSubmissionStorage';
@@ -424,7 +425,8 @@ export default function App() {
                     <Route path="api-debug" element={<APIDebug />} />
                     <Route path="my-profile" element={<PersonalProfile />} />
                     <Route path="employee-invites" element={<EmployeeInvites />} />
-                    <Route path="fitment-scorer" element={<DeepAnalysis />} />
+                    <Route path="fitment-scorer" element={<ManagerFitmentAnalytics />} />
+                    <Route path="fitment" element={<ManagerFitmentAnalytics />} />
                     <Route path="process-analytics" element={<ProcessOperationsHub />} />
                     <Route path="employee-360" element={<PersonalProfile />} />
                     <Route path="calculation-center" element={<CalculationCenter />} />
