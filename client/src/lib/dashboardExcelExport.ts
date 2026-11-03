@@ -60,6 +60,7 @@ export interface DashboardExcelExportParams {
 
 export function exportDashboardExcel(params: DashboardExcelExportParams): void {
   const { summary, towers, topActivities, teamUtilization, consolidation, generatedAt } = params;
+  const baselineHours = (summary as any)?.completeness?.baselineHoursPerMonth || (summary as any)?.baselineHoursPerMonth || consolidation?.scenarioParameters?.standardMonthlyHours || 160;
 
   const wb = XLSX.utils.book_new();
 
@@ -77,8 +78,8 @@ export function exportDashboardExcel(params: DashboardExcelExportParams): void {
     ['Pending Reviews', summary.pendingReview ?? 0, summary.pendingReview ? 'Action Required' : 'Queue Clear'],
     ['Approved Submissions', summary.approved ?? 0, 'Verified Forms'],
     ['Staffed FTE Allocation', Number((summary.staffedFte ?? 0).toFixed(2)), 'FTE (Filled Workforce)'],
-    ['Total Portfolio FTE', Number((summary.totalFte ?? 0).toFixed(2)), 'FTE (Total Workload / 160h)'],
-    ['Staffed Capacity Utilization', `${Number((summary.staffedUtilizationPct ?? summary.avgUtilizationPct ?? 0).toFixed(1))}%`, 'Workload vs 160h standard capacity'],
+    ['Total Portfolio FTE', Number((summary.totalFte ?? 0).toFixed(2)), `FTE (Total Workload / ${baselineHours}h)`],
+    ['Staffed Capacity Utilization', `${Number((summary.staffedUtilizationPct ?? summary.avgUtilizationPct ?? 0).toFixed(1))}%`, `Workload vs ${baselineHours}h standard capacity`],
     ['Workload vs Headcount Target', summary.workloadVsTargetPct ? `${Number(summary.workloadVsTargetPct.toFixed(1))}%` : 'N/A', 'Workforce Alignment'],
   ];
   const wsKpis = XLSX.utils.aoa_to_sheet(kpiData);
@@ -199,7 +200,7 @@ export function exportDashboardExcel(params: DashboardExcelExportParams): void {
     ],
     [],
     ['Organizational Scenario Assumptions', 'Setting Value', 'Governance Baseline'],
-    ['Standard Monthly Hours / FTE', consolidation?.scenarioParameters?.standardMonthlyHours ?? 160, '160 Hours (8h/day × 20 days)'],
+    ['Standard Monthly Hours / FTE', consolidation?.scenarioParameters?.standardMonthlyHours ?? baselineHours, `${consolidation?.scenarioParameters?.standardMonthlyHours ?? baselineHours} Hours (${((consolidation?.scenarioParameters?.standardMonthlyHours ?? baselineHours) / 20).toFixed(1).replace(/\.0$/, '')}h/day × 20 days)`],
     ['Consolidation Efficiency Factor', `${((consolidation?.efficiencyPct ?? 0.35) * 100).toFixed(0)}%`, '35% post-centralization automation and standardization rate'],
     ['Benchmark Cost Per FTE', `INR ${consolidation?.costPerFteLakhs ?? 10} Lakhs`, 'Annualized corporate cost assumption per resource'],
     ['High-Volume Screening Threshold', `${consolidation?.scenarioParameters?.screeningThresholdHours ?? 160} Hours/Month`, '1.0 FTE threshold for centralization candidates'],

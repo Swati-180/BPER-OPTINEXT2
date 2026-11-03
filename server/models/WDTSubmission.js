@@ -62,8 +62,14 @@ const wdtSubmissionSchema = new mongoose.Schema({
   }]
 }, { timestamps: true });
 
-wdtSubmissionSchema.pre('save', function(next) {
-  const STANDARD_HOURS = 160;
+wdtSubmissionSchema.pre('save', async function(next) {
+  const { getEffectiveStandardMonthlyHours } = require('../services/assumptionsService');
+  let STANDARD_HOURS = 160;
+  try {
+    STANDARD_HOURS = await getEffectiveStandardMonthlyHours();
+  } catch (err) {
+    STANDARD_HOURS = 160;
+  }
   let totalHours = 0;
 
   // 1. Calculate Per-Row Metrics (Hours, FTE)

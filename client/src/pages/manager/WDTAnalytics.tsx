@@ -11,6 +11,11 @@ type UtilizationReport = {
   summary?: {
     totalHours?: number;
     totalSubmissions?: number;
+    staffedHours?: number;
+    staffedFte?: number;
+    vacantHours?: number;
+    vacantFte?: number;
+    totalFte?: number;
     avgHoursPerSubmission?: number;
     approvalRatePct?: number;
   };
@@ -24,6 +29,7 @@ type UtilizationReport = {
     supportHours?: number;
     totalHours?: number;
   };
+  standardMonthlyHours?: number;
   charts?: {
     byFrequency?: Array<{ label: string; hours: number }>;
     byProcess?: Array<{ label: string; hours: number }>;
@@ -65,6 +71,7 @@ export default function WDTAnalyticsPage() {
   const [report, setReport] = useState<UtilizationReport | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [downloadError, setDownloadError] = useState<string | null>(null);
   const [isDownloading, setIsDownloading] = useState(false);
 
   async function loadReport(department: DepartmentFilter, blocking = false) {
@@ -167,11 +174,14 @@ export default function WDTAnalyticsPage() {
 
   async function handleExcelDownload() {
     setIsDownloading(true);
+    setDownloadError(null);
     try {
       const params = departmentFilter !== 'All Departments' ? { department: departmentFilter } : undefined;
       await downloadExcel('/export/wdt-submissions', 'bper-wdt', params);
     } catch (err: any) {
-      console.error('Excel download failed:', err.message);
+      const msg = err?.message || 'Failed to download Excel report. Please ensure you have manager access.';
+      console.error('Excel download failed:', msg);
+      setDownloadError(msg);
     } finally {
       setIsDownloading(false);
     }
@@ -204,6 +214,22 @@ export default function WDTAnalyticsPage() {
 
   return (
     <div className="space-y-4 animate-in fade-in duration-500">
+      {downloadError && (
+        <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-xs font-semibold text-red-700 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="h-4 w-4 shrink-0 text-red-600" />
+            <span>{downloadError}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setDownloadError(null)}
+            className="text-red-500 hover:text-red-800 text-xs px-2 py-0.5 rounded"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
+
       <section className="rounded-2xl border border-[#D9E4F2] bg-white p-5 shadow-[0_6px_18px_rgba(16,42,80,0.08)]">
         <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
           <div>
@@ -241,11 +267,11 @@ export default function WDTAnalyticsPage() {
         </div>
 
         <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5">
-          <KpiCard icon={Clock3} label="Total Hours" value={safeNumber(summary.totalHours).toFixed(2)} helper="Tracked WDT hours" />
-          <KpiCard icon={TrendingUp} label="Total FTE" value={totalFte.toFixed(2)} helper="Hours ÷ 160 baseline" />
-          <KpiCard icon={BriefcaseBusiness} label="Submissions" value={String(safeNumber(summary.totalSubmissions))} helper="Department-filtered records" />
-          <KpiCard icon={BarChart3} label="Avg Hours / Submission" value={safeNumber(summary.avgHoursPerSubmission).toFixed(1)} helper="Operational workload average" />
-          <KpiCard icon={Layers3} label="Approval Rate" value={`${safeNumber(summary.approvalRatePct)}%`} helper="Approved vs total submissions" />
+          <KpiCard icon={Clock3} label="Total Hours" value={safeNumber(summary.totalHours).toFixed(2)} helper="Total Organizational Workload" />
+          <KpiCard icon={TrendingUp} label="Total FTE" value={totalFte.toFixed(2)} helper="Total Workload ÷ 160h baseline" />
+          <KpiCard icon={BriefcaseBusiness} label="Recorded Profiles" value={String(safeNumber(summary.totalSubmissions))} helper="248 Filled + 78 Vacant" />
+          <KpiCard icon={BarChart3} label="Avg Hours / Profile" value={safeNumber(summary.avgHoursPerSubmission).toFixed(1)} helper="Operational workload average" />
+          <KpiCard icon={Layers3} label="Employee Approval Rate" value={`${safeNumber(summary.approvalRatePct)}%`} helper="248 approved / 248 filled staff (78 vacancies separate)" />
         </div>
       </section>
 
@@ -262,19 +288,12 @@ export default function WDTAnalyticsPage() {
           </div>
 
           <div className="mt-5 grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <div className="rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] p-3 text-center">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-[#64748B]">Line Items</p>
-              <p className="mt-1 text-2xl font-extrabold text-[#0F2649]">
-                {((report as any)?.scopeFunnel?.lineItemsCount ?? safeNumber(summary.totalActivities, safeNumber(summary.totalSubmissions) * 10)).toLocaleString()}
+            <div className="rounded-xl border border-[#BBF7D0] bg-[#F0FDF4] p-3 text-center">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-[#16A34A]">Major Processes</p>
+              <p className="mt-1 text-2xl font-extrabold text-[#15803D]">
+                {((report as any)?.scopeFunnel?.majorProcessesCount ?? Math.max(1, departments.length - 1)).toLocaleString()}
               </p>
-              <p className="mt-0.5 text-[10px] text-[#94A3B8]">Logged entries</p>
-            </div>
-            <div className="rounded-xl border border-[#BFDBFE] bg-[#EFF6FF] p-3 text-center">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-[#2563EB]">Sub Processes</p>
-              <p className="mt-1 text-2xl font-extrabold text-[#1D4ED8]">
-                {((report as any)?.scopeFunnel?.subProcessesCount ?? byProcess.length).toLocaleString()}
-              </p>
-              <p className="mt-0.5 text-[10px] text-[#60A5FA]">Granular tasks</p>
+              <p className="mt-0.5 text-[10px] text-[#4ADE80]">Top-level towers</p>
             </div>
             <div className="rounded-xl border border-[#DDD6FE] bg-[#F5F3FF] p-3 text-center">
               <p className="text-[10px] font-bold uppercase tracking-wider text-[#7C3AED]">Processes</p>
@@ -283,12 +302,19 @@ export default function WDTAnalyticsPage() {
               </p>
               <p className="mt-0.5 text-[10px] text-[#A78BFA]">Functional blocks</p>
             </div>
-            <div className="rounded-xl border border-[#BBF7D0] bg-[#F0FDF4] p-3 text-center">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-[#16A34A]">Major Processes</p>
-              <p className="mt-1 text-2xl font-extrabold text-[#15803D]">
-                {((report as any)?.scopeFunnel?.majorProcessesCount ?? Math.max(1, departments.length - 1)).toLocaleString()}
+            <div className="rounded-xl border border-[#BFDBFE] bg-[#EFF6FF] p-3 text-center">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-[#2563EB]">Sub Processes</p>
+              <p className="mt-1 text-2xl font-extrabold text-[#1D4ED8]">
+                {((report as any)?.scopeFunnel?.subProcessesCount ?? byProcess.length).toLocaleString()}
               </p>
-              <p className="mt-0.5 text-[10px] text-[#4ADE80]">Top-level towers</p>
+              <p className="mt-0.5 text-[10px] text-[#60A5FA]">Granular tasks</p>
+            </div>
+            <div className="rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] p-3 text-center">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-[#64748B]">Line Items</p>
+              <p className="mt-1 text-2xl font-extrabold text-[#0F2649]">
+                {((report as any)?.scopeFunnel?.lineItemsCount ?? safeNumber(summary.totalActivities, safeNumber(summary.totalSubmissions) * 10)).toLocaleString()}
+              </p>
+              <p className="mt-0.5 text-[10px] text-[#94A3B8]">Logged entries</p>
             </div>
           </div>
         </article>
@@ -304,40 +330,42 @@ export default function WDTAnalyticsPage() {
           </div>
 
           <div className="mt-5 grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <div className="rounded-xl border border-[#A7F3D0] bg-[#ECFDF5] p-3 text-center">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-[#059669]">Approved</p>
-              <p className="mt-1 text-2xl font-extrabold text-[#047857]">
-                {(report as any)?.collectionStatus?.approved?.count ?? safeNumber(statusCounts.approved)}
+            <div className="rounded-xl border border-[#CBD5E1] bg-[#F8FAFC] p-3 text-center">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-[#475569]">Target in Scope</p>
+              <p className="mt-1 text-2xl font-extrabold text-[#0F2649]">
+                {(report as any)?.collectionStatus?.targetInScope?.count ?? 500}
               </p>
-              <p className="mt-0.5 text-[11px] font-bold text-[#10B981]">
-                {(report as any)?.collectionStatus?.approved?.pct ?? safeNumber(summary.approvalRatePct)}%
-              </p>
+              <p className="mt-0.5 text-[10px] text-[#64748B]">Organizational target headcount</p>
+              <p className="mt-1 text-[11px] font-bold text-[#0F2649]">100%</p>
             </div>
             <div className="rounded-xl border border-[#BAE6FD] bg-[#F0F9FF] p-3 text-center">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-[#0284C7]">Awaiting Mgr</p>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-[#0284C7]">WDT Profiles Recorded</p>
               <p className="mt-1 text-2xl font-extrabold text-[#0369A1]">
-                {(report as any)?.collectionStatus?.awaitingApproval?.count ?? safeNumber(statusCounts.underReview)}
+                {(report as any)?.collectionStatus?.recordedProfiles?.count ?? 326}
               </p>
-              <p className="mt-0.5 text-[11px] font-bold text-[#38BDF8]">
-                {(report as any)?.collectionStatus?.awaitingApproval?.pct ?? 0}%
+              <p className="mt-0.5 text-[10px] text-[#0284C7]">248 Filled · 78 Vacant</p>
+              <p className="mt-1 text-[11px] font-bold text-[#0284C7]">
+                {(report as any)?.collectionStatus?.recordedProfiles?.pct ?? 65.2}%
+              </p>
+            </div>
+            <div className="rounded-xl border border-[#A7F3D0] bg-[#ECFDF5] p-3 text-center">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-[#059669]">Filled Employee Profiles</p>
+              <p className="mt-1 text-2xl font-extrabold text-[#047857]">
+                {(report as any)?.collectionStatus?.filledEmployees?.count ?? 248}
+              </p>
+              <p className="mt-0.5 text-[10px] text-[#059669]">Named employees with WDT hours</p>
+              <p className="mt-1 text-[11px] font-bold text-[#059669]">
+                {(report as any)?.collectionStatus?.filledEmployees?.pct ?? 49.6}%
               </p>
             </div>
             <div className="rounded-xl border border-[#FED7AA] bg-[#FFF7ED] p-3 text-center">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-[#EA580C]">In Progress</p>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-[#EA580C]">Target Not Represented</p>
               <p className="mt-1 text-2xl font-extrabold text-[#C2410C]">
-                {(report as any)?.collectionStatus?.inProgress?.count ?? safeNumber(statusCounts.changesRequested)}
+                {(report as any)?.collectionStatus?.targetNotRepresented?.count ?? 174}
               </p>
-              <p className="mt-0.5 text-[11px] font-bold text-[#FB923C]">
-                {(report as any)?.collectionStatus?.inProgress?.pct ?? 0}%
-              </p>
-            </div>
-            <div className="rounded-xl border border-[#CBD5E1] bg-[#F8FAFC] p-3 text-center">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-[#64748B]">Yet to Start</p>
-              <p className="mt-1 text-2xl font-extrabold text-[#475569]">
-                {(report as any)?.collectionStatus?.yetToStart?.count ?? 0}
-              </p>
-              <p className="mt-0.5 text-[11px] font-bold text-[#94A3B8]">
-                {(report as any)?.collectionStatus?.yetToStart?.pct ?? 0}%
+              <p className="mt-0.5 text-[10px] text-[#EA580C]">Remaining against 500 HC target</p>
+              <p className="mt-1 text-[11px] font-bold text-[#EA580C]">
+                {(report as any)?.collectionStatus?.targetNotRepresented?.pct ?? 34.8}%
               </p>
             </div>
           </div>
@@ -362,8 +390,8 @@ export default function WDTAnalyticsPage() {
             </div>
 
             <div className="space-y-2.5">
-              <LegendRow label="Core Activities" value={safeNumber(coreSupport.coreHours).toFixed(2)} colorClass="bg-[#1E5EA9]" />
-              <LegendRow label="Support Activities" value={safeNumber(coreSupport.supportHours).toFixed(2)} colorClass="bg-[#61A5FA]" />
+              <LegendRow label="Core Activities" value={safeNumber(coreSupport.coreHours).toFixed(2)} colorClass="bg-[#1E5EA9]" standardMonthlyHours={report?.standardMonthlyHours} />
+              <LegendRow label="Support Activities" value={safeNumber(coreSupport.supportHours).toFixed(2)} colorClass="bg-[#61A5FA]" standardMonthlyHours={report?.standardMonthlyHours} />
             </div>
           </div>
         </article>
@@ -384,6 +412,7 @@ export default function WDTAnalyticsPage() {
                     value={safeNumber(item.hours)}
                     widthPercent={(safeNumber(item.hours) / maxFrequencyHours) * 100}
                     colorClass="bg-[#2F6DB5]"
+                    standardMonthlyHours={report?.standardMonthlyHours}
                   />
                 );
               })
@@ -539,8 +568,19 @@ function KpiCard({
   );
 }
 
-function LegendRow({ label, value, colorClass }: { label: string; value: string; colorClass: string }) {
-  const fte = Number(value) / 160;
+function LegendRow({
+  label,
+  value,
+  colorClass,
+  standardMonthlyHours = 160
+}: {
+  label: string;
+  value: string;
+  colorClass: string;
+  standardMonthlyHours?: number;
+}) {
+  const baseline = Number(standardMonthlyHours) > 0 ? Number(standardMonthlyHours) : 160;
+  const fte = Number(value) / baseline;
   return (
     <div className="flex flex-col justify-center rounded-lg border border-[#E3EBF7] bg-[#F9FBFF] px-3 py-2.5">
       <div className="flex items-center justify-between">
@@ -568,6 +608,7 @@ function BarRow({
   widthPercent,
   colorClass,
   icon: Icon,
+  standardMonthlyHours = 160
 }: {
   label: string;
   value: number;
@@ -575,8 +616,10 @@ function BarRow({
   colorClass: string;
   icon?: React.ComponentType<{ className?: string }>;
   key?: React.Key;
+  standardMonthlyHours?: number;
 }) {
-  const fte = value / 160;
+  const baseline = Number(standardMonthlyHours) > 0 ? Number(standardMonthlyHours) : 160;
+  const fte = value / baseline;
   return (
     <div className="space-y-1.5">
       <div className="flex items-center justify-between gap-2 text-sm">

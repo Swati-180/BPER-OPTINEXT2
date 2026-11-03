@@ -11,9 +11,11 @@ import {
   XCircle,
   Save,
   Pencil,
-  X
+  X,
+  ArrowLeft
 } from 'lucide-react';
 import { getFitmentSummaryReport, getEmployeeFitment, updateEmployeeFitment } from '../../lib/api';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { formatDateISO } from '../employee/bperSubmissionStorage';
 import { InlineLoadingBlock } from '../../components/PortalSkeletons';
 
@@ -93,7 +95,12 @@ function computeLabelLocally(score: number) {
 }
 
 export default function FitmentAnalytics() {
-  const [activeTab, setActiveTab] = useState<AnalysisTab>('summary');
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const initialEmployeeId = searchParams.get('employeeId') || '';
+  const initialTab = searchParams.get('tab') === 'scoring' || initialEmployeeId ? 'scoring' : 'summary';
+
+  const [activeTab, setActiveTab] = useState<AnalysisTab>(initialTab);
   const [departmentFilter, setDepartmentFilter] = useState<DepartmentFilter>('All Departments');
 
   // Summary State
@@ -105,7 +112,7 @@ export default function FitmentAnalytics() {
   const [summaryError, setSummaryError] = useState('');
 
   // Scoring State
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState(initialEmployeeId);
   const [employeeFitment, setEmployeeFitment] = useState<EmployeeFitmentDetail | null>(null);
   const [isScoringLoading, setIsScoringLoading] = useState(false);
   const [scoringError, setScoringError] = useState('');
@@ -114,6 +121,61 @@ export default function FitmentAnalytics() {
   const [isEditing, setIsEditing] = useState(false);
   const [editParameters, setEditParameters] = useState<FitmentParameter[]>([]);
   const [isSaving, setIsSaving] = useState(false);
+
+  // Track whether there are unsaved edits
+  const hasUnsavedChanges = useMemo(() => {
+    if (!isEditing || !employeeFitment) return false;
+    const original = employeeFitment.parameters || [];
+    return JSON.stringify(original) !== JSON.stringify(editParameters);
+  }, [isEditing, employeeFitment, editParameters]);
+
+  const handleBackToDeepAnalysis = () => {
+    if (hasUnsavedChanges) {
+      const confirmed = window.confirm(
+        'You have unsaved changes to this fitment evaluation. Are you sure you want to leave without saving?'
+      );
+      if (!confirmed) return;
+    }
+    navigate('/admin/deep-analysis?tab=fitment');
+  };
+
+  // Preselect employee if employeeId is passed via URL query params
+  useEffect(() => {
+    const empIdParam = searchParams.get('employeeId');
+    if (empIdParam && empIdParam.trim()) {
+      setSearchQuery(empIdParam.trim());
+      setActiveTab('scoring');
+      setIsScoringLoading(true);
+      setScoringError('');
+      setEmployeeFitment(null);
+      setIsEditing(false);
+
+      getEmployeeFitment(empIdParam.trim())
+        .then((data) => {
+          setEmployeeFitment(data);
+          setEditParameters(data.parameters && data.parameters.length > 0 ? [...data.parameters] : [...DEFAULT_PARAMETERS]);
+        })
+        .catch((err: any) => {
+          if (err.message && err.message.includes('not found')) {
+            setEmployeeFitment({
+              employeeId: empIdParam.trim(),
+              name: 'New Profile (Draft)',
+              parameters: [],
+              weightedScore: 0,
+              fitmentLabel: 'UNFIT',
+              lastEvaluatedAt: new Date().toISOString()
+            });
+            setEditParameters([...DEFAULT_PARAMETERS]);
+            setIsEditing(true);
+          } else {
+            setScoringError(err.message || 'Employee fitment profile not found.');
+          }
+        })
+        .finally(() => {
+          setIsScoringLoading(false);
+        });
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     async function loadSummary() {
@@ -215,6 +277,14 @@ export default function FitmentAnalytics() {
       <section className="rounded-2xl border border-[#D9E4F2] bg-white p-5 shadow-[0_6px_18px_rgba(16,42,80,0.08)]">
         <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
           <div>
+            <button
+              type="button"
+              onClick={handleBackToDeepAnalysis}
+              className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#165BAA] hover:text-[#114888] mb-2 px-2.5 py-1 rounded-lg bg-[#EFF6FF] hover:bg-[#DBEAFE] border border-[#BFDBFE] transition-colors"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" />
+              Back to Deep Analysis
+            </button>
             <h1 className="text-3xl font-bold text-[#0F2649]">Fitment Analytics</h1>
             <p className="mt-1 text-sm text-[#637F9F]">
               Analyze workforce fitment scoring, training readiness, and detailed parameter evaluations.
@@ -450,7 +520,7 @@ export default function FitmentAnalytics() {
                 <div className="border-b border-[#E3EAF4] px-4.5 py-4 bg-[#F8FBFF]">
                   <div className="flex items-center justify-between">
                     <div>
-                      <h3 className="text-xl font-bold text-[#0A1A31]">{employeeFitment.name}</h3>
+                      <h3 className="text-xl font-bold text-[#0A1A31]">{employeeFitment.name || `Employee ${employeeFitment.employeeId}`}</h3>
                       <p className="mt-1 text-xs font-semibold text-[#577296]">EMP ID: {employeeFitment.employeeId} {employeeFitment.band ? `· Band: ${employeeFitment.band}` : ''}</p>
                     </div>
                     <div className="text-right flex items-center gap-3">

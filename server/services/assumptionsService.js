@@ -1,4 +1,4 @@
-const SystemConfig = require('../models/SystemConfig');
+﻿const SystemConfig = require('../models/SystemConfig');
 
 // In-memory cache for organization assumptions to eliminate DB latency on repeated report requests
 let cachedAssumptions = null;
@@ -60,6 +60,12 @@ function normalizeAssumptions(rawDoc) {
         ? Array.from(new Set(rawKeywords.map(k => String(k).trim().toLowerCase()).filter(Boolean)))
         : [...defaults.screeningSettings.screeningKeywords]
     },
+    processCategoryMappings: Array.isArray(plain.processCategoryMappings) && plain.processCategoryMappings.length > 0
+      ? plain.processCategoryMappings.map(m => ({
+          majorProcess: String(m.majorProcess || '').trim(),
+          category: String(m.category || '').toLowerCase().trim() === 'support' ? 'support' : 'core'
+        }))
+      : defaults.processCategoryMappings.map(m => ({ ...m })),
     isDefault: plain.isDefault ?? false,
     updatedAt: plain.updatedAt || null,
     updatedBy: plain.updatedBy || null
@@ -165,8 +171,65 @@ function resolveReportParameters(orgAssumptions, query = {}, userRole = '') {
   };
 }
 
+async function getEffectiveStandardMonthlyHours() {
+  const assumptions = await getEffectiveAssumptions();
+  const val = Number(assumptions?.screeningSettings?.standardMonthlyHours);
+  return (Number.isFinite(val) && val > 0) ? val : 160;
+}
+
+/**
+ * Resolves activity category (core vs. support) dynamically at Major Process level.
+ * Falls back to original row.activityCategory, then to legacy keyword heuristic.
+ */
+function resolveActivityCategory(majorProcess = '', fallbackCategory = '', mappingMap = null) {
+  const normMP = String(majorProcess || '').trim().toLowerCase();
+
+  if (mappingMap instanceof Map && mappingMap.has(normMP)) {
+    return mappingMap.get(normMP);
+  }
+
+  // If fallbackCategory provided from DB row and valid
+  const normFallback = String(fallbackCategory || '').trim().toLowerCase();
+  if (normFallback === 'support' || normFallback === 'core') {
+    return normFallback;
+  }
+
+  // Heuristic fallback for legacy/unmapped rows
+  if (
+    normMP.includes('meeting') ||
+    normMP.includes('training') ||
+    normMP.includes('additional activities') ||
+    normMP === 'others'
+  ) {
+    return 'support';
+  }
+
+  return 'core';
+}
+
+function buildCategoryMappingMap(mappings = []) {
+  const map = new Map();
+  if (Array.isArray(mappings)) {
+    mappings.forEach(m => {
+      if (m && m.majorProcess) {
+        map.set(String(m.majorProcess).trim().toLowerCase(), String(m.category).trim().toLowerCase() === 'support' ? 'support' : 'core');
+      }
+    });
+  }
+  return map;
+}
+
+async function getEffectiveCategoryMap() {
+  const assumptions = await getEffectiveAssumptions();
+  return buildCategoryMappingMap(assumptions?.processCategoryMappings);
+}
+
 module.exports = {
   getEffectiveAssumptions,
+  getEffectiveStandardMonthlyHours,
+  getEffectiveCategoryMap,
+  resolveActivityCategory,
+  buildCategoryMappingMap,
   normalizeAssumptions,
   resolveReportParameters,
   invalidateAssumptionsCache,

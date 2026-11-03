@@ -454,7 +454,8 @@ export default function ConsolidationAnalysisPage() {
               </div>
             ) : (
               <div className="space-y-6">
-                {Object.entries(report.majorProcessLiftVsKt).map(([major, lkt]) => {
+                {Object.entries(report.majorProcessLiftVsKt).map(([major, lktVal]) => {
+                  const lkt = lktVal as LiftVsKtItem;
                   const procs = report.majorProcessDetail?.[major] || [];
                   return (
                     <div key={major} className="rounded-xl border border-[#D9E4F2] p-4 bg-[#F8FAFC]">

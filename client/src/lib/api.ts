@@ -6,6 +6,7 @@
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 import * as XLSX from 'xlsx';
 import { clearAuthUser } from './authStorage';
+import { queryCache, DEFAULT_STALE_TIME_MS, STATIC_STALE_TIME_MS, type QueryCacheOptions } from './queryCache';
 
 const BASE_URL = `${API_BASE_URL}/api`;
 
@@ -52,20 +53,26 @@ export async function apiFetch(endpoint: string, options: RequestInit = {}) {
   }
 }
 
-export async function apiGetJson<T>(endpoint: string): Promise<T> {
-  const response = await apiFetch(endpoint);
-  const contentType = response.headers.get('content-type') || '';
-  const data = contentType.includes('application/json')
-    ? await response.json().catch(() => null)
-    : null;
+export async function apiGetJson<T>(endpoint: string, cacheOptions?: QueryCacheOptions): Promise<T> {
+  return queryCache.fetchWithCache<T>(
+    endpoint,
+    async () => {
+      const response = await apiFetch(endpoint);
+      const contentType = response.headers.get('content-type') || '';
+      const data = contentType.includes('application/json')
+        ? await response.json().catch(() => null)
+        : null;
 
-  if (!response.ok) {
-    const message = data?.message || `Request failed with status ${response.status}`;
-    console.error(`API Error [${endpoint}]:`, { status: response.status, message, data });
-    throw new Error(message);
-  }
+      if (!response.ok) {
+        const message = data?.message || `Request failed with status ${response.status}`;
+        console.error(`API Error [${endpoint}]:`, { status: response.status, message, data });
+        throw new Error(message);
+      }
 
-  return data as T;
+      return data as T;
+    },
+    cacheOptions
+  );
 }
 
 export function getDashboardReport(department?: string) {
@@ -195,6 +202,14 @@ export function getUtilizationAnalysisReport(department?: string) {
 }
 
 // Process Management - Activities API
+
+export interface TaxonomyItem {
+  _id?: string;
+  majorProcess: string;
+  process: string;
+  subProcesses: string[];
+  department?: string;
+}
 export interface Tower {
   name: string;
   processCount: number;
@@ -385,9 +400,23 @@ export async function downloadExcel(endpoint: string, filename: string, queryPar
   const qs = queryParams ? '?' + new URLSearchParams(queryParams).toString() : '';
   const url = `${API_BASE_URL}/api${endpoint}${qs}`;
 
-  const response = await fetch(url, {
-    headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-  });
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 45000);
+
+  let response: Response;
+  try {
+    response = await fetch(url, {
+      headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+      signal: controller.signal,
+    });
+  } catch (err: any) {
+    if (err?.name === 'AbortError') {
+      throw new Error('Export request timed out after 45 seconds. Please try again.');
+    }
+    throw err;
+  } finally {
+    clearTimeout(timeoutId);
+  }
 
   if (!response.ok) {
     const data = await response.json().catch(() => ({}));
@@ -489,6 +518,11 @@ export async function rejectActivityRequest(id: string, reason: string, remarks?
   return parseApiResponse<{ message: string; request: ActivityRequestItem }>(response, 'Failed to reject activity request.');
 }
 
+export interface ProcessCategoryMapping {
+  majorProcess: string;
+  category: 'core' | 'support';
+}
+
 export interface OrganizationAssumptions {
   key: string;
   scenarioAssumptions: {
@@ -500,6 +534,8 @@ export interface OrganizationAssumptions {
     screeningThresholdHours: number;
     screeningKeywords: string[];
   };
+  processCategoryMappings?: ProcessCategoryMapping[];
+  unmappedProcesses?: string[];
   isDefault: boolean;
   updatedAt?: string | null;
   updatedBy?: string | null;
@@ -515,6 +551,8 @@ export interface UpdateAssumptionsPayload {
     screeningThresholdHours?: number;
     screeningKeywords?: string[];
   };
+  processCategoryMappings?: ProcessCategoryMapping[];
+  unmappedProcesses?: string[];
 }
 
 export function getOrganizationAssumptions(): Promise<OrganizationAssumptions> {
@@ -533,3 +571,5 @@ export async function updateOrganizationAssumptions(
     'Failed to update organization assumptions.'
   );
 }
+
+export { queryCache };

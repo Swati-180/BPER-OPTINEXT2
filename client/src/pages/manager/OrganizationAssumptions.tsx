@@ -47,6 +47,11 @@ export default function OrganizationAssumptionsPage() {
   const [keywords, setKeywords] = useState<string[]>(['automation', 'rpa', 'repeat']);
   const [newKeywordInput, setNewKeywordInput] = useState<string>('');
 
+  // Major Process -> Category Mappings State
+  const [processMappings, setProcessMappings] = useState<Array<{ majorProcess: string; category: 'core' | 'support' }>>([]);
+  const [unmappedProcesses, setUnmappedProcesses] = useState<string[]>([]);
+  const [processSearchQuery, setProcessSearchQuery] = useState('');
+
   // Confirmation Modal
   const [showConfirmModal, setShowConfirmModal] = useState<boolean>(false);
 
@@ -62,6 +67,8 @@ export default function OrganizationAssumptionsPage() {
       setStandardMonthlyHours(data.screeningSettings?.standardMonthlyHours ?? 160);
       setScreeningThresholdHours(data.screeningSettings?.screeningThresholdHours ?? 26);
       setKeywords(data.screeningSettings?.screeningKeywords ?? ['automation', 'rpa', 'repeat']);
+      setProcessMappings(Array.isArray(data.processCategoryMappings) ? data.processCategoryMappings : []);
+      setUnmappedProcesses(Array.isArray(data.unmappedProcesses) ? data.unmappedProcesses : []);
     } catch (err: any) {
       setError(err?.message || 'Failed to load organization assumptions.');
     } finally {
@@ -140,6 +147,7 @@ export default function OrganizationAssumptionsPage() {
           screeningThresholdHours: Number(screeningThresholdHours),
           screeningKeywords: keywords,
         },
+        processCategoryMappings: processMappings,
       };
 
       const result = await updateOrganizationAssumptions(payload);
@@ -420,6 +428,141 @@ export default function OrganizationAssumptionsPage() {
               </span>
             ))}
           </div>
+        </div>
+      </div>
+
+      {/* Point 8(c): Major Process Classification (Core vs Support) */}
+      <div className="rounded-2xl border border-[#DCE7F5] bg-white p-6 shadow-xs space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#EAF0F8] pb-4">
+          <div className="flex items-center gap-3">
+            <div className="h-9 w-9 rounded-xl bg-[#1A5BA7]/10 flex items-center justify-center text-[#1A5BA7]">
+              <Layers className="h-5 w-5" />
+            </div>
+            <div>
+              <h2 className="text-sm font-bold text-[#0F2649]">Major Process Classification</h2>
+              <p className="text-xs text-[#627D9E]">Assign each Major Process to Core or Support. All activities inherit the chosen category.</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Input
+              type="text"
+              placeholder="Search major processes..."
+              value={processSearchQuery}
+              onChange={(e) => setProcessSearchQuery(e.target.value)}
+              className="h-8 text-xs w-48 sm:w-64"
+            />
+          </div>
+        </div>
+
+        {/* Unmapped Processes Notice if any */}
+        {unmappedProcesses.length > 0 && (
+          <div className="rounded-xl border border-amber-200 bg-amber-50/70 p-3.5 text-xs text-amber-900 flex items-start gap-2.5">
+            <span className="font-bold uppercase tracking-wider text-[10px] bg-amber-200 text-amber-800 px-2 py-0.5 rounded">Action Required</span>
+            <div>
+              <p className="font-semibold">Unmapped Major Processes Detected in Data ({unmappedProcesses.length}):</p>
+              <p className="mt-0.5 text-amber-800">
+                The following processes appeared in submissions but have no category mapping: {unmappedProcesses.join(', ')}.
+              </p>
+            </div>
+          </div>
+        )}
+
+        <div className="overflow-x-auto rounded-xl border border-[#EAF0F8]">
+          <table className="w-full text-xs text-left">
+            <thead className="bg-[#F5F9FE] text-[#4F6888] font-semibold border-b border-[#EAF0F8]">
+              <tr>
+                <th className="py-2.5 px-4">Major Process ({processMappings.length})</th>
+                <th className="py-2.5 px-4">Status</th>
+                <th className="py-2.5 px-4">Current Category</th>
+                <th className="py-2.5 px-4 text-right">Classification Action</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[#EAF0F8]">
+              {processMappings
+                .filter(m => m.majorProcess.toLowerCase().includes(processSearchQuery.toLowerCase()))
+                .map((m, idx) => {
+                  const isSupport = m.category === 'support';
+                  return (
+                    <tr key={m.majorProcess || idx} className="hover:bg-[#F8FAFC] transition-colors">
+                      <td className="py-2.5 px-4 font-medium text-[#0F2649]">
+                        {m.majorProcess}
+                      </td>
+                      <td className="py-2.5 px-4">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                          Active
+                        </span>
+                      </td>
+                      <td className="py-2.5 px-4">
+                        <span
+                          className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                            isSupport
+                              ? 'bg-amber-50 text-amber-700 border border-amber-200'
+                              : 'bg-blue-50 text-blue-700 border border-blue-200'
+                          }`}
+                        >
+                          {isSupport ? 'Support' : 'Core'}
+                        </span>
+                      </td>
+                      <td className="py-2.5 px-4 text-right">
+                        {isAdmin ? (
+                          <div className="inline-flex rounded-lg border border-[#DCE7F5] p-0.5 bg-[#F5F9FE]">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setProcessMappings(prev =>
+                                  prev.map(p =>
+                                    p.majorProcess.toLowerCase() === m.majorProcess.toLowerCase()
+                                      ? { ...p, category: 'core' }
+                                      : p
+                                  )
+                                );
+                              }}
+                              disabled={loading || saving}
+                              className={`px-2.5 py-1 text-[11px] font-bold rounded-md transition-all ${
+                                !isSupport
+                                  ? 'bg-[#1A5BA7] text-white shadow-xs'
+                                  : 'text-[#627D9E] hover:text-[#0F2649]'
+                              }`}
+                            >
+                              Core
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setProcessMappings(prev =>
+                                  prev.map(p =>
+                                    p.majorProcess.toLowerCase() === m.majorProcess.toLowerCase()
+                                      ? { ...p, category: 'support' }
+                                      : p
+                                  )
+                                );
+                              }}
+                              disabled={loading || saving}
+                              className={`px-2.5 py-1 text-[11px] font-bold rounded-md transition-all ${
+                                isSupport
+                                  ? 'bg-amber-600 text-white shadow-xs'
+                                  : 'text-[#627D9E] hover:text-[#0F2649]'
+                              }`}
+                            >
+                              Support
+                            </button>
+                          </div>
+                        ) : (
+                          <span className="text-slate-400 font-medium">Read only</span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              {processMappings.length === 0 && (
+                <tr>
+                  <td colSpan={4} className="py-6 text-center text-[#718BAA]">
+                    No major processes loaded.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
         </div>
       </div>
 

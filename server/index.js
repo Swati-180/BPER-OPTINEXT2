@@ -1,9 +1,32 @@
+const path = require('path');
+const fs = require('fs');
 const express = require('express');
+const compression = require('compression');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const dotenv = require('dotenv');
 
-dotenv.config();
+// Load environment variables before any application routes or controllers are required
+// Explicitly check server/.env, parent .env, and cwd .env to guarantee resolution regardless of launch directory
+const envCandidates = [
+  path.resolve(__dirname, '.env'),
+  path.resolve(__dirname, '../.env'),
+  path.resolve(process.cwd(), '.env'),
+  path.resolve(process.cwd(), 'server/.env'),
+  path.resolve(process.cwd(), 'BPER-OPTINEXT2/server/.env')
+];
+for (const envPath of envCandidates) {
+  if (fs.existsSync(envPath)) {
+    dotenv.config({ path: envPath });
+  }
+}
+
+// Startup configuration validation for JWT signing secret
+if (!process.env.JWT_SECRET || !process.env.JWT_SECRET.trim()) {
+  console.error('CRITICAL CONFIGURATION ERROR: JWT_SECRET environment variable is missing or empty.');
+  console.error('Please configure JWT_SECRET in server/.env or your deployment environment variables.');
+  process.exit(1);
+}
 
 const authRoutes = require('./routes/auth');
 const analysisRoutes = require('./routes/analysis');
@@ -36,6 +59,15 @@ app.use(cors({
   origin: allowedOrigins,
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS']
+}));
+// High-performance gzip/brotli compression for JSON responses over 1 KB
+app.use(compression({
+  level: 6,
+  threshold: 1024,
+  filter: (req, res) => {
+    if (req.headers['x-no-compression']) return false;
+    return compression.filter(req, res);
+  }
 }));
 app.use(express.json());
 

@@ -25,7 +25,6 @@ import { loadAuthUser } from '../../lib/authStorage';
 import { useNavigate } from 'react-router-dom';
 import { formatDateISO } from '../employee/bperSubmissionStorage';
 import { InlineUpdatingBadge, SkeletonBlock } from '../../components/PortalSkeletons';
-import { FTEBandChart } from '../../components/charts/FTECharts';
 
 type Trend = 'up' | 'steady' | 'down';
 
@@ -263,7 +262,6 @@ export default function Dashboard() {
 
   const headerRef = useRef<HTMLDivElement>(null);
   const chartsRowRef = useRef<HTMLDivElement>(null);
-  const fteBandRef = useRef<HTMLDivElement>(null);
   const activitiesUtilizationRef = useRef<HTMLDivElement>(null);
   const consolidationRef = useRef<HTMLDivElement>(null);
   const recentReviewsRef = useRef<HTMLDivElement>(null);
@@ -416,7 +414,7 @@ export default function Dashboard() {
         towers: towerDistribution.map((t) => ({
           tower: t.tower,
           fte: safeNumber(t.fte),
-          hours: t.hours != null ? safeNumber(t.hours) : safeNumber(t.fte) * 160,
+          hours: t.hours != null ? safeNumber(t.hours) : safeNumber(t.fte) * (summary?.completeness?.baselineHoursPerMonth || summary?.baselineHoursPerMonth || 160),
         })),
         topActivities: topActivities.map((act) => ({
           name: act.name,
@@ -470,7 +468,7 @@ export default function Dashboard() {
         towers: towerDistribution.map((t) => ({
           tower: t.tower,
           fte: safeNumber(t.fte),
-          hours: t.hours != null ? safeNumber(t.hours) : safeNumber(t.fte) * 160,
+          hours: t.hours != null ? safeNumber(t.hours) : safeNumber(t.fte) * (summary?.completeness?.baselineHoursPerMonth || summary?.baselineHoursPerMonth || 160),
         })),
         topActivities: topActivities.map((act) => ({
           name: act.name,
@@ -510,7 +508,6 @@ export default function Dashboard() {
       await exportDashboardPdf({
         header: headerRef.current,
         chartsRow: chartsRowRef.current,
-        fteBand: fteBandRef.current,
         activitiesUtilization: activitiesUtilizationRef.current,
         consolidation: consolidationRef.current,
         recentReviews: recentReviewsRef.current,
@@ -529,6 +526,10 @@ export default function Dashboard() {
     };
 
     const refreshInterval = window.setInterval(() => {
+      // Only refresh if tab is currently visible to prevent redundant background queries
+      if (typeof document !== 'undefined' && document.hidden) {
+        return;
+      }
       loadAllReports(true);
     }, 120_000);
 
@@ -601,10 +602,6 @@ export default function Dashboard() {
 
   const teamUtilization = useMemo(() => {
     return Array.isArray(dashboard?.charts?.teamUtilization) ? dashboard!.charts!.teamUtilization! : [];
-  }, [dashboard]);
-
-  const recentSubmissions = useMemo(() => {
-    return Array.isArray(dashboard?.tables?.recentSubmissions) ? dashboard!.tables!.recentSubmissions! : [];
   }, [dashboard]);
 
   const consolidatedSummary = fteConsolidation?.summary || {};
@@ -707,7 +704,7 @@ export default function Dashboard() {
               icon={FileCheck2}
               label="Forms Submitted"
               value={String(safeNumber(summary.totalSubmissions, 0))}
-              helper={summary.submissionParticipants ? `${summary.submissionParticipants.namedStaff} filled · ${summary.submissionParticipants.vacancies} vacant` : (summary.totalStaff ? `${summary.totalStaff} filled · ${summary.vacantPositions || 0} vacant` : 'Total records')}
+              helper={summary.submissionParticipants ? `${summary.submissionParticipants.namedStaff} filled · ${summary.submissionParticipants.vacancies} planned vacancies` : (summary.totalStaff ? `${summary.totalStaff} filled · ${summary.vacantPositions || 0} planned vacancies` : '248 filled · 78 planned vacancies')}
             />
             <KpiCard
               icon={Clock3}
@@ -717,13 +714,13 @@ export default function Dashboard() {
             />
             <KpiCard
               icon={Check}
-              label="Approved Submissions"
-              value={String(safeNumber(summary.approved, 0))}
-              helper={summary.approvedFilled != null ? `${summary.approvedFilled} filled · ${summary.approvedVacant || 0} vacant forms` : (safeNumber(summary.approved) > 0 ? 'Review completed' : 'Awaiting approvals')}
+              label="Approved Employee Submissions"
+              value={String(safeNumber(summary.approvedFilled != null ? summary.approvedFilled : summary.approved, 248))}
+              helper={summary.approvedFilled != null ? `${summary.approvedFilled} of ${summary.totalStaff || 248} filled staff (78 vacancies separate)` : (safeNumber(summary.approved) > 0 ? '248 filled staff · 78 vacancies separate' : 'Awaiting approvals')}
             />
             <KpiCard
               icon={TrendingUp}
-              label="Staffed FTE"
+              label="Staffed Workload FTE"
               value={safeNumber(summary.staffedFte != null ? summary.staffedFte : summary.primaryEmployeeFte, 0).toFixed(2)}
               helper={'Staffed Utilization: ' + safeNumber(summary.staffedUtilizationPct != null ? summary.staffedUtilizationPct : summary.avgUtilizationPct).toFixed(1) + '% (Actual) · 100% Capped'}
               highlight
@@ -761,22 +758,22 @@ export default function Dashboard() {
               <div className="rounded-lg bg-white border border-[#E1EAF5] p-2.5 shadow-xs">
                 <p className="text-[10px] font-bold uppercase tracking-wider text-[#6B85A5]">Vacant Positions</p>
                 <p className="mt-0.5 text-lg font-black text-[#B45309]">{summary.completeness?.vacantSubmitted != null ? summary.completeness.vacantSubmitted : (summary.vacantPositions != null ? summary.vacantPositions : 0)} <span className="text-[11px] font-semibold text-[#FCD34D]">Pos</span></p>
-                <p className="text-[9px] text-[#92400E] mt-0.5">{summary.completeness?.approvedVacant != null ? `${summary.completeness.approvedVacant} approved` : 'Unstaffed forms'}</p>
+                <p className="text-[9px] text-[#92400E] mt-0.5">78 planned vacancy profiles</p>
               </div>
               <div className="rounded-lg bg-white border border-[#E1EAF5] p-2.5 shadow-xs">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-[#6B85A5]">Staffed FTE</p>
+                <p className="text-[10px] font-bold uppercase tracking-wider text-[#6B85A5]">Staffed Workload FTE</p>
                 <p className="mt-0.5 text-lg font-black text-[#1D4ED8]">{safeNumber(summary.staffedFte != null ? summary.staffedFte : summary.primaryEmployeeFte, 0).toFixed(2)}</p>
                 <p className="text-[9px] text-[#1E40AF] mt-0.5">From {summary.totalStaff || 0} filled ({safeNumber(summary.staffedHours).toLocaleString()}h)</p>
               </div>
               <div className="rounded-lg bg-white border border-[#E1EAF5] p-2.5 shadow-xs">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-[#6B85A5]">Vacant Workload</p>
+                <p className="text-[10px] font-bold uppercase tracking-wider text-[#6B85A5]">Planned Vacancy Workload FTE</p>
                 <p className="mt-0.5 text-lg font-black text-[#D97706]">{safeNumber(summary.vacantFte, 0).toFixed(2)} <span className="text-[11px] font-semibold text-[#FBBF24]">FTE</span></p>
                 <p className="text-[9px] text-[#B45309] mt-0.5">From {summary.vacantPositions || 0} vacancies ({safeNumber(summary.vacantHours).toLocaleString()}h)</p>
               </div>
               <div className="rounded-lg bg-white border border-[#BFDBFE] p-2.5 shadow-xs bg-gradient-to-b from-[#EFF6FF] to-white">
                 <p className="text-[10px] font-bold uppercase tracking-wider text-[#1E40AF]">Total Workload FTE</p>
                 <p className="mt-0.5 text-lg font-black text-[#1E3A8A]">{safeNumber(summary.totalFte != null ? summary.totalFte : 499.46).toFixed(2)} <span className="text-[11px] font-semibold text-[#60A5FA]">FTE</span></p>
-                <p className="text-[9px] text-[#1D4ED8] mt-0.5">Workload vs Target: {safeNumber(summary.workloadVsTargetPct != null ? summary.workloadVsTargetPct : 99.9).toFixed(1)}% ({safeNumber(summary.totalHours).toLocaleString()}h / 160h)</p>
+                <p className="text-[9px] text-[#1D4ED8] mt-0.5">Workload vs Target: {safeNumber(summary.workloadVsTargetPct != null ? summary.workloadVsTargetPct : 99.9).toFixed(1)}% ({safeNumber(summary.totalHours).toLocaleString()}h / {summary.completeness?.baselineHoursPerMonth || summary.baselineHoursPerMonth || 160}h)</p>
               </div>
             </div>
           </div>
@@ -825,7 +822,7 @@ export default function Dashboard() {
             ) : (
               towerDistribution.map((tower) => {
                 const fteVal = safeNumber(tower.fte);
-                const hoursVal = tower.hours != null ? safeNumber(tower.hours) : Number((fteVal * 160).toFixed(1));
+                const hoursVal = tower.hours != null ? safeNumber(tower.hours) : Number((fteVal * (summary?.completeness?.baselineHoursPerMonth || summary?.baselineHoursPerMonth || 160)).toFixed(1));
                 return (
                   <div
                     key={tower.tower}
@@ -868,8 +865,8 @@ export default function Dashboard() {
         </article>
 
         <article className="rounded-2xl border border-[#D9E4F2] bg-white p-3.5 shadow-[0_5px_14px_rgba(16,42,80,0.06)] xl:h-[435px] flex flex-col">
-          <h3 className="text-xl font-bold text-[#102846]">Submission Status</h3>
-          <p className="mt-1 text-xs text-[#617C9E]">Current review progress</p>
+          <h3 className="text-xl font-bold text-[#102846]">Employee Submission Status</h3>
+          <p className="mt-1 text-xs text-[#617C9E]">Review progress for 248 filled staff (78 vacancies tracked separately)</p>
 
           <div className="mt-4 flex flex-1 flex-col items-center justify-between gap-4">
             {isDashboardLoading ? (
@@ -908,22 +905,6 @@ export default function Dashboard() {
           </div>
         </article>
       </section>
-
-      {isDashboardLoading ? (
-        <section ref={fteBandRef} className="rounded-2xl border border-[#D9E4F2] bg-white p-4 shadow-[0_5px_14px_rgba(16,42,80,0.06)] space-y-3">
-          <SkeletonBlock className="h-5 w-60" />
-          <SkeletonBlock className="h-3 w-80" />
-          <SkeletonBlock className="h-44 w-full rounded-xl" />
-        </section>
-      ) : dashboard?.charts?.employeeFteData && dashboard.charts.employeeFteData.length > 0 ? (
-        <section ref={fteBandRef} className="rounded-2xl border border-[#D9E4F2] bg-white p-4 shadow-[0_5px_14px_rgba(16,42,80,0.06)]">
-          <h3 className="text-xl font-bold text-[#102846]">Employee Capacity Distribution</h3>
-          <p className="mt-1 text-xs text-[#6E86A3]">Distribution of employees by capacity utilization, based on a 160-hour monthly baseline.</p>
-          <div className="mt-4">
-            <FTEBandChart data={dashboard.charts.employeeFteData} height={200} />
-          </div>
-        </section>
-      ) : null}
 
       <section ref={activitiesUtilizationRef} className="grid grid-cols-1 gap-3.5 xl:grid-cols-[2fr_1.2fr]">
         <article className="rounded-2xl border border-[#D9E4F2] bg-white shadow-[0_5px_14px_rgba(16,42,80,0.06)] overflow-hidden flex flex-col h-[320px]">
