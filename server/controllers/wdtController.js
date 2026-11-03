@@ -1,4 +1,5 @@
 const WDTSubmission = require('../models/WDTSubmission');
+const { getEffectiveStandardMonthlyHours } = require('../services/assumptionsService');
 const User = require('../models/User');
 const { logAction } = require('../utils/auditLogger');
 const { invalidateScopedReportsCache } = require('./reportsController');
@@ -18,7 +19,7 @@ const submitWDT = async (req, res) => {
         { employeeId: employee?.employeeId },
         { email: employee?.email?.toLowerCase() }
       ]
-    }).select('maxMonthlyHours role formAccessGranted');
+    }).select('maxMonthlyHours hasCustomMaxHours role formAccessGranted');
 
     const isAdmin = submittingUser?.role === 'admin';
     // formAccessGranted=true means admin explicitly allowed this user to submit (even outside window)
@@ -29,14 +30,29 @@ const submitWDT = async (req, res) => {
     //   return res.status(403).json({ message: 'Submission window is not yet open for this period.' });
     // }
 
-    const maxHours = submittingUser?.maxMonthlyHours || 160;
+    const standardMonthlyHours = await getEffectiveStandardMonthlyHours();
+    const hasExplicitOverride = Boolean(
+      submittingUser?.hasCustomMaxHours &&
+      Number.isFinite(submittingUser?.maxMonthlyHours) &&
+      submittingUser.maxMonthlyHours > 0
+    );
+    const maxHours = hasExplicitOverride
+      ? submittingUser.maxMonthlyHours
+      : standardMonthlyHours;
 
     const rows = Array.isArray(payload?.rows) ? payload.rows : [];
 
-    // Phase 4 Validation Rule: Reject truly blank submissions
-    if (rows.length === 0) {
+    // Task 2 Integrity Rule: Reject genuinely blank submissions
+    // A genuinely blank submission is defined as one with no meaningful activity rows or no valid submitted workload
+    const meaningfulRows = rows.filter(r => {
+      const hasDescription = Boolean(r.subProcess?.trim() || r.activity?.trim() || r.process?.trim());
+      const h = Number(r.timeTakenHoursPerMonth != null ? r.timeTakenHoursPerMonth : r.hours);
+      return hasDescription || (Number.isFinite(h) && h > 0);
+    });
+
+    if (rows.length === 0 || meaningfulRows.length === 0) {
       return res.status(400).json({
-        message: 'Cannot submit a blank form. Please log at least one activity with valid hours.'
+        message: 'Cannot submit a blank form. Please log at least one meaningful activity with valid workload hours.'
       });
     }
 
@@ -54,7 +70,7 @@ const submitWDT = async (req, res) => {
 
     if (totalHours <= 0) {
       return res.status(400).json({
-        message: 'Cannot submit a blank form with 0 total hours. Please log valid activity time.'
+        message: 'Cannot submit a blank form with 0 total hours. Please log valid activity workload.'
       });
     }
 
@@ -240,13 +256,19 @@ const updateSubmissionStatus = async (req, res) => {
        actualComment = '[Administrative Unlock] ' + comment;
     }
 
-    // Phase 4 Integrity Rule: Do not permit a submission to become approved if truly blank
+    // Task 2 Integrity Rule: Do not permit a submission to become approved if genuinely blank
     if (finalStatus === 'Approved') {
       const submissionRows = Array.isArray(submission?.payload?.rows) ? submission.payload.rows : [];
       const submissionHours = Number(submission.totalHours) || 0;
-      if (submissionRows.length === 0 || submissionHours <= 0) {
+      const meaningfulSubmissionRows = submissionRows.filter(r => {
+        const hasDescription = Boolean(r.subProcess?.trim() || r.activity?.trim() || r.process?.trim());
+        const h = Number(r.timeTakenHoursPerMonth != null ? r.timeTakenHoursPerMonth : r.hours);
+        return hasDescription || (Number.isFinite(h) && h > 0);
+      });
+
+      if (submissionRows.length === 0 || meaningfulSubmissionRows.length === 0 || submissionHours <= 0) {
         return res.status(400).json({
-          message: 'Cannot approve a blank submission. Submission must contain logged activities with valid hours.'
+          message: 'Cannot approve a genuinely blank submission. Submission must contain logged activities with valid workload hours.'
         });
       }
     }

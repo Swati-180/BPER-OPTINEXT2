@@ -126,40 +126,8 @@ export default function FormsPage() {
 						}
 					});
 			} else {
-				// If not cached as privileged, verify once profile resolves
-				queuePromise.then((profileData) => {
-					if (isCancelled) return;
-					if (profileData && (profileData.role === 'admin' || profileData.userType === 'manager')) {
-						apiFetch('/auth/users')
-							.then(async (lateUsersRes) => {
-								if (isCancelled) return;
-								if (lateUsersRes && lateUsersRes.ok) {
-									const users = await lateUsersRes.json().catch(() => []);
-									const rawList = Array.isArray(users) ? users : (users.users || users.data || []);
-									const pending = rawList.filter((u: any) =>
-										u.role === 'employee' && u.formAccessGranted === false
-									);
-									setPendingUserApprovals(pending.map((u: any) => ({
-										id: u._id,
-										name: u.name,
-										email: u.email,
-										role: u.role,
-										requestedRole: 'Employee'
-									})));
-								}
-							})
-							.catch((err) => {
-								console.error('Pending user approvals fallback loading error:', err);
-							})
-							.finally(() => {
-								if (!isCancelled) {
-									setIsPendingUsersLoading(false);
-								}
-							});
-					} else {
-						setIsPendingUsersLoading(false);
-					}
-				});
+				// If not privileged, do not fetch user approvals list
+				setIsPendingUsersLoading(false);
 			}
 		}
 
@@ -216,7 +184,6 @@ export default function FormsPage() {
 	useEffect(() => {
 		if (!selectedSummaryRecord) return;
 		const refId = selectedSummaryRecord.referenceId;
-		// If already in detailsCache or currently loading, skip duplicate request
 		if (detailsCache[refId] || loadingDetailIds[refId]) return;
 
 		let isCancelled = false;
@@ -227,16 +194,17 @@ export default function FormsPage() {
 				if (isCancelled || !detail) return;
 				setDetailsCache((prev) => ({ ...prev, [refId]: detail }));
 			})
+			.catch((err) => {
+				console.error('Failed to load detail for:', refId, err);
+			})
 			.finally(() => {
-				if (!isCancelled) {
-					setLoadingDetailIds((prev) => ({ ...prev, [refId]: false }));
-				}
+				setLoadingDetailIds((prev) => ({ ...prev, [refId]: false }));
 			});
 
 		return () => {
 			isCancelled = true;
 		};
-	}, [selectedSummaryRecord?.referenceId, detailsCache, loadingDetailIds]);
+	}, [selectedSummaryRecord?.referenceId]);
 
 	// Full record if detailed data is loaded, otherwise summary record with summary preview row
 	const selectedRecord = useMemo(() => {

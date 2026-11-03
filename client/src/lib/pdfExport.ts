@@ -104,7 +104,7 @@ function createIsolatedCaptureClone(original: HTMLElement): { clone: HTMLElement
 export async function exportDashboardPdf(sections: {
   header: HTMLElement | null;
   chartsRow: HTMLElement | null;
-  fteBand: HTMLElement | null;
+  fteBand?: HTMLElement | null;
   activitiesUtilization: HTMLElement | null;
   consolidation: HTMLElement | null;
   recentReviews?: HTMLElement | null;

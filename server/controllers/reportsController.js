@@ -5,9 +5,17 @@ const ProcessAnalysis = require('../models/ProcessAnalysis');
 const Taxonomy = require('../models/Taxonomy');
 
 const { standardizeGrade, SYSTEM_TEST_ACCOUNT_IDS } = require('../utils/gradeStandardizer');
-const { getEffectiveAssumptions, resolveReportParameters, registerReportCacheInvalidator } = require('../services/assumptionsService');
+const {
+  getEffectiveAssumptions,
+  getEffectiveStandardMonthlyHours,
+  getEffectiveCategoryMap,
+  resolveActivityCategory,
+  buildCategoryMappingMap,
+  resolveReportParameters,
+  registerReportCacheInvalidator
+} = require('../services/assumptionsService');
 
-const STANDARD_MONTHLY_HOURS = 160;
+// Baseline is resolved dynamically from assumptionsService via standardMonthlyHours
 
 function safeNumber(value) {
   const n = Number(value);
@@ -57,7 +65,7 @@ function ensureManager(role, res) {
   return true;
 }
 
-function flattenRows(submissions) {
+function flattenRows(submissions, categoryMappingMap = null) {
   return submissions.flatMap((submission) => {
     const defaultEmpId = submission.employee?.employeeId || 'NA';
     const defaultEmpName = submission.employee?.name || 'Unknown Employee';
@@ -79,6 +87,9 @@ function flattenRows(submissions) {
       return validPayloadRows.map((row) => {
         const hours = safeNumber(row.timeTakenHoursPerMonth != null ? row.timeTakenHoursPerMonth : row.hours);
         const tower = row.tower || row.majorProcess || defaultDept;
+        const majorProcess = row.majorProcess || tower;
+        const effectiveCategory = resolveActivityCategory(majorProcess, row.activityCategory || row.category, categoryMappingMap);
+
         return {
           referenceId: submission.referenceId,
           batchId: submission.batchId,
@@ -96,11 +107,11 @@ function flattenRows(submissions) {
           occupancyStatus,
           isVacant,
           tower,
-          majorProcess: row.majorProcess || tower,
+          majorProcess,
           process: row.process || 'Unspecified Process',
           subProcess: row.subProcess || row.name || 'Unspecified Activity',
           frequency: row.frequency || 'Unspecified',
-          activityCategory: row.activityCategory || row.category || 'core',
+          activityCategory: effectiveCategory,
           monthlyHours: hours,
           comments: row.comments || '',
         };
@@ -115,6 +126,9 @@ function flattenRows(submissions) {
       return validActivities.map((act) => {
         const hours = safeNumber(act.monthlyHours != null ? act.monthlyHours : (act.timeTakenHoursPerMonth != null ? act.timeTakenHoursPerMonth : act.hours));
         const tower = act.tower || act.majorProcess || defaultDept;
+        const majorProcess = act.majorProcess || tower;
+        const effectiveCategory = resolveActivityCategory(majorProcess, act.activityCategory || act.category, categoryMappingMap);
+
         return {
           referenceId: submission.referenceId,
           submittedAt: submission.submittedAt,
@@ -123,11 +137,11 @@ function flattenRows(submissions) {
           employeeName: act.employeeName || defaultEmpName,
           department: act.department || defaultDept,
           tower,
-          majorProcess: act.majorProcess || tower,
+          majorProcess,
           process: act.process || 'Unspecified Process',
           subProcess: act.subProcess || act.name || 'Unspecified Activity',
           frequency: act.frequency || 'Unspecified',
-          activityCategory: act.activityCategory || act.category || 'core',
+          activityCategory: effectiveCategory,
           monthlyHours: hours,
           comments: act.comments || '',
         };
@@ -138,6 +152,9 @@ function flattenRows(submissions) {
     // Only generate a summary row if totalHours > 0 and no detailed activity rows were present.
     const headerHours = safeNumber(submission?.totalHours);
     if (headerHours > 0) {
+      const majorProcess = defaultDept;
+      const effectiveCategory = resolveActivityCategory(majorProcess, 'core', categoryMappingMap);
+
       return [{
         referenceId: submission.referenceId,
         submittedAt: submission.submittedAt,
@@ -146,11 +163,11 @@ function flattenRows(submissions) {
         employeeName: defaultEmpName,
         department: defaultDept,
         tower: defaultDept,
-        majorProcess: defaultDept,
+        majorProcess,
         process: 'Summary Process',
         subProcess: 'Summary Activity',
         frequency: 'Monthly',
-        activityCategory: 'core',
+        activityCategory: effectiveCategory,
         monthlyHours: headerHours,
         comments: 'Derived from summary-only record',
       }];
@@ -272,27 +289,29 @@ async function getScopedSubmissions(req) {
 async function getDashboardReport(req, res) {
   try {
     const requestUser = await resolveRequestUser(req);
+    const standardMonthlyHours = await getEffectiveStandardMonthlyHours();
     if (!ensureManager(requestUser.role, res)) return;
 
-    const [submissions, totalEmployees] = await Promise.all([
+    const [submissions, totalEmployees, categoryMap] = await Promise.all([
       getScopedSubmissions(req),
       User.countDocuments({ role: 'employee', isActive: true, isArchivedDemo: { $ne: true } }),
+      getEffectiveCategoryMap()
     ]);
 
-    const rows = flattenRows(submissions);
+    const rows = flattenRows(submissions, categoryMap);
     
     // Sir's Rule: Exclude vacant positions from actual employee-level workload & utilization
     const staffedRows = rows.filter((row) => !row.isVacant);
     const vacantRows = rows.filter((row) => row.isVacant);
 
     const staffedHours = staffedRows.reduce((sum, row) => sum + row.monthlyHours, 0);
-    const staffedFte = staffedHours / STANDARD_MONTHLY_HOURS;
+    const staffedFte = staffedHours / standardMonthlyHours;
 
     const vacantHours = vacantRows.reduce((sum, row) => sum + row.monthlyHours, 0);
-    const vacantFte = vacantHours / STANDARD_MONTHLY_HOURS;
+    const vacantFte = vacantHours / standardMonthlyHours;
 
     const totalHours = staffedHours + vacantHours;
-    const totalFte = totalHours / STANDARD_MONTHLY_HOURS;
+    const totalFte = totalHours / standardMonthlyHours;
 
     const approved = submissions.filter((item) => item.status === 'Approved').length;
     const pending = submissions.filter((item) => item.status === 'Under Review').length;
@@ -311,7 +330,7 @@ async function getDashboardReport(req, res) {
         tower: item.tower,
         hours: Number(item.hours.toFixed(1)),
         activityCount: item.activityCount,
-        fte: Number((item.hours / STANDARD_MONTHLY_HOURS).toFixed(2)),
+        fte: Number((item.hours / standardMonthlyHours).toFixed(2)),
       }))
       .sort((a, b) => b.fte - a.fte);
 
@@ -334,7 +353,7 @@ async function getDashboardReport(req, res) {
         name: item.name,
         tower: item.tower,
         monthlyHours: Number(item.monthlyHours.toFixed(1)),
-        fte: Number((item.monthlyHours / STANDARD_MONTHLY_HOURS).toFixed(2)),
+        fte: Number((item.monthlyHours / standardMonthlyHours).toFixed(2)),
         consolidate: item.consolidate,
         trend: buildTrend(item),
       }))
@@ -348,7 +367,7 @@ async function getDashboardReport(req, res) {
     });
     const teamUtilization = Array.from(byDepartment.values())
       .map((item) => {
-        const fte = item.hours / STANDARD_MONTHLY_HOURS;
+        const fte = item.hours / standardMonthlyHours;
         return {
           label: item.label,
           totalHours: Number(item.hours.toFixed(1)),
@@ -386,11 +405,11 @@ async function getDashboardReport(req, res) {
     const finalRosterVacantCount = hasAuthoritativeRoster ? rosterVacantCount : submissionVacantCount;
 
     const rawStaffedUtilizationPct = submissionNamedCount > 0
-      ? Number(((staffedHours / (submissionNamedCount * STANDARD_MONTHLY_HOURS)) * 100).toFixed(1))
+      ? Number(((staffedHours / (submissionNamedCount * standardMonthlyHours)) * 100).toFixed(1))
       : 0;
     const cappedStaffedUtilizationPct = Number(Math.min(100, rawStaffedUtilizationPct).toFixed(1));
     const targetHeadcount = 500;
-    const workloadVsTargetPct = Number(((totalHours / (targetHeadcount * STANDARD_MONTHLY_HOURS)) * 100).toFixed(1)); // ~99.9%
+    const workloadVsTargetPct = Number(((totalHours / (targetHeadcount * standardMonthlyHours)) * 100).toFixed(1)); // ~99.9%
 
     const summary = {
       totalEmployees: submissionNamedCount, // Real operational headcount (248)
@@ -438,18 +457,31 @@ async function getDashboardReport(req, res) {
         totalFte: Number(totalFte.toFixed(2)),
         staffedUtilizationPct: rawStaffedUtilizationPct,
         workloadVsTargetPct,
-        baselineHoursPerMonth: STANDARD_MONTHLY_HOURS
+        baselineHoursPerMonth: standardMonthlyHours
       }
     };
     const totalSubmissionCount = submissions.length;
+    const employeeSubmissionsCount = staffedSubmissions.length;
     const submissionStatusSegments = [
-      { key: 'approved', label: 'Approved', count: approved, percent: toPercent(approved, totalSubmissionCount) },
-      { key: 'pending', label: 'Pending', count: pending, percent: toPercent(pending, totalSubmissionCount) },
+      {
+        key: 'approved',
+        label: 'Approved',
+        count: approvedFilled,
+        percent: toPercent(approvedFilled, employeeSubmissionsCount),
+        totalCount: approved,
+        vacantCount: approvedVacant,
+      },
+      {
+        key: 'pending',
+        label: 'Pending',
+        count: pending,
+        percent: toPercent(pending, employeeSubmissionsCount),
+      },
       {
         key: 'changesRequested',
         label: 'Changes Requested',
         count: changesRequested,
-        percent: toPercent(changesRequested, totalSubmissionCount),
+        percent: toPercent(changesRequested, employeeSubmissionsCount),
       },
     ];
 
@@ -483,7 +515,7 @@ async function getDashboardReport(req, res) {
 
     const employeeFteData = Array.from(employeeMap.values()).map(emp => {
       const hours = Number(emp.hours.toFixed(2));
-      const fte = Number((emp.hours / STANDARD_MONTHLY_HOURS).toFixed(2));
+      const fte = Number((emp.hours / standardMonthlyHours).toFixed(2));
       const capacityPct = Number((fte * 100).toFixed(1));
       return {
         label: emp.label,
@@ -522,28 +554,42 @@ async function getDashboardReport(req, res) {
 async function getUtilizationReport(req, res) {
   try {
     const requestUser = await resolveRequestUser(req);
+    const standardMonthlyHours = await getEffectiveStandardMonthlyHours();
     if (!ensureManager(requestUser.role, res)) return;
 
-    const submissions = await getScopedSubmissions(req);
-    const rows = flattenRows(submissions);
+    const [submissions, categoryMap] = await Promise.all([
+      getScopedSubmissions(req),
+      getEffectiveCategoryMap()
+    ]);
+    const rows = flattenRows(submissions, categoryMap);
 
     const totalHours = rows.reduce((sum, row) => sum + row.monthlyHours, 0);
     const totalSubmissions = submissions.length;
     // Track unique employee statuses for collection status (mutually exclusive per employee)
     const empStatusMap = new Map();
+    const filledEmpStatusMap = new Map();
+    const vacantPosStatusMap = new Map();
+
     submissions.forEach(sub => {
+      const isVac = sub.employee?.isVacant === true || String(sub.employee?.name).toLowerCase() === 'vacant';
       const empId = sub.employee?.employeeId || sub.employee?.email || sub.referenceId;
-      if (!empStatusMap.has(empId)) {
-        empStatusMap.set(empId, sub.status);
-      } else {
-        // Prioritize Approved > Under Review > Changes Requested
-        const existingStatus = empStatusMap.get(empId);
-        if (sub.status === 'Approved') {
-          empStatusMap.set(empId, 'Approved');
-        } else if (sub.status === 'Under Review' && existingStatus !== 'Approved') {
-          empStatusMap.set(empId, 'Under Review');
+      const targetMap = isVac ? vacantPosStatusMap : filledEmpStatusMap;
+
+      const updateTarget = (map) => {
+        if (!map.has(empId)) {
+          map.set(empId, sub.status);
+        } else {
+          const existingStatus = map.get(empId);
+          if (sub.status === 'Approved') {
+            map.set(empId, 'Approved');
+          } else if (sub.status === 'Under Review' && existingStatus !== 'Approved') {
+            map.set(empId, 'Under Review');
+          }
         }
-      }
+      };
+
+      updateTarget(empStatusMap);
+      updateTarget(targetMap);
     });
 
     let approved = 0;
@@ -553,6 +599,24 @@ async function getUtilizationReport(req, res) {
       if (status === 'Approved') approved++;
       else if (status === 'Under Review') underReview++;
       else if (status === 'Changes Requested') changesRequested++;
+    });
+
+    let approvedFilled = 0;
+    let underReviewFilled = 0;
+    let changesRequestedFilled = 0;
+    filledEmpStatusMap.forEach(status => {
+      if (status === 'Approved') approvedFilled++;
+      else if (status === 'Under Review') underReviewFilled++;
+      else if (status === 'Changes Requested') changesRequestedFilled++;
+    });
+
+    let approvedVacant = 0;
+    let underReviewVacant = 0;
+    let changesRequestedVacant = 0;
+    vacantPosStatusMap.forEach(status => {
+      if (status === 'Approved') approvedVacant++;
+      else if (status === 'Under Review') underReviewVacant++;
+      else if (status === 'Changes Requested') changesRequestedVacant++;
     });
 
     // Slide 1: WDT Scope Funnel Calculation
@@ -572,36 +636,67 @@ async function getUtilizationReport(req, res) {
       majorProcessesCount: uniqueMajorProcesses.size
     };
 
-    // Slide 2: Global Collection Status Calculation
+    // Slide 2: Global Collection Status Calculation (Point 8b Specification)
     const { department } = req.query;
     let userFilter = { role: 'employee', isActive: true, isArchivedDemo: { $ne: true } };
     if (department && department !== 'All Departments') {
       userFilter.department = department;
     }
     const rolesInScope = await User.countDocuments(userFilter);
-    // When submissions exist (e.g. imported WDT submissions), the in-scope roster is at least the total submissions/employees in that scope
-    const effectiveRolesInScope = Math.max(rolesInScope, totalSubmissions);
-    const inProgressCount = changesRequested; // Submissions requiring revision or in active progress
-    const yetToStartCount = Math.max(0, effectiveRolesInScope - (approved + underReview + inProgressCount));
+
+    // Differentiate filled staff vs vacant position submissions
+    const staffedSubmissions = submissions.filter((s) => !s.employee?.isVacant && String(s.employee?.name).toLowerCase() !== 'vacant');
+    const vacantSubmissions = submissions.filter((s) => s.employee?.isVacant === true || String(s.employee?.name).toLowerCase() === 'vacant');
+
+    const uniqueFilledEmpIds = new Set(staffedSubmissions.map((s) => String(s.employee?.employeeId || '').trim()).filter(Boolean));
+    const uniqueVacantPosIds = new Set(vacantSubmissions.map((s) => String(s.employee?.employeeId || '').trim()).filter(Boolean));
+
+    const filledEmployeesCount = uniqueFilledEmpIds.size || staffedSubmissions.length;
+    const vacantPositionsCount = uniqueVacantPosIds.size || vacantSubmissions.length;
+    const recordedProfilesCount = totalSubmissions; // 326 (248 filled + 78 vacant)
+
+    // Target in-scope headcount: Consistent 500 HC portfolio target
+    const targetInScopeHeadcount = 500;
+    const effectiveRolesInScope = targetInScopeHeadcount;
+    const targetNotRepresentedCount = Math.max(0, targetInScopeHeadcount - recordedProfilesCount); // 174
 
     const collectionStatus = {
-      rolesInScope: effectiveRolesInScope,
+      targetInScope: {
+        count: targetInScopeHeadcount,
+        pct: 100.0,
+      },
+      recordedProfiles: {
+        count: recordedProfilesCount,
+        pct: Number(toPercent(recordedProfilesCount, targetInScopeHeadcount).toFixed(1)), // 65.2%
+        filledCount: filledEmployeesCount,
+        vacantCount: vacantPositionsCount,
+      },
+      filledEmployees: {
+        count: filledEmployeesCount,
+        pct: Number(toPercent(filledEmployeesCount, targetInScopeHeadcount).toFixed(1)), // 49.6%
+      },
+      targetNotRepresented: {
+        count: targetNotRepresentedCount,
+        pct: Number(toPercent(targetNotRepresentedCount, targetInScopeHeadcount).toFixed(1)), // 34.8%
+      },
+      // Backward-compatibility fields
+      rolesInScope: targetInScopeHeadcount,
       approved: {
         count: approved,
-        pct: Number(toPercent(approved, effectiveRolesInScope).toFixed(1))
+        pct: Number(toPercent(approved, recordedProfilesCount).toFixed(1)),
       },
       awaitingApproval: {
         count: underReview,
-        pct: Number(toPercent(underReview, effectiveRolesInScope).toFixed(1))
+        pct: Number(toPercent(underReview, recordedProfilesCount).toFixed(1)),
       },
       inProgress: {
-        count: inProgressCount,
-        pct: Number(toPercent(inProgressCount, effectiveRolesInScope).toFixed(1))
+        count: changesRequested,
+        pct: Number(toPercent(changesRequested, recordedProfilesCount).toFixed(1)),
       },
       yetToStart: {
-        count: yetToStartCount,
-        pct: Number(toPercent(yetToStartCount, effectiveRolesInScope).toFixed(1))
-      }
+        count: targetNotRepresentedCount,
+        pct: Number(toPercent(targetNotRepresentedCount, targetInScopeHeadcount).toFixed(1)),
+      },
     };
 
     const groupAndSort = (items, keyBuilder, valueSelector, limit = 10) => {
@@ -649,7 +744,7 @@ async function getUtilizationReport(req, res) {
     const vacancySummary = {
       positionsCount: vacantUniquePositions,
       totalHours: vacantTotalHours,
-      fte: Number((vacantTotalHours / STANDARD_MONTHLY_HOURS).toFixed(2))
+      fte: Number((vacantTotalHours / standardMonthlyHours).toFixed(2))
     };
 
     const coreHours = rows
@@ -668,7 +763,7 @@ async function getUtilizationReport(req, res) {
     });
     const byDepartment = Array.from(deptMap.values())
       .map((item) => {
-        const fte = item.hours / STANDARD_MONTHLY_HOURS;
+        const fte = item.hours / standardMonthlyHours;
         return {
           label: item.label,
           hours: Number(item.hours.toFixed(1)),
@@ -700,32 +795,40 @@ async function getUtilizationReport(req, res) {
 
     const employeeFteData = Array.from(allNamedEmpMap.values()).map((emp) => ({
       label: emp.label,
-      fte: Number((emp.hours / STANDARD_MONTHLY_HOURS).toFixed(2)),
+      fte: Number((emp.hours / standardMonthlyHours).toFixed(2)),
     }));
 
     res.json({
       generatedAt: new Date().toISOString(),
       summary: {
         staffedHours: Number(namedRows.reduce((sum, r) => sum + r.monthlyHours, 0).toFixed(2)),
-        staffedFte: Number((namedRows.reduce((sum, r) => sum + r.monthlyHours, 0) / STANDARD_MONTHLY_HOURS).toFixed(2)),
+        staffedFte: Number((namedRows.reduce((sum, r) => sum + r.monthlyHours, 0) / standardMonthlyHours).toFixed(2)),
         vacantHours: Number(vacantTotalHours.toFixed(2)),
-        vacantFte: Number((vacantTotalHours / STANDARD_MONTHLY_HOURS).toFixed(2)),
+        vacantFte: Number((vacantTotalHours / standardMonthlyHours).toFixed(2)),
         totalHours: Number(totalHours.toFixed(2)),
         totalSubmissions,
-        totalFte: Number((totalHours / STANDARD_MONTHLY_HOURS).toFixed(2)),
+        totalFte: Number((totalHours / standardMonthlyHours).toFixed(2)),
         avgHoursPerSubmission: Number((totalSubmissions ? totalHours / totalSubmissions : 0).toFixed(1)),
-        approvalRatePct: Number(toPercent(approved, totalSubmissions).toFixed(1)),
+        // Employee Approval Rate: Evaluated strictly against the 248 actual filled employee submissions
+        approvalRatePct: Number(toPercent(approvedFilled, filledEmployeesCount).toFixed(1)),
+        approvedFilled,
+        approvedVacant,
+        totalApproved: approved,
       },
       statusCounts: {
-        approved,
-        underReview,
-        changesRequested,
+        approved: approvedFilled,
+        approvedFilled,
+        approvedVacant,
+        totalApproved: approved,
+        underReview: underReviewFilled,
+        changesRequested: changesRequestedFilled,
       },
       coreSupport: {
         coreHours: Number(coreHours.toFixed(2)),
         supportHours: Number(supportHours.toFixed(2)),
         totalHours: Number((coreHours + supportHours).toFixed(2)),
       },
+      standardMonthlyHours,
       charts: {
         byFrequency,
         byProcess,
@@ -748,13 +851,17 @@ async function getUtilizationReport(req, res) {
 async function getFteSummaryReport(req, res) {
   try {
     const requestUser = await resolveRequestUser(req);
+    const standardMonthlyHours = await getEffectiveStandardMonthlyHours();
     if (!ensureManager(requestUser.role, res)) return;
 
-    const submissions = await getScopedSubmissions(req);
-    const rows = flattenRows(submissions);
+    const [submissions, categoryMap] = await Promise.all([
+      getScopedSubmissions(req),
+      getEffectiveCategoryMap()
+    ]);
+    const rows = flattenRows(submissions, categoryMap);
 
     const totalHours = rows.reduce((sum, row) => sum + row.monthlyHours, 0);
-    const totalFte = totalHours / STANDARD_MONTHLY_HOURS;
+    const totalFte = totalHours / standardMonthlyHours;
 
     const byTowerMap = new Map();
     rows.forEach((row) => {
@@ -769,7 +876,7 @@ async function getFteSummaryReport(req, res) {
         tower: item.tower,
         hours: Number(item.hours.toFixed(1)),
         activityCount: item.activityCount,
-        fte: Number((item.hours / STANDARD_MONTHLY_HOURS).toFixed(2)),
+        fte: Number((item.hours / standardMonthlyHours).toFixed(2)),
       }))
       .sort((a, b) => b.fte - a.fte);
 
@@ -786,7 +893,7 @@ async function getFteSummaryReport(req, res) {
         department: item.department,
         hours: Number(item.hours.toFixed(1)),
         activityCount: item.activityCount,
-        fte: Number((item.hours / STANDARD_MONTHLY_HOURS).toFixed(2)),
+        fte: Number((item.hours / standardMonthlyHours).toFixed(2)),
       }))
       .sort((a, b) => b.fte - a.fte);
 
@@ -796,7 +903,7 @@ async function getFteSummaryReport(req, res) {
         tower: row.tower,
         department: row.department,
         monthlyHours: Number(row.monthlyHours.toFixed(1)),
-        fte: Number((row.monthlyHours / STANDARD_MONTHLY_HOURS).toFixed(2)),
+        fte: Number((row.monthlyHours / standardMonthlyHours).toFixed(2)),
       }))
       .sort((a, b) => b.fte - a.fte)
       .slice(0, 12);
@@ -806,7 +913,7 @@ async function getFteSummaryReport(req, res) {
       summary: {
         totalHours: Number(totalHours.toFixed(2)),
         totalFte: Number(totalFte.toFixed(2)),
-        baselineHours: STANDARD_MONTHLY_HOURS,
+        baselineHours: standardMonthlyHours,
         totalActivities: rows.length,
       },
       charts: {
@@ -839,8 +946,11 @@ async function getFteConsolidationSummaryReport(req, res) {
       simulationOverrides
     } = reportParams;
 
-    const submissions = await getScopedSubmissions(req);
-    const rows = flattenRows(submissions);
+    const [submissions, categoryMap] = await Promise.all([
+      getScopedSubmissions(req),
+      getEffectiveCategoryMap()
+    ]);
+    const rows = flattenRows(submissions, categoryMap);
 
     let highVolumeCount = 0;
     let keywordCount = 0;
@@ -1138,13 +1248,17 @@ async function getFitmentSummaryReport(req, res) {
 async function getFteAnalysisReport(req, res) {
   try {
     const requestUser = await resolveRequestUser(req);
+    const standardMonthlyHours = await getEffectiveStandardMonthlyHours();
     if (!ensureManager(requestUser.role, res)) return;
 
-    const submissions = await getScopedSubmissions(req);
-    const rows = flattenRows(submissions);
+    const [submissions, categoryMap] = await Promise.all([
+      getScopedSubmissions(req),
+      getEffectiveCategoryMap()
+    ]);
+    const rows = flattenRows(submissions, categoryMap);
 
     const totalHours = rows.reduce((sum, row) => sum + row.monthlyHours, 0);
-    const totalFte = totalHours / STANDARD_MONTHLY_HOURS;
+    const totalFte = totalHours / standardMonthlyHours;
 
     // By Tower Detailed
     const byTowerMap = new Map();
@@ -1160,8 +1274,8 @@ async function getFteAnalysisReport(req, res) {
         tower: item.tower,
         hours: Number(item.hours.toFixed(1)),
         activityCount: item.activityCount,
-        fte: Number((item.hours / STANDARD_MONTHLY_HOURS).toFixed(2)),
-        utilizationPct: Number(Math.min(100, (item.hours / STANDARD_MONTHLY_HOURS) * 100).toFixed(1)),
+        fte: Number((item.hours / standardMonthlyHours).toFixed(2)),
+        utilizationPct: Number(Math.min(100, (item.hours / standardMonthlyHours) * 100).toFixed(1)),
       }))
       .sort((a, b) => b.fte - a.fte);
 
@@ -1179,8 +1293,8 @@ async function getFteAnalysisReport(req, res) {
         department: item.department,
         hours: Number(item.hours.toFixed(1)),
         activityCount: item.activityCount,
-        fte: Number((item.hours / STANDARD_MONTHLY_HOURS).toFixed(2)),
-        utilizationPct: Number(Math.min(100, (item.hours / STANDARD_MONTHLY_HOURS) * 100).toFixed(1)),
+        fte: Number((item.hours / standardMonthlyHours).toFixed(2)),
+        utilizationPct: Number(Math.min(100, (item.hours / standardMonthlyHours) * 100).toFixed(1)),
       }))
       .sort((a, b) => b.fte - a.fte);
 
@@ -1225,7 +1339,7 @@ async function getFteAnalysisReport(req, res) {
           process: row.process && row.process !== 'Unspecified Process' ? row.process : '',
           frequency: row.frequency,
           monthlyHours: Number(row.monthlyHours.toFixed(1)),
-          fte: Number((row.monthlyHours / STANDARD_MONTHLY_HOURS).toFixed(2)),
+          fte: Number((row.monthlyHours / standardMonthlyHours).toFixed(2)),
           activityCategory: row.activityCategory,
           employeeName: row.employeeName,
           employeeId: row.employeeId,
@@ -1257,7 +1371,7 @@ async function getFteAnalysisReport(req, res) {
       summary: {
         totalHours: Number(totalHours.toFixed(2)),
         totalFte: Number(totalFte.toFixed(2)),
-        baselineHours: STANDARD_MONTHLY_HOURS,
+        baselineHours: standardMonthlyHours,
         totalActivities: rows.length,
         departments: byDepartmentDetail.length,
       },
@@ -1292,8 +1406,11 @@ async function getConsolidationAnalysisReport(req, res) {
       simulationOverrides
     } = reportParams;
 
-    const submissions = await getScopedSubmissions(req);
-    const rows = flattenRows(submissions);
+    const [submissions, categoryMap] = await Promise.all([
+      getScopedSubmissions(req),
+      getEffectiveCategoryMap()
+    ]);
+    const rows = flattenRows(submissions, categoryMap);
 
     let highVolumeCount = 0;
     let keywordCount = 0;
@@ -1355,9 +1472,12 @@ async function getConsolidationAnalysisReport(req, res) {
       }))
       .sort((a, b) => b.savedFte - a.savedFte);
 
-    // All Consolidation Candidates Detail
+    // Consolidation Candidates Detail: Filter exclusively to screened candidates meeting criteria (consolidate === true)
+    // and provide dual activityName/name mapping for full compatibility with both DeepAnalysis and ConsolidationAnalysis.
     const allCandidates = candidateRows
+      .filter((row) => row.consolidate)
       .map((row) => ({
+        name: row.subProcess,
         activityName: row.subProcess,
         tower: row.tower,
         department: row.department,
@@ -1370,7 +1490,7 @@ async function getConsolidationAnalysisReport(req, res) {
         consolidationSignal: row.screeningSignal,
         isHighVolume: row.isHighVolume,
         hasKeyword: row.hasKeyword,
-        comment: row.comments,
+        comment: row.comments || '',
       }))
       .sort((a, b) => b.monthlyHours - a.monthlyHours);
 
@@ -1404,7 +1524,7 @@ async function getConsolidationAnalysisReport(req, res) {
       const proc = row.process && row.process !== 'Unspecified Process' ? row.process : (row.subProcess || 'Unspecified');
       const pamStatus = pamMap.get(`${row.department}:::${row.subProcess}`) ?? pamMap.get(row.subProcess) ?? null;
       const hours = row.monthlyHours || 0;
-      const fte = hours / STANDARD_MONTHLY_HOURS;
+      const fte = hours / standardMonthlyHours;
 
       // Track by Major Process
       const currentMajor = majorProcessMap.get(major) || {
@@ -1551,7 +1671,7 @@ async function getConsolidationAnalysisReport(req, res) {
         const totalMajorHours = empMajorHoursMap.get(`${empId}:::${major}`) || 0;
         if (consolMajorHours > 0 && totalEmpHours > 0) {
           const dedicationRatio = consolMajorHours / totalEmpHours;
-          const consolFte = consolMajorHours / STANDARD_MONTHLY_HOURS;
+          const consolFte = consolMajorHours / standardMonthlyHours;
           if (dedicationRatio >= 0.70) {
             liftAndShiftCount += 1;
             liftAndShiftFte += consolFte;
@@ -1586,15 +1706,15 @@ async function getConsolidationAnalysisReport(req, res) {
     const officialPamSummary = {
       isAuditedPamBaseline: true,
       totalHours: Number((totalPamConsolidatableHours + totalPamRetainedHours + totalPamPendingHours).toFixed(2)),
-      totalFte: Number(((totalPamConsolidatableHours + totalPamRetainedHours + totalPamPendingHours) / STANDARD_MONTHLY_HOURS).toFixed(2)),
+      totalFte: Number(((totalPamConsolidatableHours + totalPamRetainedHours + totalPamPendingHours) / standardMonthlyHours).toFixed(2)),
       consolidatableHours: Number(totalPamConsolidatableHours.toFixed(2)),
-      consolidatableFte: Number((totalPamConsolidatableHours / STANDARD_MONTHLY_HOURS).toFixed(2)),
+      consolidatableFte: Number((totalPamConsolidatableHours / standardMonthlyHours).toFixed(2)),
       consolidatableCount: totalPamConsolidatableCount,
       retainedHours: Number(totalPamRetainedHours.toFixed(2)),
-      retainedFte: Number((totalPamRetainedHours / STANDARD_MONTHLY_HOURS).toFixed(2)),
+      retainedFte: Number((totalPamRetainedHours / standardMonthlyHours).toFixed(2)),
       retainedCount: totalPamRetainedCount,
       pendingAssessmentHours: Number(totalPamPendingHours.toFixed(2)),
-      pendingAssessmentFte: Number((totalPamPendingHours / STANDARD_MONTHLY_HOURS).toFixed(2)),
+      pendingAssessmentFte: Number((totalPamPendingHours / standardMonthlyHours).toFixed(2)),
       pendingAssessmentCount: totalPamPendingCount,
       assessedConsolidationRatePct: totalPamAssessedHours > 0
         ? Number(((totalPamConsolidatableHours / totalPamAssessedHours) * 100).toFixed(1))
@@ -1782,10 +1902,14 @@ async function getFitmentAnalysisReport(req, res) {
 async function getUtilizationAnalysisReport(req, res) {
   try {
     const requestUser = await resolveRequestUser(req);
+    const standardMonthlyHours = await getEffectiveStandardMonthlyHours();
     if (!ensureManager(requestUser.role, res)) return;
 
-    const submissions = await getScopedSubmissions(req);
-    const rows = flattenRows(submissions);
+    const [submissions, categoryMap] = await Promise.all([
+      getScopedSubmissions(req),
+      getEffectiveCategoryMap()
+    ]);
+    const rows = flattenRows(submissions, categoryMap);
 
     const totalHours = rows.reduce((sum, row) => sum + row.monthlyHours, 0);
     const totalSubmissions = submissions.length;
@@ -1804,7 +1928,7 @@ async function getUtilizationAnalysisReport(req, res) {
         frequency: item.frequency,
         hours: Number(item.hours.toFixed(1)),
         activityCount: item.activityCount,
-        fte: Number((item.hours / STANDARD_MONTHLY_HOURS).toFixed(2)),
+        fte: Number((item.hours / standardMonthlyHours).toFixed(2)),
       }))
       .sort((a, b) => b.hours - a.hours);
 
@@ -1823,23 +1947,26 @@ async function getUtilizationAnalysisReport(req, res) {
         process: item.process,
         hours: Number(item.hours.toFixed(1)),
         activityCount: item.activityCount,
-        fte: Number((item.hours / STANDARD_MONTHLY_HOURS).toFixed(2)),
+        fte: Number((item.hours / standardMonthlyHours).toFixed(2)),
       }))
       .sort((a, b) => b.hours - a.hours);
 
-    // By Employee Detail
+    // By Employee Detail (Actual named employees strictly excluding vacant positions)
     const byEmployeeMap = new Map();
     rows.forEach((row) => {
-      const current = byEmployeeMap.get(row.employeeId) || {
-        employeeId: row.employeeId,
-        employeeName: row.employeeName,
-        department: row.department,
-        hours: 0,
-        activityCount: 0,
-      };
-      current.hours += row.monthlyHours;
-      current.activityCount += 1;
-      byEmployeeMap.set(row.employeeId, current);
+      const isVac = String(row.employeeName || '').toLowerCase() === 'vacant';
+      if (!isVac) {
+        const current = byEmployeeMap.get(row.employeeId) || {
+          employeeId: row.employeeId,
+          employeeName: row.employeeName,
+          department: row.department,
+          hours: 0,
+          activityCount: 0,
+        };
+        current.hours += row.monthlyHours;
+        current.activityCount += 1;
+        byEmployeeMap.set(row.employeeId, current);
+      }
     });
 
     const byEmployeeDetail = Array.from(byEmployeeMap.values())
@@ -1848,7 +1975,7 @@ async function getUtilizationAnalysisReport(req, res) {
         employeeName: item.employeeName,
         department: item.department,
         hours: Number(item.hours.toFixed(1)),
-        fte: Number((item.hours / STANDARD_MONTHLY_HOURS).toFixed(2)),
+        fte: Number((item.hours / standardMonthlyHours).toFixed(2)),
         activityCount: item.activityCount,
       }))
       .sort((a, b) => b.hours - a.hours);
@@ -1866,19 +1993,109 @@ async function getUtilizationAnalysisReport(req, res) {
       .map((item) => ({
         department: item.department,
         hours: Number(item.hours.toFixed(1)),
-        fte: Number((item.hours / STANDARD_MONTHLY_HOURS).toFixed(2)),
+        fte: Number((item.hours / standardMonthlyHours).toFixed(2)),
         submissionCount: item.submissionRefs.size,
       }))
       .sort((a, b) => b.hours - a.hours);
+
+    // Point 8(c)(iv): Workforce Capacity vs Demand Waterfall
+    const filledRows = rows.filter((row) => !row.isVacant);
+    const vacantRows = rows.filter((row) => row.isVacant);
+
+    const filledSubmissions = submissions.filter((s) => {
+      const isVacant = String(s.employee?.name || '').toLowerCase() === 'vacant' || s.employee?.isVacant === true;
+      return !isVacant;
+    });
+    const vacantSubmissions = submissions.filter((s) => {
+      const isVacant = String(s.employee?.name || '').toLowerCase() === 'vacant' || s.employee?.isVacant === true;
+      return isVacant;
+    });
+
+    const filledEmployeesCount = filledSubmissions.length || new Set(filledRows.map(r => r.employeeId)).size;
+    const vacantPositionsCount = vacantSubmissions.length || new Set(vacantRows.map(r => r.employeeId)).size;
+
+    const actualStaffedWorkloadHours = Number(filledRows.reduce((sum, r) => sum + r.monthlyHours, 0).toFixed(2));
+    const plannedVacancyWorkloadHours = Number(vacantRows.reduce((sum, r) => sum + r.monthlyHours, 0).toFixed(2));
+    const totalOrganizationalWorkloadHours = Number((actualStaffedWorkloadHours + plannedVacancyWorkloadHours).toFixed(2));
+
+    const availableStaffedCapacityHours = Number((filledEmployeesCount * standardMonthlyHours).toFixed(2));
+    const additionalStaffedWorkloadHours = Number((actualStaffedWorkloadHours - availableStaffedCapacityHours).toFixed(2));
+
+    const capacityWaterfall = [
+      {
+        stage: 1,
+        id: 'available_capacity',
+        label: 'Available Staffed Capacity',
+        type: 'base',
+        hours: availableStaffedCapacityHours,
+        fte: Number((availableStaffedCapacityHours / standardMonthlyHours).toFixed(2)),
+        runningTotalHours: availableStaffedCapacityHours,
+        runningTotalFte: Number((availableStaffedCapacityHours / standardMonthlyHours).toFixed(2)),
+        description: `Contracted baseline capacity of ${filledEmployeesCount} filled employees (${filledEmployeesCount} × ${standardMonthlyHours}h)`
+      },
+      {
+        stage: 2,
+        id: 'additional_staffed',
+        label: 'Additional Staffed Workload',
+        type: 'addition',
+        hours: additionalStaffedWorkloadHours,
+        fte: Number((additionalStaffedWorkloadHours / standardMonthlyHours).toFixed(2)),
+        runningTotalHours: actualStaffedWorkloadHours,
+        runningTotalFte: Number((actualStaffedWorkloadHours / standardMonthlyHours).toFixed(2)),
+        description: 'Operational volume documented beyond standard baseline by active staff'
+      },
+      {
+        stage: 3,
+        id: 'actual_staffed',
+        label: 'Actual Staffed Workload',
+        type: 'subtotal',
+        hours: actualStaffedWorkloadHours,
+        fte: Number((actualStaffedWorkloadHours / standardMonthlyHours).toFixed(2)),
+        runningTotalHours: actualStaffedWorkloadHours,
+        runningTotalFte: Number((actualStaffedWorkloadHours / standardMonthlyHours).toFixed(2)),
+        description: `Total actual process workload logged across all ${filledEmployeesCount} filled employees`
+      },
+      {
+        stage: 4,
+        id: 'planned_vacancy',
+        label: 'Planned Vacancy Workload',
+        type: 'addition',
+        hours: plannedVacancyWorkloadHours,
+        fte: Number((plannedVacancyWorkloadHours / standardMonthlyHours).toFixed(2)),
+        runningTotalHours: totalOrganizationalWorkloadHours,
+        runningTotalFte: Number((totalOrganizationalWorkloadHours / standardMonthlyHours).toFixed(2)),
+        description: `Planned workload demand designated for ${vacantPositionsCount} open positions (planned demand, not staffed capacity)`
+      },
+      {
+        stage: 5,
+        id: 'total_workload',
+        label: 'Total Organizational Workload',
+        type: 'total',
+        hours: totalOrganizationalWorkloadHours,
+        fte: Number((totalOrganizationalWorkloadHours / standardMonthlyHours).toFixed(2)),
+        runningTotalHours: totalOrganizationalWorkloadHours,
+        runningTotalFte: Number((totalOrganizationalWorkloadHours / standardMonthlyHours).toFixed(2)),
+        description: 'Comprehensive enterprise workload requirement (Staffed Workload + Planned Vacancies)'
+      }
+    ];
 
     res.json({
       generatedAt: new Date().toISOString(),
       summary: {
         totalHours: Number(totalHours.toFixed(2)),
         totalSubmissions,
-        totalFte: Number((totalHours / STANDARD_MONTHLY_HOURS).toFixed(2)),
+        totalFte: Number((totalHours / standardMonthlyHours).toFixed(2)),
+        baselineHours: standardMonthlyHours,
         departments: byDepartmentDetail.length,
+        filledEmployeesCount,
+        vacantPositionsCount,
+        availableStaffedCapacityHours,
+        additionalStaffedWorkloadHours,
+        actualStaffedWorkloadHours,
+        plannedVacancyWorkloadHours,
+        totalOrganizationalWorkloadHours,
       },
+      capacityWaterfall,
       tabs: {
         byFrequency: byFrequencyDetail,
         byProcess: byProcessDetail,
@@ -1909,11 +2126,15 @@ async function getAuditLogs(req, res) {
 async function getWorkforceCapacityReport(req, res) {
   try {
     const requestUser = await resolveRequestUser(req);
+    const standardMonthlyHours = await getEffectiveStandardMonthlyHours();
     if (!ensureManager(requestUser.role, res)) return;
 
     const { gradePerspective = 'historical' } = req.query; // 'historical' (default) or 'current'
-    const submissions = await getScopedSubmissions(req);
-    const rows = flattenRows(submissions);
+    const [submissions, categoryMap] = await Promise.all([
+      getScopedSubmissions(req),
+      getEffectiveCategoryMap()
+    ]);
+    const rows = flattenRows(submissions, categoryMap);
 
     // Fetch user map for live current grades if requested
     const userMap = new Map(
@@ -1989,7 +2210,7 @@ async function getWorkforceCapacityReport(req, res) {
       return Array.from(bandMap.values()).map((b) => ({
         band: b.band,
         hours: Number(b.hours.toFixed(1)),
-        fte: Number((b.hours / STANDARD_MONTHLY_HOURS).toFixed(2)),
+        fte: Number((b.hours / standardMonthlyHours).toFixed(2)),
         headcount: b.headcount.size,
       }));
     };
@@ -2008,7 +2229,7 @@ async function getWorkforceCapacityReport(req, res) {
       return Array.from(deptMap.values()).map((d) => ({
         department: d.department,
         hours: Number(d.hours.toFixed(1)),
-        fte: Number((d.hours / STANDARD_MONTHLY_HOURS).toFixed(2)),
+        fte: Number((d.hours / standardMonthlyHours).toFixed(2)),
         headcount: d.headcount.size,
       })).sort((a, b) => b.hours - a.hours);
     };
@@ -2036,8 +2257,8 @@ async function getWorkforceCapacityReport(req, res) {
     const staffedEmployees = Array.from(staffedEmpMap.values()).map((e) => ({
       ...e,
       monthlyHours: Number(e.monthlyHours.toFixed(1)),
-      fte: Number((e.monthlyHours / STANDARD_MONTHLY_HOURS).toFixed(2)),
-      utilizationPct: Number(Math.min(100, (e.monthlyHours / STANDARD_MONTHLY_HOURS) * 100).toFixed(1)),
+      fte: Number((e.monthlyHours / standardMonthlyHours).toFixed(2)),
+      utilizationPct: Number(Math.min(100, (e.monthlyHours / standardMonthlyHours) * 100).toFixed(1)),
     })).sort((a, b) => b.monthlyHours - a.monthlyHours);
 
     const totalStaffedHours = staffedRows.reduce((sum, r) => sum + r.monthlyHours, 0);
@@ -2045,9 +2266,9 @@ async function getWorkforceCapacityReport(req, res) {
       summary: {
         occupiedHeadcount: staffedEmployees.length,
         staffedHours: Number(totalStaffedHours.toFixed(2)),
-        staffedFte: Number((totalStaffedHours / STANDARD_MONTHLY_HOURS).toFixed(2)),
+        staffedFte: Number((totalStaffedHours / standardMonthlyHours).toFixed(2)),
         avgUtilizationPct: Number(
-          (staffedEmployees.length > 0 ? (totalStaffedHours / (staffedEmployees.length * STANDARD_MONTHLY_HOURS)) * 100 : 0).toFixed(1)
+          (staffedEmployees.length > 0 ? (totalStaffedHours / (staffedEmployees.length * standardMonthlyHours)) * 100 : 0).toFixed(1)
         ),
       },
       byGradeBand: buildBandDistribution(staffedRows),
@@ -2076,7 +2297,7 @@ async function getWorkforceCapacityReport(req, res) {
     const vacantPositionsList = Array.from(vacantPosMap.values()).map((p) => ({
       ...p,
       plannedHours: Number(p.plannedHours.toFixed(1)),
-      plannedFte: Number((p.plannedHours / STANDARD_MONTHLY_HOURS).toFixed(2)),
+      plannedFte: Number((p.plannedHours / standardMonthlyHours).toFixed(2)),
     })).sort((a, b) => b.plannedHours - a.plannedHours);
 
     const totalVacantHours = vacantRows.reduce((sum, r) => sum + r.monthlyHours, 0);
@@ -2084,7 +2305,7 @@ async function getWorkforceCapacityReport(req, res) {
       summary: {
         vacantPositionsCount: vacantPositionsList.length,
         plannedWorkloadHours: Number(totalVacantHours.toFixed(2)),
-        plannedCapacityFte: Number((totalVacantHours / STANDARD_MONTHLY_HOURS).toFixed(2)),
+        plannedCapacityFte: Number((totalVacantHours / standardMonthlyHours).toFixed(2)),
       },
       byGradeBand: buildBandDistribution(vacantRows),
       byDepartment: buildDeptDistribution(vacantRows),
@@ -2092,12 +2313,12 @@ async function getWorkforceCapacityReport(req, res) {
     };
 
     // VIEW C: Workforce Gap Analysis (Compare current staffed capacity with required capacity)
-    const availableStaffedCapacityHours = staffedEmployees.length * STANDARD_MONTHLY_HOURS;
+    const availableStaffedCapacityHours = staffedEmployees.length * standardMonthlyHours;
     const availableStaffedCapacityFte = staffedEmployees.length;
     const requiredCapacityHours = totalStaffedHours + totalVacantHours;
-    const requiredCapacityFte = Number((requiredCapacityHours / STANDARD_MONTHLY_HOURS).toFixed(2));
+    const requiredCapacityFte = Number((requiredCapacityHours / standardMonthlyHours).toFixed(2));
     const netGapHours = Number((requiredCapacityHours - availableStaffedCapacityHours).toFixed(2));
-    const netGapFte = Number((netGapHours / STANDARD_MONTHLY_HOURS).toFixed(2));
+    const netGapFte = Number((netGapHours / standardMonthlyHours).toFixed(2));
 
     // Department level Gap Matrix
     const allDepts = Array.from(new Set([...rows.map((r) => r.department || 'Unassigned')]));
@@ -2108,17 +2329,17 @@ async function getWorkforceCapacityReport(req, res) {
       const deptStaffedEmps = new Set(deptStaffed.map((r) => r.employeeId)).size;
       const deptStaffedHours = deptStaffed.reduce((sum, r) => sum + r.monthlyHours, 0);
       const deptVacantHours = deptVacant.reduce((sum, r) => sum + r.monthlyHours, 0);
-      const deptAvailableHours = deptStaffedEmps * STANDARD_MONTHLY_HOURS;
+      const deptAvailableHours = deptStaffedEmps * standardMonthlyHours;
       const deptRequiredHours = deptStaffedHours + deptVacantHours;
 
       return {
         department: dept,
         staffedHeadcount: deptStaffedEmps,
         availableCapacityFte: deptStaffedEmps,
-        staffedWorkloadFte: Number((deptStaffedHours / STANDARD_MONTHLY_HOURS).toFixed(2)),
-        vacantPlannedFte: Number((deptVacantHours / STANDARD_MONTHLY_HOURS).toFixed(2)),
-        requiredTotalFte: Number((deptRequiredHours / STANDARD_MONTHLY_HOURS).toFixed(2)),
-        gapFte: Number(((deptRequiredHours - deptAvailableHours) / STANDARD_MONTHLY_HOURS).toFixed(2)),
+        staffedWorkloadFte: Number((deptStaffedHours / standardMonthlyHours).toFixed(2)),
+        vacantPlannedFte: Number((deptVacantHours / standardMonthlyHours).toFixed(2)),
+        requiredTotalFte: Number((deptRequiredHours / standardMonthlyHours).toFixed(2)),
+        gapFte: Number(((deptRequiredHours - deptAvailableHours) / standardMonthlyHours).toFixed(2)),
         status: deptRequiredHours > deptAvailableHours ? 'Capacity Deficit' : 'Balanced / Surplus',
       };
     }).sort((a, b) => b.gapFte - a.gapFte);
@@ -2131,17 +2352,17 @@ async function getWorkforceCapacityReport(req, res) {
       const bandStaffedEmps = new Set(bandStaffed.map((r) => r.employeeId)).size;
       const bandStaffedHours = bandStaffed.reduce((sum, r) => sum + r.monthlyHours, 0);
       const bandVacantHours = bandVacant.reduce((sum, r) => sum + r.monthlyHours, 0);
-      const bandAvailableHours = bandStaffedEmps * STANDARD_MONTHLY_HOURS;
+      const bandAvailableHours = bandStaffedEmps * standardMonthlyHours;
       const bandRequiredHours = bandStaffedHours + bandVacantHours;
 
       return {
         gradeBand: band,
         staffedHeadcount: bandStaffedEmps,
         availableCapacityFte: bandStaffedEmps,
-        staffedWorkloadFte: Number((bandStaffedHours / STANDARD_MONTHLY_HOURS).toFixed(2)),
-        vacantPlannedFte: Number((bandVacantHours / STANDARD_MONTHLY_HOURS).toFixed(2)),
-        requiredTotalFte: Number((bandRequiredHours / STANDARD_MONTHLY_HOURS).toFixed(2)),
-        gapFte: Number(((bandRequiredHours - bandAvailableHours) / STANDARD_MONTHLY_HOURS).toFixed(2)),
+        staffedWorkloadFte: Number((bandStaffedHours / standardMonthlyHours).toFixed(2)),
+        vacantPlannedFte: Number((bandVacantHours / standardMonthlyHours).toFixed(2)),
+        requiredTotalFte: Number((bandRequiredHours / standardMonthlyHours).toFixed(2)),
+        gapFte: Number(((bandRequiredHours - bandAvailableHours) / standardMonthlyHours).toFixed(2)),
         status: bandRequiredHours > bandAvailableHours ? 'Capacity Deficit' : 'Balanced / Surplus',
       };
     });
@@ -2160,6 +2381,7 @@ async function getWorkforceCapacityReport(req, res) {
 
     res.json({
       generatedAt: new Date().toISOString(),
+      baselineHours: standardMonthlyHours,
       gradePerspective,
       actualWorkforce: viewA_ActualWorkforce,
       vacancyCapacityPlanning: viewB_VacancyCapacityPlanning,

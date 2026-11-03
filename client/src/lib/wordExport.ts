@@ -27,6 +27,10 @@ interface DashboardWordReportOptions {
     totalFte?: number;
     staffedUtilizationPct?: number;
     workloadVsTargetPct?: number;
+    baselineHoursPerMonth?: number;
+    completeness?: {
+      baselineHoursPerMonth?: number;
+    };
   };
   towers: Array<{
     tower: string;
@@ -116,6 +120,7 @@ function createDataCell(
 
 export async function exportDashboardWord(options: DashboardWordReportOptions): Promise<void> {
   const { roleLabel, generatedAt, summary, towers, topActivities, teamUtilization, consolidation } = options;
+  const baselineHours = summary?.completeness?.baselineHoursPerMonth || summary?.baselineHoursPerMonth || 160;
 
   // 1. KPI Table (2 rows x 5 columns)
   const kpiLabels = [
@@ -188,10 +193,10 @@ export async function exportDashboardWord(options: DashboardWordReportOptions): 
 
   // 2. Tower Distribution Table (All 18 Towers)
   const totalTowerFte = towers.reduce((acc, t) => acc + (t.fte || 0), 0);
-  const totalTowerHours = towers.reduce((acc, t) => acc + (t.hours || (t.fte || 0) * 160), 0);
+  const totalTowerHours = towers.reduce((acc, t) => acc + (t.hours || (t.fte || 0) * baselineHours), 0);
 
   const towerRows = towers.map((t, idx) => {
-    const hours = t.hours != null ? t.hours : (t.fte || 0) * 160;
+    const hours = t.hours != null ? t.hours : (t.fte || 0) * baselineHours;
     const sharePct = totalTowerFte > 0 ? ((t.fte / totalTowerFte) * 100).toFixed(1) : '0.0';
     return new TableRow({
       children: [
@@ -380,7 +385,7 @@ export async function exportDashboardWord(options: DashboardWordReportOptions): 
           new Paragraph({
             children: [
               new TextRun({
-                text: `Workload effort and FTE distribution across all ${towers.length} operational towers based on a 160-hour baseline:`,
+                text: `Workload effort and FTE distribution across all ${towers.length} operational towers based on a ${baselineHours}-hour baseline:`,
                 size: 18,
                 color: '475467',
                 font: 'Arial',

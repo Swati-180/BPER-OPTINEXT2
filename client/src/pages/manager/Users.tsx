@@ -31,6 +31,8 @@ type UserRow = {
 	isArchivedDemo?: boolean;
 	hasPassword?: boolean;
 	maxMonthlyHours: number;
+	hasCustomMaxHours?: boolean;
+	effectiveMaxMonthlyHours?: number;
 	_id?: string;
 };
 
@@ -1165,8 +1167,31 @@ export default function UsersPage() {
 									</label>
 
 									<label className="md:col-span-2 space-y-1.5">
-										<span className="text-[11px] font-bold uppercase tracking-[0.14em] text-[#6A809E]">Max Monthly Hours</span>
-										<input type="number" value={editingUser.maxMonthlyHours} onChange={(e) => setEditingUser(prev => prev ? {...prev, maxMonthlyHours: Number(e.target.value)} : null)} className="h-11 w-full rounded-xl border border-[#D8E2F0] bg-white px-4 text-sm font-bold text-[#1E5BAA] outline-none focus:border-[#7BA0CF] focus:ring-2 focus:ring-[#D7E6F7]" />
+										<div className="flex items-center justify-between">
+											<span className="text-[11px] font-bold uppercase tracking-[0.14em] text-[#6A809E]">Max Monthly Hours</span>
+											{editingUser.hasCustomMaxHours && (
+												<button
+													type="button"
+													onClick={() => setEditingUser(prev => prev ? { ...prev, hasCustomMaxHours: false, maxMonthlyHours: 0 } : null)}
+													className="text-[10px] font-bold text-red-600 hover:underline"
+												>
+													Clear Override
+												</button>
+											)}
+										</div>
+										<input
+											type="number"
+											placeholder="Org Baseline"
+											value={editingUser.maxMonthlyHours || ''}
+											onChange={(e) => {
+												const val = e.target.value === '' ? 0 : Number(e.target.value);
+												setEditingUser(prev => prev ? { ...prev, maxMonthlyHours: val, hasCustomMaxHours: e.target.value !== '' } : null);
+											}}
+											className="h-11 w-full rounded-xl border border-[#D8E2F0] bg-white px-4 text-sm font-bold text-[#1E5BAA] outline-none focus:border-[#7BA0CF] focus:ring-2 focus:ring-[#D7E6F7]"
+										/>
+										<p className="text-[10px] text-[#6A809E]">
+											{editingUser.hasCustomMaxHours ? 'Individual override active' : 'Inherits organization baseline'}
+										</p>
 									</label>
 
 									<div className="md:col-span-6 mt-4 flex justify-end gap-3">

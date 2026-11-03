@@ -11,30 +11,63 @@ interface Invite {
   email: string;
   employeeId?: string;
   status: 'pending' | 'sent' | 'registered' | 'failed';
+  deliveryStatus?: 'pending' | 'email_sent' | 'link_copied' | 'manually_shared' | 'delivery_failed' | 'unknown';
+  registrationStatus?: 'not_registered' | 'registered' | 'expired' | 'registration_failed';
   inviteLink: string;
   sentAt?: string;
+  expiresAt?: string;
+  linkCopiedAt?: string;
+  manuallySharedAt?: string;
   registeredAt?: string;
+  registrationFailedAt?: string;
+  registrationFailureReason?: string;
   createdAt?: string;
   errorMessage?: string;
 }
 
 type ParsedRow = { name: string; email: string; employeeId?: string; rowNum: number; error?: string };
 
-const STATUS_CONFIG = {
-  pending: { label: 'Pending', color: 'bg-slate-100 text-slate-600', icon: Clock },
-  sent: { label: 'Sent', color: 'bg-blue-100 text-blue-700', icon: Mail },
-  registered: { label: 'Registered', color: 'bg-emerald-100 text-emerald-700', icon: CheckCircle },
-  failed: { label: 'Failed', color: 'bg-red-100 text-red-700', icon: XCircle },
+const DELIVERY_CONFIG: Record<string, { label: string; color: string; icon: any }> = {
+  pending: { label: 'Pending Dispatch', color: 'bg-slate-100 text-slate-700', icon: Clock },
+  email_sent: { label: 'Email Sent', color: 'bg-blue-100 text-blue-700', icon: Mail },
+  link_copied: { label: 'Link Copied', color: 'bg-indigo-100 text-indigo-700', icon: Copy },
+  manually_shared: { label: 'Manually Shared', color: 'bg-purple-100 text-purple-700', icon: CheckCircle },
+  delivery_failed: { label: 'Delivery Failed', color: 'bg-red-100 text-red-700', icon: XCircle },
+  unknown: { label: 'Direct / Legacy', color: 'bg-slate-100 text-slate-600', icon: Users },
 };
 
-function StatusPill({ status }: { status: Invite['status'] }) {
-  const config = STATUS_CONFIG[status] || STATUS_CONFIG.pending;
-  const Icon = config.icon;
+const REGISTRATION_CONFIG: Record<string, { label: string; color: string; icon: any }> = {
+  not_registered: { label: 'Awaiting Signup', color: 'bg-amber-100 text-amber-800', icon: Clock },
+  registered: { label: 'Registered', color: 'bg-emerald-100 text-emerald-800', icon: CheckCircle },
+  expired: { label: 'Expired', color: 'bg-rose-100 text-rose-800', icon: AlertCircle },
+  registration_failed: { label: 'Reg. Failed', color: 'bg-red-100 text-red-800', icon: XCircle },
+};
+
+function DualStatusPills({ invite }: { invite: Invite }) {
+  // Normalize delivery status
+  const dKey = invite.deliveryStatus || (invite.sentAt ? 'email_sent' : (invite.status === 'failed' ? 'delivery_failed' : (invite.status === 'sent' ? 'email_sent' : (invite.status === 'registered' ? 'unknown' : 'pending'))));
+  const dConf = DELIVERY_CONFIG[dKey] || DELIVERY_CONFIG.pending;
+  const DIcon = dConf.icon;
+
+  // Normalize registration status
+  const isReg = invite.registrationStatus === 'registered' || invite.status === 'registered';
+  const isFailed = invite.registrationStatus === 'registration_failed';
+  const isExpired = !isReg && !isFailed && (invite.registrationStatus === 'expired' || (invite.expiresAt ? new Date(invite.expiresAt) < new Date() : false));
+  const rKey = isReg ? 'registered' : (isFailed ? 'registration_failed' : (isExpired ? 'expired' : 'not_registered'));
+  const rConf = REGISTRATION_CONFIG[rKey] || REGISTRATION_CONFIG.not_registered;
+  const RIcon = rConf.icon;
+
   return (
-    <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider ${config.color}`}>
-      <Icon size={11} />
-      {config.label}
-    </span>
+    <div className="flex flex-col gap-1 items-start">
+      <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${dConf.color}`}>
+        <DIcon size={10} />
+        {dConf.label}
+      </span>
+      <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${rConf.color}`}>
+        <RIcon size={10} />
+        {rConf.label}
+      </span>
+    </div>
   );
 }
 
@@ -76,23 +109,107 @@ export default function EmployeeInvites() {
     loadInvites();
   }, []);
 
-  const filteredInvites = filter === 'all'
-    ? invites
-    : invites.filter(i => i.status === filter);
-
+  // Calculate reviewer-aligned hierarchical & operational metrics
+  const now = new Date();
   const counts = {
-    all: invites.length,
-    pending: invites.filter(i => i.status === 'pending').length,
-    sent: invites.filter(i => i.status === 'sent').length,
-    registered: invites.filter(i => i.status === 'registered').length,
-    failed: invites.filter(i => i.status === 'failed').length,
+    total: invites.length,
+    pending: 0,
+    // Dispatched Main Funnel (Mutually exclusive partition of Total Dispatched)
+    totalDispatched: 0,
+    registered: 0,
+    awaitingRegistration: 0, // Active, unexpired awaiting signup
+    expiredUnregistered: 0,  // Expired / Not registered
+    registrationFailed: 0,   // Permanent registration failures
+    // Diagnostic indicators (Non-additive operational alerts)
+    totalExpired: 0,
+    deliveryFailed: 0,
+    linkCopied: 0,
   };
 
-  const copyLink = (link: string, id: string) => {
-    navigator.clipboard.writeText(link).then(() => {
+  invites.forEach(i => {
+    const isReg = i.registrationStatus === 'registered' || i.status === 'registered';
+    const isRegFailed = !isReg && (i.registrationStatus === 'registration_failed');
+    const isExpired = !isReg && !isRegFailed && (i.registrationStatus === 'expired' || (i.expiresAt ? new Date(i.expiresAt) < now : false));
+
+    // Diagnostic total expired links
+    if (isExpired) {
+      counts.totalExpired++;
+    }
+
+    // Main Dispatched Funnel Membership
+    // An invite is part of "Total Dispatched" if:
+    // 1) It successfully registered (receipt proven across all channels)
+    // 2) Registration was attempted and failed permanently (link was received)
+    // 3) Delivery was confirmed via SMTP (email_sent) or explicit manual share (manually_shared)
+    const isDispatched = isReg || isRegFailed || i.deliveryStatus === 'email_sent' || i.deliveryStatus === 'manually_shared' || i.status === 'sent';
+    if (isDispatched) {
+      counts.totalDispatched++;
+      // Mutually exclusive breakdown of Total Dispatched:
+      if (isReg) {
+        counts.registered++;
+      } else if (isRegFailed) {
+        counts.registrationFailed++;
+      } else if (isExpired) {
+        counts.expiredUnregistered++;
+      } else {
+        counts.awaitingRegistration++;
+      }
+    }
+
+    // Pending to be Sent
+    // Only invites that have not been dispatched and not registered
+    if (!isDispatched && (i.deliveryStatus === 'pending' || i.status === 'pending') && !isReg && !isRegFailed) {
+      counts.pending++;
+    }
+
+    // Operational Attention Counts (Diagnostic views - not additive with Total Dispatched)
+    if (!isReg && (i.deliveryStatus === 'delivery_failed' || i.status === 'failed')) {
+      counts.deliveryFailed++;
+    }
+    if (!isReg && !isRegFailed && i.deliveryStatus === 'link_copied') {
+      counts.linkCopied++;
+    }
+  });
+
+  const filteredInvites = invites.filter(i => {
+    if (filter === 'all') return true;
+    const isReg = i.registrationStatus === 'registered' || i.status === 'registered';
+    const isRegFailed = !isReg && (i.registrationStatus === 'registration_failed');
+    const isExpired = !isReg && !isRegFailed && (i.registrationStatus === 'expired' || (i.expiresAt && new Date(i.expiresAt) < now));
+    const isDispatched = isReg || isRegFailed || i.deliveryStatus === 'email_sent' || i.deliveryStatus === 'manually_shared' || i.status === 'sent';
+
+    if (filter === 'dispatched') return isDispatched;
+    if (filter === 'registered') return isReg;
+    if (filter === 'awaiting') return isDispatched && !isReg && !isRegFailed && !isExpired;
+    if (filter === 'expired_unregistered') return isDispatched && isExpired;
+    if (filter === 'registration_failed') return isRegFailed;
+    if (filter === 'pending') return !isDispatched && (i.deliveryStatus === 'pending' || i.status === 'pending');
+    if (filter === 'expired') return isExpired;
+    if (filter === 'failed') return !isReg && (i.deliveryStatus === 'delivery_failed' || i.status === 'failed');
+    if (filter === 'link_copied') return !isReg && !isRegFailed && i.deliveryStatus === 'link_copied';
+    return true;
+  });
+
+  const copyLink = async (link: string, id: string) => {
+    try {
+      await navigator.clipboard.writeText(link);
       setCopied(id);
       setTimeout(() => setCopied(null), 2000);
-    });
+      // Record copy event in backend
+      await apiFetch(`/invite/${id}/mark-copied`, { method: 'POST' });
+      await loadInvites();
+    } catch (e) {
+      console.error('Failed to copy link or record event', e);
+    }
+  };
+
+  const handleConfirmShared = async (id: string) => {
+    try {
+      await apiFetch(`/invite/${id}/confirm-shared`, { method: 'POST' });
+      await loadInvites();
+    } catch (e) {
+      alert('Failed to confirm manual share');
+    }
   };
 
   const handleSendAll = async () => {
@@ -251,21 +368,130 @@ export default function EmployeeInvites() {
 
 
 
-      {/* Summary pills */}
-      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-        {(['all', 'pending', 'sent', 'registered', 'failed'] as const).map(s => (
+      {/* Reviewer-Aligned Executive Onboarding Hierarchy */}
+      <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm space-y-4">
+        {/* Main Pipeline Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {/* Card 1: Total Invitations */}
           <button
-            key={s}
             type="button"
-            onClick={() => setFilter(s)}
-            className={`rounded-xl border px-4 py-3 text-left transition-all ${
-              filter === s ? 'border-blue-500 bg-blue-50 shadow-sm' : 'border-slate-200 bg-white hover:border-blue-300'
-            }`}
+            onClick={() => setFilter('all')}
+            className={`rounded-xl border p-4 text-left transition-all ${filter === 'all' ? 'border-blue-500 bg-blue-50/60 ring-2 ring-blue-500/20' : 'border-slate-200 bg-slate-50/50 hover:border-slate-300'}`}
           >
-            <div className="text-2xl font-bold text-slate-800">{counts[s]}</div>
-            <div className="text-xs font-semibold uppercase tracking-wider text-slate-500 mt-0.5 capitalize">{s}</div>
+            <div className="text-3xl font-extrabold text-slate-900">{counts.total}</div>
+            <div className="text-xs font-bold uppercase tracking-wider text-slate-500 mt-1">Total Invitations</div>
+            <p className="text-[11px] text-slate-400 mt-1">Total employee upload/target roster pool</p>
           </button>
-        ))}
+
+          {/* Card 2: Pending Dispatch */}
+          <button
+            type="button"
+            onClick={() => setFilter('pending')}
+            className={`rounded-xl border p-4 text-left transition-all ${filter === 'pending' ? 'border-blue-500 bg-blue-50/60 ring-2 ring-blue-500/20' : 'border-slate-200 bg-slate-50/50 hover:border-slate-300'}`}
+          >
+            <div className="text-3xl font-extrabold text-slate-700">{counts.pending}</div>
+            <div className="text-xs font-bold uppercase tracking-wider text-slate-600 mt-1">Pending to be Sent</div>
+            <p className="text-[11px] text-slate-400 mt-1">Queued for email dispatch</p>
+          </button>
+
+          {/* Card 3: Total Sent / Dispatched Funnel */}
+          <div className={`rounded-xl border p-4 transition-all ${filter === 'dispatched' ? 'border-blue-500 bg-blue-50/40 ring-2 ring-blue-500/20' : 'border-slate-200 bg-slate-50/50'}`}>
+            <div className="flex items-center justify-between">
+              <div>
+                <button
+                  type="button"
+                  onClick={() => setFilter('dispatched')}
+                  className="text-3xl font-extrabold text-blue-700 hover:underline"
+                >
+                  {counts.totalDispatched}
+                </button>
+                <div className="text-xs font-bold uppercase tracking-wider text-blue-800 mt-0.5">Total Sent</div>
+              </div>
+              <span className="text-[10px] font-semibold text-blue-600 bg-blue-100/60 px-2 py-0.5 rounded">
+                Dispatched Funnel
+              </span>
+            </div>
+
+            {/* Sub-Funnel Breakdown: Mutually exclusive partition of Total Sent */}
+            <div className="grid grid-cols-4 gap-1.5 mt-3 pt-3 border-t border-slate-200/80 text-left">
+              <button
+                type="button"
+                onClick={() => setFilter('registered')}
+                className={`p-2 rounded-lg border transition-all ${filter === 'registered' ? 'bg-emerald-100/80 border-emerald-400 text-emerald-900 ring-1 ring-emerald-400' : 'bg-white border-slate-200/80 hover:border-emerald-300'}`}
+              >
+                <div className="text-lg font-bold text-emerald-700 leading-tight">{counts.registered}</div>
+                <div className="text-[10px] font-bold text-emerald-800 tracking-tight">Registered</div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setFilter('awaiting')}
+                className={`p-2 rounded-lg border transition-all ${filter === 'awaiting' ? 'bg-amber-100/80 border-amber-400 text-amber-900 ring-1 ring-amber-400' : 'bg-white border-slate-200/80 hover:border-amber-300'}`}
+              >
+                <div className="text-lg font-bold text-amber-700 leading-tight">{counts.awaitingRegistration}</div>
+                <div className="text-[10px] font-bold text-amber-800 tracking-tight leading-tight">Awaiting Signup</div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setFilter('expired_unregistered')}
+                className={`p-2 rounded-lg border transition-all ${filter === 'expired_unregistered' ? 'bg-rose-100/80 border-rose-400 text-rose-900 ring-1 ring-rose-400' : 'bg-white border-slate-200/80 hover:border-rose-300'}`}
+              >
+                <div className="text-lg font-bold text-rose-700 leading-tight">{counts.expiredUnregistered}</div>
+                <div className="text-[10px] font-bold text-rose-800 tracking-tight leading-tight">Expired / Not Reg.</div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setFilter('registration_failed')}
+                className={`p-2 rounded-lg border transition-all ${filter === 'registration_failed' ? 'bg-red-100/80 border-red-400 text-red-900 ring-1 ring-red-400' : 'bg-white border-slate-200/80 hover:border-red-300'}`}
+              >
+                <div className="text-lg font-bold text-red-700 leading-tight">{counts.registrationFailed}</div>
+                <div className="text-[10px] font-bold text-red-800 tracking-tight leading-tight">Reg. Failed</div>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Operational Attention Indicators (Diagnostic views — non-additive) */}
+        <div className="pt-2 border-t border-slate-100 flex flex-wrap items-center gap-2 text-xs">
+          <span className="text-slate-400 text-[11px] uppercase tracking-wider font-semibold mr-1">
+            Operational Attention (Diagnostic indicators — non-additive):
+          </span>
+          {counts.totalExpired > 0 && (
+            <button
+              type="button"
+              onClick={() => setFilter('expired')}
+              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border text-xs font-semibold transition-colors ${filter === 'expired' ? 'bg-rose-100 border-rose-300 text-rose-800' : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'}`}
+            >
+              <AlertCircle size={12} className="text-rose-600" />
+              <span>{counts.totalExpired} Expired Links (Renew)</span>
+            </button>
+          )}
+          {counts.deliveryFailed > 0 && (
+            <button
+              type="button"
+              onClick={() => setFilter('failed')}
+              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border text-xs font-semibold transition-colors ${filter === 'failed' ? 'bg-red-100 border-red-300 text-red-800' : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'}`}
+            >
+              <XCircle size={12} className="text-red-600" />
+              <span>{counts.deliveryFailed} Delivery Failed (Retry)</span>
+            </button>
+          )}
+          {counts.linkCopied > 0 && (
+            <button
+              type="button"
+              onClick={() => setFilter('link_copied')}
+              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border text-xs font-semibold transition-colors ${filter === 'link_copied' ? 'bg-indigo-100 border-indigo-300 text-indigo-800' : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'}`}
+            >
+              <Copy size={12} className="text-indigo-600" />
+              <span>{counts.linkCopied} Copied (Unconfirmed)</span>
+            </button>
+          )}
+          {counts.totalExpired === 0 && counts.deliveryFailed === 0 && counts.linkCopied === 0 && (
+            <span className="text-slate-400 font-medium">No expired links or delivery issues detected.</span>
+          )}
+        </div>
       </div>
 
       {/* Tabs */}
@@ -318,26 +544,51 @@ export default function EmployeeInvites() {
                       <td className="py-3 px-4 text-sm font-semibold text-slate-800">{invite.name}</td>
                       <td className="py-3 px-4 text-sm text-slate-600">{invite.email}</td>
                       <td className="py-3 px-4">
-                        <StatusPill status={invite.status} />
-                        {invite.status === 'failed' && (
-                          <div className="text-[10px] text-red-500 mt-1">
-                            {invite.errorMessage || 'Email is not registered.'}
+                        <DualStatusPills invite={invite} />
+                        {invite.errorMessage && (
+                          <div
+                            className={`text-[10px] mt-1 max-w-[220px] truncate ${
+                              (invite.registrationStatus === 'registered' || invite.status === 'registered')
+                                ? 'text-slate-400 italic'
+                                : 'text-red-500 font-medium'
+                            }`}
+                            title={invite.errorMessage}
+                          >
+                            {(invite.registrationStatus === 'registered' || invite.status === 'registered')
+                              ? `Historical note: ${invite.errorMessage}`
+                              : invite.errorMessage}
+                          </div>
+                        )}
+                        {invite.registrationFailureReason && (
+                          <div className="text-[10px] text-red-600 font-semibold mt-1 max-w-[200px] truncate" title={invite.registrationFailureReason}>
+                            ⚠ {invite.registrationFailureReason}
                           </div>
                         )}
                       </td>
                       <td className="py-3 px-4">
                         {invite.inviteLink ? (
-                          <button
-                            type="button"
-                            onClick={() => copyLink(invite.inviteLink, invite._id)}
-                            className="inline-flex items-center gap-1.5 rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] font-semibold text-slate-600 hover:border-blue-300 hover:text-blue-600 transition-colors"
-                          >
-                            {copied === invite._id ? (
-                              <><CheckCircle size={12} className="text-emerald-500" /> Copied!</>
-                            ) : (
-                              <><Copy size={12} /> Copy Link</>
+                          <div className="flex flex-col gap-1 items-start">
+                            <button
+                              type="button"
+                              onClick={() => copyLink(invite.inviteLink, invite._id)}
+                              className="inline-flex items-center gap-1.5 rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] font-semibold text-slate-600 hover:border-blue-300 hover:text-blue-600 transition-colors"
+                            >
+                              {copied === invite._id ? (
+                                <><CheckCircle size={12} className="text-emerald-500" /> Copied!</>
+                              ) : (
+                                <><Copy size={12} /> Copy Link</>
+                              )}
+                            </button>
+                            {invite.deliveryStatus === 'link_copied' && invite.registrationStatus !== 'registered' && (
+                              <button
+                                type="button"
+                                onClick={() => handleConfirmShared(invite._id)}
+                                className="text-[10px] text-purple-600 hover:underline font-semibold"
+                              >
+                                Mark Shared ✓
+                              </button>
                             )}
-                          </button>
+                          </div>
                         ) : (
                           <span className="text-xs text-slate-400">—</span>
                         )}

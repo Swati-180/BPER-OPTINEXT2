@@ -39,6 +39,7 @@ const userSchema = new mongoose.Schema({
   archivedAt: { type: Date, default: null },
   lastLoginAt: { type: Date, default: null },
   maxMonthlyHours: { type: Number, default: 160, min: 1, max: 744 },
+  hasCustomMaxHours: { type: Boolean, default: false },
   // When false, employee is visible in 'Pending User Approvals' and cannot submit forms
   formAccessGranted: { type: Boolean, default: false }
 }, { collection: 'users', timestamps: true });

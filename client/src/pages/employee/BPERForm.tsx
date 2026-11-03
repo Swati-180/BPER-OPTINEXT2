@@ -137,6 +137,17 @@ export default function BPERForm() {
 
   const handleSubmit = async () => {
     if (!payload || !profile) return;
+    const rows = payload.rows || [];
+    const meaningfulRows = rows.filter(r => (r.subProcess?.trim() || r.activityCategory) && Number(r.timeTakenHoursPerMonth || 0) > 0);
+    if (rows.length === 0 || meaningfulRows.length === 0 || totalHours <= 0) {
+      alert("Cannot submit a blank form. Please log at least one meaningful activity with valid hours.");
+      return;
+    }
+    const maxAllowedHours = (profile as any)?.effectiveMaxMonthlyHours || profile.maxMonthlyHours || 160;
+    if (profile.role !== 'admin' && totalHours > maxAllowedHours) {
+      alert(`Cannot submit: Total monthly hours (${totalHours.toFixed(1)}h) exceed the configured limit of ${maxAllowedHours}h. Please review your entries.`);
+      return;
+    }
     setIsSubmitting(true);
     try {
       const submission = buildBperSubmission(payload, profile, refId);

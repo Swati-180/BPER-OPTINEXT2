@@ -164,7 +164,13 @@ const confirmInvites = async (req, res) => {
 // Attempts to send emails to all pending invites
 const sendInvites = async (req, res) => {
   try {
-    const pending = await EmployeeInvite.find({ status: 'pending' });
+    const pending = await EmployeeInvite.find({
+      $or: [
+        { status: 'pending' },
+        { deliveryStatus: 'pending' }
+      ],
+      registrationStatus: { $ne: 'registered' }
+    });
 
     if (pending.length === 0) {
       return res.json({ message: 'No pending invites to send.', sent: 0, failed: 0 });
@@ -173,17 +179,36 @@ const sendInvites = async (req, res) => {
     let sent = 0;
     let failed = 0;
     const emailNotConfigured = !isEmailConfigured();
+    const adminId = req.user?.userId || null;
 
     for (const invite of pending) {
       const result = await sendInviteEmail(invite);
       if (result.sent) {
+        invite.deliveryStatus = 'email_sent';
         invite.status = 'sent';
         invite.sentAt = new Date();
         invite.errorMessage = '';
+        if (!Array.isArray(invite.deliveryHistory)) invite.deliveryHistory = [];
+        invite.deliveryHistory.push({
+          channel: 'email',
+          event: 'sent',
+          timestamp: new Date(),
+          errorMessage: '',
+          adminId
+        });
         sent++;
       } else {
+        invite.deliveryStatus = 'delivery_failed';
         invite.status = 'failed';
         invite.errorMessage = result.reason || 'Unknown error';
+        if (!Array.isArray(invite.deliveryHistory)) invite.deliveryHistory = [];
+        invite.deliveryHistory.push({
+          channel: 'email',
+          event: 'failed',
+          timestamp: new Date(),
+          errorMessage: invite.errorMessage,
+          adminId
+        });
         failed++;
       }
       await invite.save();
@@ -207,25 +232,63 @@ const resendInvite = async (req, res) => {
   try {
     const invite = await EmployeeInvite.findById(req.params.id);
     if (!invite) return res.status(404).json({ message: 'Invite not found' });
-    if (invite.status === 'registered') {
+    if (invite.status === 'registered' || invite.registrationStatus === 'registered') {
       return res.status(400).json({ message: 'Employee has already registered' });
     }
+
+    const adminId = req.user?.userId || null;
+
+    // Archive previous state into lifecycleHistory before updating
+    if (!Array.isArray(invite.lifecycleHistory)) invite.lifecycleHistory = [];
+    invite.lifecycleHistory.push({
+      token: invite.inviteToken,
+      deliveryStatus: invite.deliveryStatus || invite.status || 'unknown',
+      registrationStatus: invite.registrationStatus || (invite.expiresAt && new Date() > invite.expiresAt ? 'expired' : 'not_registered'),
+      sentAt: invite.sentAt,
+      linkCopiedAt: invite.linkCopiedAt,
+      manuallySharedAt: invite.manuallySharedAt,
+      expiresAt: invite.expiresAt,
+      errorMessage: invite.errorMessage,
+      archivedAt: new Date(),
+      reason: req.body?.reason || `admin_resend_from_${invite.deliveryStatus || invite.status}`
+    });
 
     // Re-generate token and link
     const token = uuidv4();
     invite.inviteToken = token;
     invite.inviteLink = `${FRONTEND_URL}/register/invite/${token}`;
     invite.expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
-    invite.status = 'pending';
+    invite.registrationStatus = 'not_registered';
+    invite.registrationFailedAt = null;
+    invite.registrationFailureReason = '';
 
     // Attempt email
     const result = await sendInviteEmail(invite);
     if (result.sent) {
+      invite.deliveryStatus = 'email_sent';
       invite.status = 'sent';
       invite.sentAt = new Date();
       invite.errorMessage = '';
+      if (!Array.isArray(invite.deliveryHistory)) invite.deliveryHistory = [];
+      invite.deliveryHistory.push({
+        channel: 'email',
+        event: 'sent',
+        timestamp: new Date(),
+        errorMessage: '',
+        adminId
+      });
     } else {
+      invite.deliveryStatus = 'delivery_failed';
+      invite.status = 'failed';
       invite.errorMessage = result.reason || '';
+      if (!Array.isArray(invite.deliveryHistory)) invite.deliveryHistory = [];
+      invite.deliveryHistory.push({
+        channel: 'email',
+        event: 'failed',
+        timestamp: new Date(),
+        errorMessage: invite.errorMessage,
+        adminId
+      });
     }
 
     await invite.save();
@@ -237,9 +300,68 @@ const resendInvite = async (req, res) => {
         name: invite.name,
         email: invite.email,
         inviteLink: invite.inviteLink,
-        status: invite.status
+        status: invite.status,
+        deliveryStatus: invite.deliveryStatus,
+        registrationStatus: invite.registrationStatus
       }
     });
+  } catch (err) {
+    return res.status(500).json({ message: err.message });
+  }
+};
+
+// ─── POST /invite/:id/mark-copied ───────────────────────────────────────────────
+const markInviteCopied = async (req, res) => {
+  try {
+    const invite = await EmployeeInvite.findById(req.params.id);
+    if (!invite) return res.status(404).json({ message: 'Invite not found' });
+
+    const adminId = req.user?.userId || null;
+    invite.copyCount = (invite.copyCount || 0) + 1;
+    invite.linkCopiedAt = new Date();
+
+    if (invite.deliveryStatus === 'pending' || !invite.deliveryStatus) {
+      invite.deliveryStatus = 'link_copied';
+    }
+
+    if (!Array.isArray(invite.deliveryHistory)) invite.deliveryHistory = [];
+    invite.deliveryHistory.push({
+      channel: 'manual_copy',
+      event: 'copied',
+      timestamp: new Date(),
+      errorMessage: '',
+      adminId
+    });
+
+    await invite.save();
+    return res.json({ message: 'Link copied event recorded', invite });
+  } catch (err) {
+    return res.status(500).json({ message: err.message });
+  }
+};
+
+// ─── POST /invite/:id/confirm-shared ──────────────────────────────────────────
+const confirmInviteShared = async (req, res) => {
+  try {
+    const invite = await EmployeeInvite.findById(req.params.id);
+    if (!invite) return res.status(404).json({ message: 'Invite not found' });
+
+    const adminId = req.user?.userId || null;
+    invite.deliveryStatus = 'manually_shared';
+    invite.manuallySharedAt = new Date();
+    invite.status = 'sent';
+
+    if (!Array.isArray(invite.deliveryHistory)) invite.deliveryHistory = [];
+    invite.deliveryHistory.push({
+      channel: 'manual_share_confirm',
+      event: 'confirmed_shared',
+      timestamp: new Date(),
+      errorMessage: '',
+      adminId
+    });
+
+    await invite.save();
+    return res.json({ message: 'Manual share confirmed', invite });
   } catch (err) {
     return res.status(500).json({ message: err.message });
   }
@@ -342,13 +464,25 @@ const registerViaInvite = async (req, res) => {
     // Safety checks against vacancies and archived demo accounts
     if (existing) {
       if (existing.isVacant || existing.role === 'position') {
-        return res.status(400).json({ message: 'Vacant positions cannot register or authenticate as active employees.' });
+        invite.registrationStatus = 'registration_failed';
+        invite.registrationFailedAt = new Date();
+        invite.registrationFailureReason = 'Vacant positions cannot register or authenticate as active employees.';
+        await invite.save();
+        return res.status(400).json({ message: invite.registrationFailureReason });
       }
       if (existing.isArchivedDemo) {
-        return res.status(400).json({ message: 'Archived demo accounts cannot register or authenticate as active employees.' });
+        invite.registrationStatus = 'registration_failed';
+        invite.registrationFailedAt = new Date();
+        invite.registrationFailureReason = 'Archived demo accounts cannot register or authenticate as active employees.';
+        await invite.save();
+        return res.status(400).json({ message: invite.registrationFailureReason });
       }
       if (!existing.isRosterOnly && existing.password) {
-        return res.status(409).json({ message: 'An active account with this email or employee ID already exists. Please log in.' });
+        invite.registrationStatus = 'registration_failed';
+        invite.registrationFailedAt = new Date();
+        invite.registrationFailureReason = 'An active account with this email or employee ID already exists. Please log in.';
+        await invite.save();
+        return res.status(409).json({ message: invite.registrationFailureReason });
       }
 
       // Existing roster-only employee record: LINK AND UPGRADE IN-PLACE
@@ -392,8 +526,12 @@ const registerViaInvite = async (req, res) => {
       });
     }
 
-    invite.status = 'registered';
+    invite.registrationStatus = 'registered';
     invite.registeredAt = new Date();
+    // Maintain authentic deliveryStatus: if delivery was unknown or never marked, direct link registration confirms receipt
+    if (!invite.deliveryStatus || invite.deliveryStatus === 'pending') {
+      invite.deliveryStatus = 'unknown';
+    }
     await invite.save();
 
     return res.json({ message: 'Registration successful! You can now log in.' });
@@ -408,6 +546,8 @@ module.exports = {
   confirmInvites,
   sendInvites,
   resendInvite,
+  markInviteCopied,
+  confirmInviteShared,
   getInviteStatus,
   getInviteByToken,
   registerViaInvite

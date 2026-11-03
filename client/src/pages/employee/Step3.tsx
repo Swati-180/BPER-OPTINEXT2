@@ -25,7 +25,7 @@ export function Step3({ payload, onPrev, onSubmit, onSaveDraft, onEditSection, s
     [rows]
   );
   const authUser = loadAuthUser();
-  const maxHours = authUser?.maxMonthlyHours || 160;
+  const maxHours = authUser?.effectiveMaxMonthlyHours || authUser?.maxMonthlyHours || payload?.employee?.maxMonthlyHours || 160;
   const totalFte = useMemo(() => totalHours / maxHours, [totalHours, maxHours]);
   const coreRows = useMemo(() => rows.filter((row) => row.activityCategory !== "support"), [rows]);
   const supportRows = useMemo(() => rows.filter((row) => row.activityCategory === "support"), [rows]);
@@ -44,6 +44,11 @@ export function Step3({ payload, onPrev, onSubmit, onSaveDraft, onEditSection, s
 
   const utilizationFte = maxHours > 0 ? totalHours / maxHours : 0;
   const isOverLimit = totalHours > maxHours;
+  const meaningfulRows = useMemo(
+    () => rows.filter(r => (r.subProcess?.trim() || r.activityCategory) && Number(r.timeTakenHoursPerMonth || 0) > 0),
+    [rows]
+  );
+  const isGenuinelyBlank = rows.length === 0 || meaningfulRows.length === 0 || totalHours <= 0;
 
   return (
     <div className="bg-white rounded-b-md border-x border-b border-slate-200 shadow-sm font-sans flex flex-col relative overflow-hidden">
@@ -130,7 +135,15 @@ export function Step3({ payload, onPrev, onSubmit, onSaveDraft, onEditSection, s
           <div className="space-y-3">
             {submitDisabled && <p className="text-sm text-red-600 font-semibold text-center">Submissions are closed</p>}
             {submitDisabled && <p className="text-sm text-blue-700 font-semibold text-center">Form has been submitted</p>}
-            {!submitDisabled && !isCertified && (
+            {!submitDisabled && isOverLimit && (
+              <p className="text-sm text-red-600 font-semibold text-center">
+                Total monthly hours ({totalHours.toFixed(1)}h) exceed the maximum allowable limit of {maxHours}h. Please reduce activity hours before submitting.
+              </p>
+            )}
+            {!submitDisabled && !isOverLimit && isGenuinelyBlank && (
+              <p className="text-sm text-red-600 font-semibold text-center">Cannot submit a blank form. Please log at least one meaningful activity with valid hours.</p>
+            )}
+            {!submitDisabled && !isOverLimit && !isGenuinelyBlank && !isCertified && (
               <p className="text-sm text-amber-700 font-semibold text-center">Please certify the declaration before submitting.</p>
             )}
             <button
@@ -143,7 +156,7 @@ export function Step3({ payload, onPrev, onSubmit, onSaveDraft, onEditSection, s
             <button
               type="button"
               onClick={onSubmit}
-              disabled={submitDisabled || !isCertified}
+              disabled={submitDisabled || !isCertified || isGenuinelyBlank || isOverLimit}
               className="w-full bg-blue-700 hover:bg-blue-800 disabled:opacity-60 disabled:cursor-not-allowed text-white font-semibold py-4 px-6 rounded-md transition-colors flex items-center justify-center gap-3 shadow-md"
             >
               <Send size={18} /> {submitDisabled ? "Form has been submitted" : "Submit BPER Form"}

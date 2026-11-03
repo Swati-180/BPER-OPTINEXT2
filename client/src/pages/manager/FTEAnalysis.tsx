@@ -205,7 +205,7 @@ export default function FTEAnalysisPage() {
           icon={Clock3}
           label="Total Hours"
           value={safeNumber(summary.totalHours).toFixed(1)}
-          helper="Monthly baseline 160h"
+          helper={`Monthly baseline ${summary?.baselineHours || 160}h`}
         />
         <KpiCard
           icon={TrendingUp}

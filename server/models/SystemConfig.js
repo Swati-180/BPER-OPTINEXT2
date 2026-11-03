@@ -13,6 +13,27 @@ const DEFAULT_SCREENING_SETTINGS = {
   screeningKeywords: ['automation', 'rpa', 'repeat']
 };
 
+const DEFAULT_PROCESS_CATEGORY_MAPPINGS = [
+  { majorProcess: 'Additional Activities - Meeting', category: 'support' },
+  { majorProcess: 'Additional Activities - Others', category: 'support' },
+  { majorProcess: 'Additional Activities - Training', category: 'support' },
+  { majorProcess: 'Others', category: 'support' },
+  { majorProcess: 'Accounts Payable', category: 'core' },
+  { majorProcess: 'Accounts Receivable', category: 'core' },
+  { majorProcess: 'Banking and Treasury', category: 'core' },
+  { majorProcess: 'Book closing & Audit', category: 'core' },
+  { majorProcess: 'Capex and Project Accounting', category: 'core' },
+  { majorProcess: 'Corporate Finance', category: 'core' },
+  { majorProcess: 'ESG', category: 'core' },
+  { majorProcess: 'FP&A', category: 'core' },
+  { majorProcess: 'Insurance', category: 'core' },
+  { majorProcess: 'Inventory Management', category: 'core' },
+  { majorProcess: 'Investor Relationship management', category: 'core' },
+  { majorProcess: 'Liquidity Management', category: 'core' },
+  { majorProcess: 'Secretarial', category: 'core' },
+  { majorProcess: 'Taxation (DT & IDT)', category: 'core' }
+];
+
 const systemConfigSchema = new mongoose.Schema({
   key: {
     type: String,
@@ -67,6 +88,38 @@ const systemConfigSchema = new mongoose.Schema({
       }
     }
   },
+  processCategoryMappings: {
+    type: [{
+      majorProcess: {
+        type: String,
+        required: true,
+        trim: true
+      },
+      category: {
+        type: String,
+        required: true,
+        enum: ['core', 'support'],
+        lowercase: true,
+        trim: true
+      }
+    }],
+    default: DEFAULT_PROCESS_CATEGORY_MAPPINGS,
+    validate: {
+      validator: function(arr) {
+        if (!Array.isArray(arr)) return false;
+        const seen = new Set();
+        for (const item of arr) {
+          if (!item || typeof item.majorProcess !== 'string' || !item.majorProcess.trim()) return false;
+          const norm = item.majorProcess.trim().toLowerCase();
+          if (seen.has(norm)) return false;
+          seen.add(norm);
+          if (!['core', 'support'].includes(String(item.category || '').toLowerCase().trim())) return false;
+        }
+        return true;
+      },
+      message: 'processCategoryMappings must have unique majorProcess names with valid category ("core" or "support")'
+    }
+  },
   updatedBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
@@ -80,6 +133,7 @@ const systemConfigSchema = new mongoose.Schema({
 systemConfigSchema.statics.DEFAULT_ASSUMPTIONS_KEY = DEFAULT_ASSUMPTIONS_KEY;
 systemConfigSchema.statics.DEFAULT_SCENARIO_ASSUMPTIONS = DEFAULT_SCENARIO_ASSUMPTIONS;
 systemConfigSchema.statics.DEFAULT_SCREENING_SETTINGS = DEFAULT_SCREENING_SETTINGS;
+systemConfigSchema.statics.DEFAULT_PROCESS_CATEGORY_MAPPINGS = DEFAULT_PROCESS_CATEGORY_MAPPINGS;
 
 systemConfigSchema.statics.getDefaults = function() {
   return {
@@ -90,6 +144,7 @@ systemConfigSchema.statics.getDefaults = function() {
       screeningThresholdHours: DEFAULT_SCREENING_SETTINGS.screeningThresholdHours,
       screeningKeywords: [...DEFAULT_SCREENING_SETTINGS.screeningKeywords]
     },
+    processCategoryMappings: DEFAULT_PROCESS_CATEGORY_MAPPINGS.map(m => ({ ...m })),
     isDefault: true,
     updatedAt: null,
     updatedBy: null

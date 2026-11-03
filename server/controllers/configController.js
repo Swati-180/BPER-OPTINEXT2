@@ -1,9 +1,11 @@
 const SystemConfig = require('../models/SystemConfig');
+const WDTSubmission = require('../models/WDTSubmission');
 const auditLogger = require('../utils/auditLogger');
 const { invalidateAssumptionsCache } = require('../services/assumptionsService');
+const { SYSTEM_TEST_ACCOUNT_IDS } = require('../utils/gradeStandardizer');
 
-function formatConfigResponse(doc) {
-  if (!doc) return SystemConfig.getDefaults();
+function formatConfigResponse(doc, unmappedProcesses = []) {
+  if (!doc) return { ...SystemConfig.getDefaults(), unmappedProcesses };
   const plain = typeof doc.toObject === 'function' ? doc.toObject() : doc;
   return {
     key: plain.key || SystemConfig.DEFAULT_ASSUMPTIONS_KEY,
@@ -18,6 +20,13 @@ function formatConfigResponse(doc) {
         ? plain.screeningSettings.screeningKeywords
         : [...SystemConfig.DEFAULT_SCREENING_SETTINGS.screeningKeywords]
     },
+    processCategoryMappings: Array.isArray(plain.processCategoryMappings) && plain.processCategoryMappings.length > 0
+      ? plain.processCategoryMappings.map(m => ({
+          majorProcess: String(m.majorProcess || '').trim(),
+          category: String(m.category || '').toLowerCase().trim() === 'support' ? 'support' : 'core'
+        }))
+      : SystemConfig.DEFAULT_PROCESS_CATEGORY_MAPPINGS.map(m => ({ ...m })),
+    unmappedProcesses: Array.isArray(unmappedProcesses) ? unmappedProcesses : [],
     isDefault: false,
     updatedAt: plain.updatedAt || null,
     updatedBy: plain.updatedBy || null
@@ -27,10 +36,36 @@ function formatConfigResponse(doc) {
 async function getAssumptions(req, res) {
   try {
     const config = await SystemConfig.findOne({ key: SystemConfig.DEFAULT_ASSUMPTIONS_KEY }).lean();
-    if (!config) {
-      return res.json(SystemConfig.getDefaults());
+
+    // Identify all in-scope distinct major processes from database submissions
+    let unmappedProcesses = [];
+    try {
+      const distinctPayload = await WDTSubmission.distinct('payload.rows.majorProcess', {
+        month: 10,
+        year: 2026,
+        'employee.employeeId': { $nin: SYSTEM_TEST_ACCOUNT_IDS }
+      });
+      const distinctActivities = await WDTSubmission.distinct('activities.majorProcess', {
+        month: 10,
+        year: 2026,
+        'employee.employeeId': { $nin: SYSTEM_TEST_ACCOUNT_IDS }
+      });
+      const allMajorInDb = Array.from(new Set([...distinctPayload, ...distinctActivities].map(s => String(s || '').trim()).filter(Boolean)));
+
+      const activeMappings = (Array.isArray(config?.processCategoryMappings) && config.processCategoryMappings.length > 0)
+        ? config.processCategoryMappings
+        : SystemConfig.DEFAULT_PROCESS_CATEGORY_MAPPINGS;
+
+      const mappedSet = new Set(activeMappings.map(m => String(m.majorProcess || '').trim().toLowerCase()));
+      unmappedProcesses = allMajorInDb.filter(mp => !mappedSet.has(mp.toLowerCase()));
+    } catch (discoveryErr) {
+      console.warn('Major process discovery warning:', discoveryErr.message);
     }
-    return res.json(formatConfigResponse(config));
+
+    if (!config) {
+      return res.json({ ...SystemConfig.getDefaults(), unmappedProcesses });
+    }
+    return res.json(formatConfigResponse(config, unmappedProcesses));
   } catch (err) {
     console.error('Error fetching organization assumptions:', err);
     return res.status(500).json({ message: 'Failed to retrieve organization assumptions', error: err.message });
@@ -39,11 +74,11 @@ async function getAssumptions(req, res) {
 
 async function updateAssumptions(req, res) {
   try {
-    const { scenarioAssumptions, screeningSettings } = req.body || {};
+    const { scenarioAssumptions, screeningSettings, processCategoryMappings } = req.body || {};
 
-    if (!scenarioAssumptions && !screeningSettings) {
+    if (!scenarioAssumptions && !screeningSettings && !processCategoryMappings) {
       return res.status(400).json({
-        message: 'Request body must contain scenarioAssumptions or screeningSettings'
+        message: 'Request body must contain scenarioAssumptions, screeningSettings, or processCategoryMappings'
       });
     }
 
@@ -120,6 +155,45 @@ async function updateAssumptions(req, res) {
         }
         updates['screeningSettings.screeningKeywords'] = Array.from(new Set(cleanedKeywords));
       }
+    }
+
+    // 3. Validate processCategoryMappings if provided
+    if (processCategoryMappings !== undefined) {
+      if (!Array.isArray(processCategoryMappings)) {
+        return res.status(400).json({ message: 'processCategoryMappings must be an array' });
+      }
+
+      const seen = new Set();
+      const cleanedMappings = [];
+
+      for (const item of processCategoryMappings) {
+        if (!item || typeof item !== 'object') {
+          return res.status(400).json({ message: 'Each item in processCategoryMappings must be an object' });
+        }
+        const majorProcess = String(item.majorProcess || '').trim();
+        if (!majorProcess) {
+          return res.status(400).json({ message: 'Each item in processCategoryMappings must have a non-empty majorProcess' });
+        }
+        const norm = majorProcess.toLowerCase();
+        if (seen.has(norm)) {
+          return res.status(400).json({ message: `Duplicate Major Process name in mappings: "${majorProcess}"` });
+        }
+        seen.add(norm);
+
+        const category = String(item.category || '').toLowerCase().trim();
+        if (!['core', 'support'].includes(category)) {
+          return res.status(400).json({
+            message: `Invalid category "${item.category}" for "${majorProcess}". Allowed values are "core" or "support"`
+          });
+        }
+
+        cleanedMappings.push({
+          majorProcess,
+          category
+        });
+      }
+
+      updates.processCategoryMappings = cleanedMappings;
     }
 
     if (Object.keys(updates).length === 0) {

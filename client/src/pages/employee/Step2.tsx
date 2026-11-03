@@ -339,10 +339,11 @@ export function Step2({ employee, payload, onNext, onPrev, onPayloadChange, onAd
   const [validationError, setValidationError] = useState("");
   const [hoursExceeded, setHoursExceeded] = useState(false);
 
+  const effectiveLimit = (employee as any)?.effectiveMaxMonthlyHours || employee.maxMonthlyHours || 160;
+
   useEffect(() => {
-    const monthlyLimit = employee.maxMonthlyHours || 160;
-    setHoursExceeded(totalHours > monthlyLimit);
-  }, [totalHours, employee.maxMonthlyHours]);
+    setHoursExceeded(totalHours > effectiveLimit);
+  }, [totalHours, effectiveLimit]);
 
   const isStepValid = useMemo(() => {
     if (rows.length === 0) return false;
@@ -1010,7 +1011,7 @@ export function Step2({ employee, payload, onNext, onPrev, onPayloadChange, onAd
             <div className="flex flex-col gap-2">
               <div className="flex items-center justify-between px-1">
                 <div className="flex items-baseline gap-2">
-                  <span className={`text-2xl font-bold tabular-nums ${(totalHours || 0) > (employee.maxMonthlyHours || 160) ? 'text-red-600' : 'text-blue-800'}`}>
+                  <span className={`text-2xl font-bold tabular-nums ${(totalHours || 0) > effectiveLimit ? 'text-red-600' : 'text-blue-800'}`}>
                     {(totalHours || 0).toFixed(1)}
                   </span>
                   <span className="text-[11px] font-bold text-slate-500 uppercase tracking-widest">Hours / Mo</span>
@@ -1018,11 +1019,11 @@ export function Step2({ employee, payload, onNext, onPrev, onPayloadChange, onAd
                 <div className="flex flex-col items-end">
                    <div className="flex items-center gap-2">
                     <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Capacity</span>
-                    <span className={`text-xs font-bold ${ ((totalHours || 0) / (employee.maxMonthlyHours || 160)) > 1 ? 'text-red-600' : 'text-slate-700'}`}>
-                      {(((totalHours || 0) / (employee.maxMonthlyHours || 160)) * 100).toFixed(0)}%
+                    <span className={`text-xs font-bold ${ ((totalHours || 0) / effectiveLimit) > 1 ? 'text-red-600' : 'text-slate-700'}`}>
+                      {(((totalHours || 0) / effectiveLimit) * 100).toFixed(0)}%
                     </span>
                    </div>
-                   <span className="text-[9px] font-semibold text-slate-400">Max: {employee.maxMonthlyHours || 160}h</span>
+                   <span className="text-[9px] font-semibold text-slate-400">Max: {effectiveLimit}h</span>
                 </div>
               </div>
 
@@ -1030,19 +1031,19 @@ export function Step2({ employee, payload, onNext, onPrev, onPayloadChange, onAd
               <div className="h-2 w-full rounded-full bg-slate-100 overflow-hidden border border-slate-200/50">
                 <div
                   className={`h-full rounded-full transition-all duration-700 ease-out ${
-                    (totalHours / (employee.maxMonthlyHours || 160)) > 1
+                    (totalHours / effectiveLimit) > 1
                       ? 'bg-red-500'
-                      : (totalHours / (employee.maxMonthlyHours || 160)) > 0.8
+                      : (totalHours / effectiveLimit) > 0.8
                         ? 'bg-amber-500'
                         : 'bg-emerald-500'
                   }`}
-                  style={{ width: `${Math.min(100, (totalHours / (employee.maxMonthlyHours || 160)) * 100)}%` }}
+                  style={{ width: `${Math.min(100, (totalHours / effectiveLimit) * 100)}%` }}
                 />
               </div>
 
-              {totalHours > (employee.maxMonthlyHours || 160) && (
+              {totalHours > effectiveLimit && (
                 <p className="text-[10px] font-bold text-red-600 text-center animate-pulse">
-                  ⚠️ Exceeds monthly limit of {employee.maxMonthlyHours || 160}h
+                  ⚠️ Exceeds monthly limit of {effectiveLimit}h
                 </p>
               )}
             </div>

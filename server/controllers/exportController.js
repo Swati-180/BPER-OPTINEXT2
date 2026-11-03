@@ -1,8 +1,14 @@
 const ExcelJS = require('exceljs');
 const WDTSubmission = require('../models/WDTSubmission');
 const User = require('../models/User');
+const ProcessAnalysis = require('../models/ProcessAnalysis');
+const Taxonomy = require('../models/Taxonomy');
 const verifyToken = require('../middleware/verifyToken');
-const { getEffectiveAssumptions } = require('../services/assumptionsService');
+const {
+  getEffectiveAssumptions,
+  resolveActivityCategory,
+  buildCategoryMappingMap
+} = require('../services/assumptionsService');
 
 const DEFAULT_STANDARD_MONTHLY_HOURS = 160;
 
@@ -35,18 +41,31 @@ function numStyle(decimal = 1) {
   return { numFmt: `0.${'0'.repeat(decimal)}`, alignment: { horizontal: 'center' } };
 }
 
-function autoWidth(worksheet) {
+function autoWidth(worksheet, maxRowsToSample = null) {
   worksheet.columns.forEach(col => {
     let max = col.header ? String(col.header).length : 10;
-    col.eachCell?.({ includeEmpty: false }, cell => {
-      const len = cell.value ? String(cell.value).length : 0;
-      if (len > max) max = len;
-    });
+    if (typeof maxRowsToSample === 'number' && maxRowsToSample > 0) {
+      const rowCount = Math.min(worksheet.rowCount || 0, maxRowsToSample);
+      for (let r = 1; r <= rowCount; r++) {
+        const cell = worksheet.getRow(r).getCell(col.key || col.number);
+        const len = cell.value ? String(cell.value).length : 0;
+        if (len > max) max = len;
+      }
+    } else {
+      col.eachCell?.({ includeEmpty: false }, cell => {
+        const len = cell.value ? String(cell.value).length : 0;
+        if (len > max) max = len;
+      });
+    }
     col.width = Math.min(Math.max(max + 2, 10), 50);
   });
 }
 
 async function resolveManager(req) {
+  const roleFromToken = req.user?.role;
+  if (roleFromToken) {
+    return { role: roleFromToken, email: req.user?.email || null, userId: req.user?.userId || req.user?.id || null };
+  }
   const userId = req.user?.userId || req.user?.id;
   if (!userId) return null;
   try { return await User.findById(userId).select('role'); } catch { return null; }
@@ -64,7 +83,10 @@ async function getScopedSubmissions(req) {
   if (department && department !== 'All Departments') {
     match['employee.department'] = department;
   }
-  return WDTSubmission.find(match).sort({ submittedAt: -1 }).lean();
+  return WDTSubmission.find(match)
+    .select('referenceId employee.name employee.employeeId employee.department month year totalHours status submittedAt payload.rows activities')
+    .sort({ submittedAt: -1 })
+    .lean();
 }
 
 /**
@@ -78,10 +100,22 @@ async function exportWDTSubmissionsExcel(req, res) {
       return res.status(403).json({ message: 'Manager access required.' });
     }
 
-    const assumptions = await getEffectiveAssumptions();
-    const standardMonthlyHours = assumptions?.screeningSettings?.standardMonthlyHours || DEFAULT_STANDARD_MONTHLY_HOURS;
+    // Parallelize independent data fetches across all 4 sheets
+    let pamQuery = {};
+    if (req.query.department && req.query.department !== 'All Departments') {
+      pamQuery.department = req.query.department;
+    }
 
-    const submissions = await getScopedSubmissions(req);
+    const [assumptions, submissions, pamRecords, taxonomyList] = await Promise.all([
+      getEffectiveAssumptions(),
+      getScopedSubmissions(req),
+      ProcessAnalysis.find(pamQuery).sort({ department: 1, process: 1 }).lean(),
+      Taxonomy.find({}).lean()
+    ]);
+
+    const standardMonthlyHours = assumptions?.screeningSettings?.standardMonthlyHours || DEFAULT_STANDARD_MONTHLY_HOURS;
+    const categoryMappingMap = buildCategoryMappingMap(assumptions?.processCategoryMappings);
+
     const workbook = new ExcelJS.Workbook();
     workbook.creator = 'BPER Platform';
     workbook.created = new Date();
@@ -157,39 +191,46 @@ async function exportWDTSubmissionsExcel(req, res) {
       let rows = [];
       const payloadRows = Array.isArray(sub.payload?.rows) ? sub.payload.rows.filter(r => r && typeof r === 'object') : [];
       if (payloadRows.length > 0) {
-        rows = payloadRows.map(row => ({
-          majorProcess: row.majorProcess || row.tower || '',
-          process: row.process || '',
-          subProcess: row.subProcess || row.name || '',
-          category: row.activityCategory || row.category || 'core',
-          frequency: row.frequency || '',
-          volume: safeNumber(row.volumesMonthly),
-          timeMins: safeNumber(row.timePerTransactionMinutes),
-          hours: safeNumber(row.timeTakenHoursPerMonth != null ? row.timeTakenHoursPerMonth : row.hours),
-          apps: row.applicationsUsed || '',
-          comments: row.comments || '',
-        }));
+        rows = payloadRows.map(row => {
+          const majorProcess = row.majorProcess || row.tower || '';
+          return {
+            majorProcess,
+            process: row.process || '',
+            subProcess: row.subProcess || row.name || '',
+            category: resolveActivityCategory(majorProcess, row.activityCategory || row.category, categoryMappingMap),
+            frequency: row.frequency || '',
+            volume: safeNumber(row.volumesMonthly),
+            timeMins: safeNumber(row.timePerTransactionMinutes),
+            hours: safeNumber(row.timeTakenHoursPerMonth != null ? row.timeTakenHoursPerMonth : row.hours),
+            apps: row.applicationsUsed || '',
+            comments: row.comments || '',
+          };
+        });
       } else {
         const activities = Array.isArray(sub.activities) ? sub.activities.filter(a => a && typeof a === 'object') : [];
         if (activities.length > 0) {
-          rows = activities.map(act => ({
-            majorProcess: act.majorProcess || act.tower || '',
-            process: act.process || '',
-            subProcess: act.subProcess || act.name || '',
-            category: act.activityCategory || act.category || 'core',
-            frequency: act.frequency || '',
-            volume: safeNumber(act.volumesMonthly),
-            timeMins: safeNumber(act.timePerTransactionMinutes),
-            hours: safeNumber(act.monthlyHours != null ? act.monthlyHours : (act.timeTakenHoursPerMonth != null ? act.timeTakenHoursPerMonth : act.hours)),
-            apps: act.applicationsUsed || '',
-            comments: act.comments || '',
-          }));
+          rows = activities.map(act => {
+            const majorProcess = act.majorProcess || act.tower || '';
+            return {
+              majorProcess,
+              process: act.process || '',
+              subProcess: act.subProcess || act.name || '',
+              category: resolveActivityCategory(majorProcess, act.activityCategory || act.category, categoryMappingMap),
+              frequency: act.frequency || '',
+              volume: safeNumber(act.volumesMonthly),
+              timeMins: safeNumber(act.timePerTransactionMinutes),
+              hours: safeNumber(act.monthlyHours != null ? act.monthlyHours : (act.timeTakenHoursPerMonth != null ? act.timeTakenHoursPerMonth : act.hours)),
+              apps: act.applicationsUsed || '',
+              comments: act.comments || '',
+            };
+          });
         } else if (safeNumber(sub.totalHours) > 0) {
+          const majorProcess = sub.employee?.department || 'Summary Process';
           rows = [{
-            majorProcess: sub.employee?.department || 'Summary Process',
+            majorProcess,
             process: 'Summary Process',
             subProcess: 'Summary Activity',
-            category: 'core',
+            category: resolveActivityCategory(majorProcess, 'core', categoryMappingMap),
             frequency: 'Monthly',
             volume: 1,
             timeMins: 0,
@@ -219,16 +260,22 @@ async function exportWDTSubmissionsExcel(req, res) {
         });
       });
     });
-    autoWidth(detailSheet);
+    autoWidth(detailSheet, 100);
 
     // ─── Sheet 3: FTE by Department ────────────────────────────────────────────
     const fteSheet = workbook.addWorksheet('FTE by Department');
     fteSheet.columns = [
       { header: 'Department', key: 'dept' },
-      { header: 'Total Hours', key: 'hours' },
-      { header: 'FTE', key: 'fte' },
-      { header: 'Submissions', key: 'subs' },
-      { header: 'Utilization %', key: 'util' },
+      { header: 'Actual Staffed Hours', key: 'staffedHours' },
+      { header: 'Actual Staffed FTE', key: 'staffedFte' },
+      { header: 'Planned Vacancy Hours', key: 'vacantHours' },
+      { header: 'Planned Vacancy FTE', key: 'vacantFte' },
+      { header: 'Total Workload Hours', key: 'totalHours' },
+      { header: 'Total Workload FTE', key: 'totalFte' },
+      { header: 'Filled Staff Count', key: 'filledStaff' },
+      { header: 'Vacant Positions', key: 'vacantPositions' },
+      { header: 'Total Profiles', key: 'totalProfiles' },
+      { header: 'Staffed Utilization %', key: 'util' },
     ];
     fteSheet.getRow(1).eachCell(cell => Object.assign(cell, headerStyle(true, 'FF1E5EA9')));
     fteSheet.getRow(1).height = 30;
@@ -236,28 +283,51 @@ async function exportWDTSubmissionsExcel(req, res) {
     const deptMap = new Map();
     submissions.forEach(sub => {
       const dept = sub.employee?.department || 'Unassigned';
+      const isVac = sub.employee?.isVacant === true || String(sub.employee?.name || '').toLowerCase() === 'vacant';
       const rows = Array.isArray(sub.payload?.rows) ? sub.payload.rows : [];
       const hours = rows.reduce((s, r) => s + safeNumber(r.timeTakenHoursPerMonth), 0);
-      const cur = deptMap.get(dept) || { hours: 0, subs: 0 };
-      cur.hours += hours; cur.subs += 1;
+      const cur = deptMap.get(dept) || {
+        totalHours: 0,
+        staffedHours: 0,
+        vacantHours: 0,
+        filledCount: 0,
+        vacantCount: 0,
+        totalCount: 0
+      };
+      cur.totalHours += hours;
+      cur.totalCount += 1;
+      if (isVac) {
+        cur.vacantHours += hours;
+        cur.vacantCount += 1;
+      } else {
+        cur.staffedHours += hours;
+        cur.filledCount += 1;
+      }
       deptMap.set(dept, cur);
     });
 
     Array.from(deptMap.entries())
-      .sort((a, b) => b[1].hours - a[1].hours)
+      .sort((a, b) => b[1].totalHours - a[1].totalHours)
       .forEach(([dept, data]) => {
-        const fte = data.hours / standardMonthlyHours;
+        const staffedFte = data.staffedHours / standardMonthlyHours;
+        const vacantFte = data.vacantHours / standardMonthlyHours;
+        const totalFte = data.totalHours / standardMonthlyHours;
+        const staffedUtil = data.filledCount > 0 ? (data.staffedHours / (data.filledCount * standardMonthlyHours)) * 100 : 0;
         fteSheet.addRow({
           dept,
-          hours: Number(data.hours.toFixed(2)),
-          fte: Number(fte.toFixed(2)),
-          subs: data.subs,
-          util: Number(Math.min(100, fte * 100).toFixed(1)),
+          staffedHours: Number(data.staffedHours.toFixed(2)),
+          staffedFte: Number(staffedFte.toFixed(2)),
+          vacantHours: Number(data.vacantHours.toFixed(2)),
+          vacantFte: Number(vacantFte.toFixed(2)),
+          totalHours: Number(data.totalHours.toFixed(2)),
+          totalFte: Number(totalFte.toFixed(2)),
+          filledStaff: data.filledCount,
+          vacantPositions: data.vacantCount,
+          totalProfiles: data.totalCount,
+          util: Number(Math.min(100, staffedUtil).toFixed(1)),
         });
       });
     // ─── Sheet 4: 6x6 Process Assessment ──────────────────────────────────────
-    const ProcessAnalysis = require('../models/ProcessAnalysis');
-    const Taxonomy = require('../models/Taxonomy');
     const pamSheet = workbook.addWorksheet('6x6 Process Assessment');
     pamSheet.columns = [
       { header: 'Department', key: 'department' },
@@ -284,13 +354,6 @@ async function exportWDTSubmissionsExcel(req, res) {
     pamSheet.getRow(1).eachCell(cell => Object.assign(cell, headerStyle(true, 'FF0F3860')));
     pamSheet.getRow(1).height = 30;
 
-    // Load PAM records scoped by department
-    let pamQuery = {};
-    if (req.query.department && req.query.department !== 'All Departments') {
-      pamQuery.department = req.query.department;
-    }
-    const pamRecords = await ProcessAnalysis.find(pamQuery).sort({ department: 1, process: 1 }).lean();
-    const taxonomyList = await Taxonomy.find({}).lean();
     const taxMap = new Map();
     taxonomyList.forEach(t => {
       if (Array.isArray(t.subProcesses)) {
@@ -385,14 +448,15 @@ async function exportWDTSubmissionsExcel(req, res) {
         statusCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF3F4F6' } };
       }
     });
-    autoWidth(pamSheet);
+    autoWidth(pamSheet, 100);
 
     // ─── Output ────────────────────────────────────────────────────────────────
     const dateStr = new Date().toISOString().slice(0, 10);
+    const buffer = await workbook.xlsx.writeBuffer();
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', `attachment; filename="bper-wdt-${dateStr}.xlsx"`);
-    await workbook.xlsx.write(res);
-    res.end();
+    res.setHeader('Content-Length', buffer.length);
+    res.send(buffer);
   } catch (err) {
     console.error('[Export] WDT submissions export error:', err);
     res.status(500).json({ message: err.message });
@@ -410,10 +474,14 @@ async function exportFTEReportExcel(req, res) {
       return res.status(403).json({ message: 'Manager access required.' });
     }
 
-    const assumptions = await getEffectiveAssumptions();
-    const standardMonthlyHours = assumptions?.screeningSettings?.standardMonthlyHours || DEFAULT_STANDARD_MONTHLY_HOURS;
+    const [assumptions, submissions] = await Promise.all([
+      getEffectiveAssumptions(),
+      getScopedSubmissions(req),
+    ]);
 
-    const submissions = await getScopedSubmissions(req);
+    const standardMonthlyHours = assumptions?.screeningSettings?.standardMonthlyHours || DEFAULT_STANDARD_MONTHLY_HOURS;
+    const categoryMappingMap = buildCategoryMappingMap(assumptions?.processCategoryMappings);
+
     const workbook = new ExcelJS.Workbook();
     workbook.creator = 'BPER Platform';
     workbook.created = new Date();
@@ -446,7 +514,7 @@ async function exportFTEReportExcel(req, res) {
           tower: row.majorProcess || '',
           process: row.process || '',
           subProcess: row.subProcess || '',
-          category: row.activityCategory || 'core',
+          category: resolveActivityCategory(row.majorProcess, row.activityCategory || row.category, categoryMappingMap),
           hours: h,
           fte: Number(fte.toFixed(3)),
           band,

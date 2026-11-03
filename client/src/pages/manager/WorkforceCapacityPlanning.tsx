@@ -173,9 +173,9 @@ export default function WorkforceCapacityPlanning() {
                     <p className="mt-1 text-[11px] text-[#718BAA]">Recorded hours by named staff</p>
                   </div>
                   <div className="rounded-2xl border border-[#D9E4F2] bg-white p-5 shadow-sm">
-                    <p className="text-xs font-semibold text-[#637F9F]">Staffed FTE Contribution</p>
+                    <p className="text-xs font-semibold text-[#637F9F]">Staffed Workload FTE</p>
                     <p className="mt-2 text-2xl font-bold text-[#165BAA]">{data.actualWorkforce?.summary?.staffedFte} <span className="text-xs font-normal text-[#637F9F]">FTE</span></p>
-                    <p className="mt-1 text-[11px] text-[#718BAA]">Based on 160h standard month</p>
+                    <p className="mt-1 text-[11px] text-[#718BAA]">Based on {data?.baselineHours || 160}h standard month</p>
                   </div>
                   <div className="rounded-2xl border border-[#D9E4F2] bg-white p-5 shadow-sm">
                     <p className="text-xs font-semibold text-[#637F9F]">Staffed Avg. Utilization</p>
@@ -301,8 +301,8 @@ export default function WorkforceCapacityPlanning() {
                       </p>
                     </div>
                     <div className="flex items-center gap-4 text-xs font-semibold">
-                      <div className="bg-white px-3 py-2 rounded-xl border border-blue-200 shadow-sm">
-                        <span className="text-[#637F9F]">Staffed Capacity: </span>
+                      <div className="bg-white px-3 py-2 rounded-xl border border-blue-200 shadow-sm" title="Baseline capacity based on 248 filled positions (1 FTE = 1 staffed employee)">
+                        <span className="text-[#637F9F]">Baseline Staffed Capacity: </span>
                         <span className="font-bold text-[#0F2649]">{data.workforceGapAnalysis?.summary?.availableStaffedCapacityFte} FTE</span>
                       </div>
                       <div className="bg-white px-3 py-2 rounded-xl border border-blue-200 shadow-sm">

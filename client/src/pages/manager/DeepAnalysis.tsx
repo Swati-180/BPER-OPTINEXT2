@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
-import { AlertCircle, Download } from 'lucide-react';
-import { useSearchParams } from 'react-router-dom';
+import { AlertCircle, Download, ExternalLink, UserCheck } from 'lucide-react';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import {
   getFteAnalysisReport,
   getConsolidationAnalysisReport,
@@ -239,8 +239,17 @@ const safeNumber = (val: any): string => {
   return isNaN(num) ? '0' : num.toFixed(2);
 };
 
+const CANONICAL_DEPARTMENTS = [
+  'Finance & Accounting',
+  'HR',
+  'Logistics',
+  'SCM',
+] as const;
+
+
 export default function DeepAnalysis() {
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
   const initialMainTab = parseMainTab(searchParams.get('tab'));
   const initialSubTab = searchParams.get('subTab');
 
@@ -727,7 +736,7 @@ export default function DeepAnalysis() {
                   {tab === 'consolidation' && 'Consolidation'}
                   {tab === 'fitment' && 'Fitment Analysis'}
                   {tab === 'utilization' && 'Utilization'}
-                  {tab === 'hrBenchmark' && 'HR GCC Benchmark (Slides 9–10)'}
+                  {tab === 'hrBenchmark' && 'HR GCC Benchmark – Reference Only'}
                 </button>
               ))}
             </div>
@@ -737,25 +746,36 @@ export default function DeepAnalysis() {
         {/* Department Filter (for applicable tabs) */}
         {(mainTab === 'fte' || mainTab === 'consolidation' || mainTab === 'utilization') && (
           <section className="rounded-2xl border border-[#D9E4F2] bg-white p-5 md:p-6 shadow-[0_6px_18px_rgba(16,42,80,0.08)]">
-            <div className="max-w-xs">
-              <label className="block text-sm font-bold text-[#0F2649] mb-2">Filter by Department</label>
-              <select
-                value={departmentFilter}
-                onChange={(e) => setDepartmentFilter(e.target.value)}
-                className="w-full px-4 py-2.5 border border-[#D9E4F2] rounded-lg bg-white text-[#0F2649] font-semibold focus:outline-none focus:ring-2 focus:ring-[#165BAA] focus:border-transparent transition-all"
-              >
-                <option value="">All Departments</option>
-                {(mainTab === 'fte'
-                  ? fteDepartments
-                  : mainTab === 'consolidation'
-                  ? consolidationDepartments
-                  : utilizationDepartments
-                ).map((dept) => (
-                  <option key={dept} value={dept}>
-                    {dept}
-                  </option>
-                ))}
-              </select>
+            <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+              <div className="w-full max-w-xs">
+                <label className="block text-sm font-bold text-[#0F2649] mb-2">Filter by Department</label>
+                <select
+                  value={departmentFilter}
+                  onChange={(e) => setDepartmentFilter(e.target.value)}
+                  className="w-full px-4 py-2.5 border border-[#D9E4F2] rounded-lg bg-white text-[#0F2649] font-semibold focus:outline-none focus:ring-2 focus:ring-[#165BAA] focus:border-transparent transition-all"
+                >
+                  <option value="">All Departments</option>
+                  {CANONICAL_DEPARTMENTS.map((dept) => (
+                    <option key={dept} value={dept}>
+                      {dept}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {departmentFilter && (
+                <div className="flex items-center gap-2 flex-wrap">
+                  <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#EFF6FF] border border-[#BFDBFE] text-xs font-semibold text-[#1E40AF]">
+                    <span>Filtering by: <strong className="font-bold text-[#0F2649]">{departmentFilter}</strong></span>
+                  </div>
+                  <button
+                    onClick={() => setDepartmentFilter('')}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#D9E4F2] bg-white text-xs font-semibold text-[#4A6485] hover:bg-[#F8FBFF] hover:text-[#0F2649] transition-colors"
+                  >
+                    Clear Filter
+                  </button>
+                </div>
+              )}
             </div>
           </section>
         )}
@@ -778,9 +798,21 @@ export default function DeepAnalysis() {
               <div className="py-6">
                 <InlineLoadingBlock className="mx-auto max-w-xl" />
               </div>
-            ) : !fteReport ? (
+            ) : (!fteReport || (departmentFilter && fteReport.summary.totalActivities === 0)) ? (
               <div className="bg-[#F7FAFE] border border-[#D9E4F2] rounded-2xl p-8 text-center">
-                <p className="text-[#637F9F] font-semibold">No FTE analysis data available.</p>
+                <AlertCircle className="w-8 h-8 text-[#637F9F] mx-auto mb-2 opacity-60" />
+                <h4 className="text-base font-bold text-[#0F2649]">No WDT Submissions Found</h4>
+                <p className="mt-1 text-sm text-[#637F9F]">
+                  There are no recorded activity submissions for <strong className="text-[#0F2649]">{departmentFilter || 'this department'}</strong> in this reporting period.
+                </p>
+                {departmentFilter && (
+                  <button
+                    onClick={() => setDepartmentFilter('')}
+                    className="mt-4 px-4 py-2 bg-[#165BAA] text-white text-xs font-semibold rounded-lg hover:bg-[#124B8D] transition-colors"
+                  >
+                    Reset to All Departments
+                  </button>
+                )}
               </div>
             ) : (
               <div className="space-y-6 animate-in fade-in duration-500">
@@ -902,7 +934,12 @@ export default function DeepAnalysis() {
                       </div>
                     )}
                     {fteTab === 'department' && (
-                      <div className="overflow-x-auto">
+                      <div className="overflow-x-auto space-y-3">
+                        {departmentFilter && (
+                          <p className="text-xs font-semibold text-[#4A6485]">
+                            Showing FTE metrics scoped to filtered department: <strong className="text-[#0F2649]">{departmentFilter}</strong>
+                          </p>
+                        )}
                         <table className="w-full text-sm">
                           <thead className="bg-[#F8FBFF] border-b border-[#E3EAF4]">
                             <tr>
@@ -1058,9 +1095,21 @@ export default function DeepAnalysis() {
               <div className="py-6">
                 <InlineLoadingBlock className="mx-auto max-w-xl" />
               </div>
-            ) : !consolidationReport ? (
+            ) : (!consolidationReport || (departmentFilter && consolidationReport.summary.totalActivities === 0)) ? (
               <div className="bg-[#F7FAFE] border border-[#D9E4F2] rounded-2xl p-8 text-center">
-                <p className="text-[#637F9F] font-semibold">No consolidation analysis data available.</p>
+                <AlertCircle className="w-8 h-8 text-[#637F9F] mx-auto mb-2 opacity-60" />
+                <h4 className="text-base font-bold text-[#0F2649]">No Consolidation Data Found</h4>
+                <p className="mt-1 text-sm text-[#637F9F]">
+                  There are no recorded consolidation candidates for <strong className="text-[#0F2649]">{departmentFilter || 'this department'}</strong> in this reporting period.
+                </p>
+                {departmentFilter && (
+                  <button
+                    onClick={() => setDepartmentFilter('')}
+                    className="mt-4 px-4 py-2 bg-[#165BAA] text-white text-xs font-semibold rounded-lg hover:bg-[#124B8D] transition-colors"
+                  >
+                    Reset to All Departments
+                  </button>
+                )}
               </div>
             ) : (
               <div className="space-y-6 animate-in fade-in duration-500">
@@ -1136,7 +1185,12 @@ export default function DeepAnalysis() {
                       </div>
                     )}
                     {consolidationTab === 'department' && (
-                      <div className="overflow-x-auto">
+                      <div className="overflow-x-auto space-y-3">
+                        {departmentFilter && (
+                          <p className="text-xs font-semibold text-[#4A6485]">
+                            Showing consolidation metrics scoped to filtered department: <strong className="text-[#0F2649]">{departmentFilter}</strong>
+                          </p>
+                        )}
                         <table className="w-full text-sm">
                           <thead className="bg-[#F8FBFF] border-b border-[#E3EAF4]">
                             <tr>
@@ -1287,7 +1341,8 @@ export default function DeepAnalysis() {
 
                 {/* Sub Tabs */}
                 <div className="rounded-2xl border border-[#D9E4F2] bg-white shadow-[0_6px_18px_rgba(16,42,80,0.08)] overflow-hidden">
-                  <div className="border-b border-[#D9E4F2] flex gap-1 p-4 md:p-6 flex-wrap bg-[#F7FAFE]">
+                  <div className="border-b border-[#D9E4F2] flex items-center justify-between p-4 md:p-6 flex-wrap gap-3 bg-[#F7FAFE]">
+                    <div className="flex gap-1 flex-wrap">
                     {(['overview', 'label', 'profiles'] as FitmentTabType[]).map((tab) => (
                       <button
                         key={tab}
@@ -1303,6 +1358,14 @@ export default function DeepAnalysis() {
                         {tab === 'profiles' && 'All Profiles'}
                       </button>
                     ))}
+                    </div>
+                    <button
+                      onClick={() => navigate('/admin/fitment-scorer?tab=scoring')}
+                      className="inline-flex items-center gap-2 px-4 py-2 bg-[#165BAA] hover:bg-[#114888] text-white text-sm font-semibold rounded-lg shadow-sm transition-all"
+                    >
+                      <UserCheck className="w-4 h-4" />
+                      Open Fitment Scorer
+                    </button>
                   </div>
                   <div className="p-6">
                     {fitmentTab === 'overview' && (
@@ -1390,6 +1453,7 @@ export default function DeepAnalysis() {
                               <th className="px-4 py-2 text-left font-semibold text-[#0F2649]">Department</th>
                               <th className="px-4 py-2 text-right font-semibold text-[#0F2649]">Score</th>
                               <th className="px-4 py-2 text-center font-semibold text-[#0F2649]">Label</th>
+                              <th className="px-4 py-2 text-center font-semibold text-[#0F2649]">Action</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -1413,6 +1477,16 @@ export default function DeepAnalysis() {
                                   >
                                     {profile.fitmentLabel}
                                   </span>
+                                </td>
+                                <td className="px-4 py-2 text-center">
+                                  <button
+                                    onClick={() => navigate(`/admin/fitment-scorer?employeeId=${encodeURIComponent(profile.employeeId || '')}&tab=scoring`)}
+                                    className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-[#165BAA] bg-[#EEF4FC] hover:bg-[#DDEBFA] rounded-md transition-colors"
+                                    title={`Evaluate or Edit Fitment for ${profile.name}`}
+                                  >
+                                    <span>Evaluate / Edit</span>
+                                    <ExternalLink className="w-3 h-3" />
+                                  </button>
                                 </td>
                               </tr>
                             ))}
@@ -1460,9 +1534,21 @@ export default function DeepAnalysis() {
               <div className="py-6">
                 <InlineLoadingBlock className="mx-auto max-w-xl" />
               </div>
-            ) : !utilizationReport ? (
+            ) : (!utilizationReport || (departmentFilter && utilizationReport.summary.totalSubmissions === 0)) ? (
               <div className="bg-[#F7FAFE] border border-[#D9E4F2] rounded-2xl p-8 text-center">
-                <p className="text-[#637F9F] font-semibold">No utilization analysis data available.</p>
+                <AlertCircle className="w-8 h-8 text-[#637F9F] mx-auto mb-2 opacity-60" />
+                <h4 className="text-base font-bold text-[#0F2649]">No Utilization Records Found</h4>
+                <p className="mt-1 text-sm text-[#637F9F]">
+                  There are no utilization records or submissions for <strong className="text-[#0F2649]">{departmentFilter || 'this department'}</strong> in this reporting period.
+                </p>
+                {departmentFilter && (
+                  <button
+                    onClick={() => setDepartmentFilter('')}
+                    className="mt-4 px-4 py-2 bg-[#165BAA] text-white text-xs font-semibold rounded-lg hover:bg-[#124B8D] transition-colors"
+                  >
+                    Reset to All Departments
+                  </button>
+                )}
               </div>
             ) : (
               <div className="space-y-6 animate-in fade-in duration-500">
@@ -1498,26 +1584,43 @@ export default function DeepAnalysis() {
 
                 {/* Sub Tabs */}
                 <div className="rounded-2xl border border-[#D9E4F2] bg-white shadow-[0_6px_18px_rgba(16,42,80,0.08)] overflow-hidden">
-                  <div className="border-b border-[#D9E4F2] flex gap-1 p-4 md:p-6 flex-wrap bg-[#F7FAFE]">
-                    {(['overview', 'frequency', 'process', 'employee', 'department'] as UtilizationTabType[]).map(
-                      (tab) => (
-                        <button
-                          key={tab}
-                          onClick={() => setUtilizationTab(tab)}
-                          className={`px-4 py-2 text-sm font-semibold rounded-lg transition-all duration-200 ${
-                            utilizationTab === tab
-                              ? 'bg-[#165BAA] text-white shadow-[0_4px_12px_rgba(22,91,170,0.3)]'
-                              : 'bg-white text-[#637F9F] hover:bg-[#EEF4FC] border border-[#D9E4F2]'
-                          }`}
-                        >
-                          {tab === 'overview' && 'Overview'}
-                          {tab === 'frequency' && 'By Frequency'}
-                          {tab === 'process' && 'By Process'}
-                          {tab === 'employee' && 'By Employee'}
-                          {tab === 'department' && 'By Department'}
-                        </button>
-                      )
-                    )}
+                  <div className="border-b border-[#D9E4F2] flex items-center justify-between gap-3 p-4 md:p-6 flex-wrap bg-[#F7FAFE]">
+                    <div className="flex gap-1 flex-wrap">
+                      {(['overview', 'frequency', 'process', 'employee', 'department'] as UtilizationTabType[]).map(
+                        (tab) => (
+                          <button
+                            key={tab}
+                            onClick={() => setUtilizationTab(tab)}
+                            className={`px-4 py-2 text-sm font-semibold rounded-lg transition-all duration-200 ${
+                              utilizationTab === tab
+                                ? 'bg-[#165BAA] text-white shadow-[0_4px_12px_rgba(22,91,170,0.3)]'
+                                : 'bg-white text-[#637F9F] hover:bg-[#EEF4FC] border border-[#D9E4F2]'
+                            }`}
+                          >
+                            {tab === 'overview' && 'Overview'}
+                            {tab === 'frequency' && 'By Frequency'}
+                            {tab === 'process' && 'By Process'}
+                            {tab === 'employee' && 'By Employee'}
+                            {tab === 'department' && 'By Department'}
+                          </button>
+                        )
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        navigate(
+                          '/admin/utilization-analysis?tab=waterfall' +
+                            (departmentFilter && departmentFilter !== 'All Departments'
+                              ? '&department=' + encodeURIComponent(departmentFilter)
+                              : '')
+                        )
+                      }
+                      className="inline-flex items-center gap-2 px-4 py-2 text-sm font-bold text-white bg-[#165BAA] hover:bg-[#124b8a] rounded-xl shadow-sm transition-all duration-200 ml-auto"
+                    >
+                      <span>Capacity Waterfall</span>
+                      <ExternalLink className="w-4 h-4" />
+                    </button>
                   </div>
                   <div className="p-6">
                     {utilizationTab === 'overview' && (
@@ -1643,7 +1746,12 @@ export default function DeepAnalysis() {
                       </div>
                     )}
                     {utilizationTab === 'department' && (
-                      <div className="overflow-x-auto">
+                      <div className="overflow-x-auto space-y-3">
+                        {departmentFilter && (
+                          <p className="text-xs font-semibold text-[#4A6485]">
+                            Showing utilization metrics scoped to filtered department: <strong className="text-[#0F2649]">{departmentFilter}</strong>
+                          </p>
+                        )}
                         <table className="w-full text-sm">
                           <thead className="bg-[#F8FBFF] border-b border-[#E3EAF4]">
                             <tr>
@@ -1695,10 +1803,10 @@ export default function DeepAnalysis() {
                 <AlertCircle className="w-6 h-6 text-amber-700 flex-shrink-0 mt-0.5" />
                 <div>
                   <h3 className="font-bold text-base text-amber-950">
-                    Strategic HR GCC Transformation Benchmark Model (Source: WDT Presentation Slides 9 & 10)
+                    Strategic HR GCC Transformation Benchmark Model – Reference Only (Source: WDT Presentation Slides 9 & 10)
                   </h3>
                   <p className="mt-1 text-sm text-amber-800 leading-relaxed">
-                    <strong>Important Distinction:</strong> The figures below represent the executive leadership benchmark model for HR Global Capability Center (GCC) transition feasibility. This reference data is <strong>strictly separated</strong> from operational F&A workforce data (WDT submissions). No synthetic employee records or operational submissions have been created for this benchmark.
+                    <strong>Reference Notice:</strong> This tab contains a Human Resources (HR) GCC case-study reference provided for reference only. It does not represent F&A operational performance or staffing recommendations. This reference data is <strong>strictly separated</strong> from operational F&A workforce data (WDT submissions). Its figures do not affect F&A consolidation, FTE analysis, cost savings, or operational exports. No synthetic employee records or operational submissions have been created for this benchmark.
                   </p>
                 </div>
               </div>

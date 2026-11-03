@@ -1,6 +1,12 @@
 const ProcessAnalysis = require('../models/ProcessAnalysis');
 const WDTSubmission = require('../models/WDTSubmission');
 const Taxonomy = require('../models/Taxonomy');
+const {
+  getEffectiveStandardMonthlyHours,
+  getEffectiveCategoryMap,
+  resolveActivityCategory,
+  registerReportCacheInvalidator
+} = require('../services/assumptionsService');
 
 function computeScore(criteria = []) {
   if (!criteria || criteria.length === 0) return 0;
@@ -85,6 +91,10 @@ function normalizeDepartmentName(dept) {
 }
 
 async function computeSixBySixData(department) {
+  const [standardMonthlyHours, categoryMap] = await Promise.all([
+    getEffectiveStandardMonthlyHours(),
+    getEffectiveCategoryMap()
+  ]);
   // 1. Sync new processes from WDT submissions
   const { SYSTEM_TEST_ACCOUNT_IDS } = require('../utils/gradeStandardizer');
   const deptFilter = getDepartmentFilter(department);
@@ -100,6 +110,7 @@ async function computeSixBySixData(department) {
        $project: {
          status: 1,
          'employee.department': 1,
+         'payload.rows.majorProcess': 1,
          'payload.rows.subProcess': 1,
          'payload.rows.activityCategory': 1,
          'payload.rows.timeTakenHoursPerMonth': 1
@@ -111,6 +122,7 @@ async function computeSixBySixData(department) {
          _id: { 
            process: '$payload.rows.subProcess',
            department: '$employee.department',
+           majorProcess: '$payload.rows.majorProcess',
            type: '$payload.rows.activityCategory'
          },
          totalHours: { 
@@ -142,10 +154,11 @@ async function computeSixBySixData(department) {
     if (isMockStandardOperatingProcedure(processName)) continue;
 
     if (!existingProcessSet.has(processName)) {
+      const effectiveType = resolveActivityCategory(item._id?.majorProcess, item._id?.type, categoryMap);
       newProcessDocs.push({
         process: processName,
         department: deptName,
-        type: item._id.type || 'core',
+        type: effectiveType || 'core',
         criteria: Array.from({ length: 12 }, () => '-'),
         score: 0,
         consolidated: null
@@ -193,7 +206,7 @@ async function computeSixBySixData(department) {
   const fteLookup = {};
   aggregatedProcesses.forEach(item => {
     const key = `${item._id.department || 'General'}::${item._id.process}`;
-    fteLookup[key] = (item.totalHours || 0) / 160;
+    fteLookup[key] = (item.totalHours || 0) / standardMonthlyHours;
   });
 
   const enrichedData = data.map(record => {
@@ -320,6 +333,8 @@ const bulkUpdateProcessRecords = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
+
+registerReportCacheInvalidator(invalidateSixBySixCache);
 
 module.exports = {
   getSixBySixData,

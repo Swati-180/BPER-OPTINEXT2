@@ -14,6 +14,9 @@ export interface AppAuthUser {
   band?: string;
   location?: string;
   maxMonthlyHours?: number;
+  hasCustomMaxHours?: boolean;
+  effectiveMaxMonthlyHours?: number;
+  standardMonthlyHours?: number;
   source: AuthSource;
   inviteToken?: string;
 }

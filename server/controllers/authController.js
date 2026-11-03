@@ -4,6 +4,7 @@ const WDTSubmission = require('../models/WDTSubmission');
 const AdminWhitelist = require('../models/AdminWhitelist');
 const { logAction } = require('../utils/auditLogger');
 const { invalidateFitmentSummaryCache } = require('./reportsController');
+const { getEffectiveStandardMonthlyHours } = require('../services/assumptionsService');
 
 function isMissingValue(value) {
   if (value === null || value === undefined) return true;
@@ -131,6 +132,7 @@ const register = async (req, res) => {
 
     invalidateFitmentSummaryCache();
     
+    const standardMonthlyHours = await getEffectiveStandardMonthlyHours();
     const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, { expiresIn: '30d' });
 
     res.status(201).json({ 
@@ -148,7 +150,9 @@ const register = async (req, res) => {
         designation: user.designation,
         band: user.band,
         location: user.location,
-        maxMonthlyHours: user.maxMonthlyHours
+        maxMonthlyHours: user.hasCustomMaxHours ? user.maxMonthlyHours : standardMonthlyHours,
+        hasCustomMaxHours: Boolean(user.hasCustomMaxHours),
+        effectiveMaxMonthlyHours: user.hasCustomMaxHours ? user.maxMonthlyHours : standardMonthlyHours
       }
     });
   } catch (err) {
@@ -173,6 +177,7 @@ const login = async (req, res) => {
     user.lastLoginAt = new Date();
     await user.save();
 
+    const standardMonthlyHours = await getEffectiveStandardMonthlyHours();
     const token = jwt.sign(
       { userId: user._id, role: user.role, email: user.email },
       process.env.JWT_SECRET,
@@ -193,7 +198,9 @@ const login = async (req, res) => {
         designation: user.designation,
         band: user.band,
         location: user.location,
-        maxMonthlyHours: user.maxMonthlyHours
+        maxMonthlyHours: user.hasCustomMaxHours ? user.maxMonthlyHours : standardMonthlyHours,
+        hasCustomMaxHours: Boolean(user.hasCustomMaxHours),
+        effectiveMaxMonthlyHours: user.hasCustomMaxHours ? user.maxMonthlyHours : standardMonthlyHours
       }
     });
   } catch (err) {
@@ -207,7 +214,19 @@ const getMe = async (req, res) => {
     if (!user) {
       return res.status(404).json({ message: 'User not found.' });
     }
-    res.json(user);
+    const standardMonthlyHours = await getEffectiveStandardMonthlyHours();
+    const userObj = user.toObject();
+    const hasExplicitOverride = Boolean(
+      userObj.hasCustomMaxHours &&
+      Number.isFinite(userObj.maxMonthlyHours) &&
+      userObj.maxMonthlyHours > 0
+    );
+    userObj.effectiveMaxMonthlyHours = hasExplicitOverride ? userObj.maxMonthlyHours : standardMonthlyHours;
+    userObj.standardMonthlyHours = standardMonthlyHours;
+    if (!hasExplicitOverride) {
+      userObj.maxMonthlyHours = standardMonthlyHours;
+    }
+    res.json(userObj);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -423,12 +442,24 @@ const getAllUsers = async (req, res) => {
     ]);
 
     const hasAuthoritativeRoster = authoritativeRosterCount > 0;
+    const standardMonthlyHours = await getEffectiveStandardMonthlyHours();
 
     let sanitizedUsers = users.map((user) => {
       const hasPassword = Boolean(user.password && user.password.length > 0);
       const next = user.toObject();
       delete next.password;
       next.hasPassword = hasPassword;
+
+      const hasExplicitOverride = Boolean(
+        next.hasCustomMaxHours &&
+        Number.isFinite(next.maxMonthlyHours) &&
+        next.maxMonthlyHours > 0
+      );
+      next.hasCustomMaxHours = hasExplicitOverride;
+      next.effectiveMaxMonthlyHours = hasExplicitOverride ? next.maxMonthlyHours : standardMonthlyHours;
+      if (!hasExplicitOverride) {
+        next.maxMonthlyHours = standardMonthlyHours;
+      }
 
       // Explicitly classify record category
       if (next.isArchivedDemo || next.role === 'archived_demo') {
@@ -488,7 +519,9 @@ const getAllUsers = async (req, res) => {
           isVacant: isVac,
           isArchivedDemo: false,
           hasPassword: false,
-          maxMonthlyHours: 160,
+          maxMonthlyHours: standardMonthlyHours,
+          hasCustomMaxHours: false,
+          effectiveMaxMonthlyHours: standardMonthlyHours,
           source: 'wdt_participants'
         });
       }
@@ -599,6 +632,30 @@ const updateUser = async (req, res) => {
 
     if (req.user.role !== 'admin') {
       delete updateData.role;
+      // Non-admins cannot alter employee monthly hour limits or overrides
+      delete updateData.maxMonthlyHours;
+      delete updateData.hasCustomMaxHours;
+    } else {
+      // Admin update of monthly hours and override flag
+      if (updateData.hasCustomMaxHours !== undefined) {
+        updateData.hasCustomMaxHours = Boolean(updateData.hasCustomMaxHours);
+      }
+      if (updateData.maxMonthlyHours !== undefined) {
+        if (updateData.maxMonthlyHours === null || updateData.maxMonthlyHours === '' || updateData.maxMonthlyHours === 0) {
+          // Clearing custom limit returns to organization baseline
+          updateData.hasCustomMaxHours = false;
+        } else {
+          const val = Number(updateData.maxMonthlyHours);
+          if (Number.isFinite(val) && val >= 1 && val <= 744) {
+            updateData.maxMonthlyHours = val;
+            if (updateData.hasCustomMaxHours === undefined) {
+              updateData.hasCustomMaxHours = true;
+            }
+          } else {
+            return res.status(400).json({ message: 'maxMonthlyHours must be a finite number between 1 and 744.' });
+          }
+        }
+      }
     }
 
     const user = await User.findByIdAndUpdate(req.params.id, updateData, { new: true }).select('-password');
