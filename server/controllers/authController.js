@@ -6,6 +6,12 @@ const { logAction } = require('../utils/auditLogger');
 const { invalidateFitmentSummaryCache } = require('./reportsController');
 const { getEffectiveStandardMonthlyHours } = require('../services/assumptionsService');
 
+// Verified synthetic/automated test accounts excluded from operational workforce listings and counts
+// Note: Administrative accounts like BPER-000 (Admin) and BPER-999 (Manager) remain visible as genuine login accounts.
+const EXCLUDED_WORKFORCE_IDS = Object.freeze([
+  'TEST-BPER-9001'
+]);
+
 function isMissingValue(value) {
   if (value === null || value === undefined) return true;
   if (typeof value !== 'string') return false;
@@ -329,52 +335,10 @@ const getAllUsers = async (req, res) => {
   try {
     const { recordType, role, department, status, search } = req.query;
 
-    const baseQuery = {};
+    // Fetch all active User collection records (excluding confirmed test accounts)
+    const allDbUsers = await User.find({ employeeId: { $nin: EXCLUDED_WORKFORCE_IDS } }).sort({ createdAt: -1 });
 
-    // Record Type Filter:
-    // 'all' | 'login_accounts' | 'operational_staff' | 'vacancies' | 'archived_demos'
-    if (recordType === 'login_accounts') {
-      baseQuery.isRosterOnly = { $ne: true };
-      baseQuery.isVacant = { $ne: true };
-      baseQuery.role = { $nin: ['position', 'archived_demo'] };
-      baseQuery.password = { $exists: true, $ne: '' };
-    } else if (recordType === 'operational_staff') {
-      baseQuery.role = 'employee';
-      baseQuery.isVacant = { $ne: true };
-      baseQuery.isArchivedDemo = { $ne: true };
-    } else if (recordType === 'vacancies') {
-      baseQuery.$or = [{ role: 'position' }, { isVacant: true }];
-    } else if (recordType === 'archived_demos') {
-      baseQuery.$or = [{ isArchivedDemo: true }, { role: 'archived_demo' }];
-    }
-
-    if (role && role !== 'All') {
-      baseQuery.role = role.toLowerCase().trim();
-    }
-
-    if (department && department !== 'All') {
-      baseQuery.department = department;
-    }
-
-    if (status && status !== 'All') {
-      baseQuery.isActive = status === 'Active';
-    }
-
-    if (search && search.trim()) {
-      const q = search.trim();
-      const regex = new RegExp(q, 'i');
-      baseQuery.$or = [
-        { name: regex },
-        { employeeId: regex },
-        { email: regex },
-        { designation: regex },
-        { supervisorName: regex }
-      ];
-    }
-
-    const users = await User.find(baseQuery).sort({ createdAt: -1 });
-
-    const existingBperIds = users
+    const existingBperIds = allDbUsers
       .map((user) => user.employeeId)
       .filter((id) => /^BPER-\d+$/.test(String(id)))
       .map((id) => Number(String(id).split('-')[1]))
@@ -382,7 +346,7 @@ const getAllUsers = async (req, res) => {
 
     let nextBperId = (existingBperIds.length > 0 ? Math.max(...existingBperIds) : 100) + 1;
 
-    for (const user of users) {
+    for (const user of allDbUsers) {
       // Do not mutate or auto-assign BPER IDs to roster-only records, vacancies, or archived demo accounts
       if (user.isRosterOnly || user.isVacant || user.role === 'position' || user.isArchivedDemo) {
         continue;
@@ -421,30 +385,10 @@ const getAllUsers = async (req, res) => {
       }
     }
 
-    // Compute workforce breakdown summary for tabs and metrics
-    const [
-      authoritativeRosterCount,
-      loginAccountsCount,
-      operationalStaffCount,
-      vacanciesCount,
-      archivedDemosCount
-    ] = await Promise.all([
-      User.countDocuments({ role: 'employee', isActive: true, isRosterOnly: true, isArchivedDemo: { $ne: true } }),
-      User.countDocuments({
-        isRosterOnly: { $ne: true },
-        isVacant: { $ne: true },
-        role: { $nin: ['position', 'archived_demo'] },
-        password: { $exists: true, $ne: '' }
-      }),
-      User.countDocuments({ role: 'employee', isVacant: { $ne: true }, isArchivedDemo: { $ne: true } }),
-      User.countDocuments({ $or: [{ role: 'position' }, { isVacant: true }] }),
-      User.countDocuments({ $or: [{ isArchivedDemo: true }, { role: 'archived_demo' }] })
-    ]);
-
-    const hasAuthoritativeRoster = authoritativeRosterCount > 0;
     const standardMonthlyHours = await getEffectiveStandardMonthlyHours();
 
-    let sanitizedUsers = users.map((user) => {
+    // Map existing DB users into sanitized presentation records
+    const sanitizedDbUsers = allDbUsers.map((user) => {
       const hasPassword = Boolean(user.password && user.password.length > 0);
       const next = user.toObject();
       delete next.password;
@@ -461,7 +405,6 @@ const getAllUsers = async (req, res) => {
         next.maxMonthlyHours = standardMonthlyHours;
       }
 
-      // Explicitly classify record category
       if (next.isArchivedDemo || next.role === 'archived_demo') {
         next.recordCategory = 'archived_demo';
       } else if (next.isVacant || next.role === 'position') {
@@ -474,128 +417,142 @@ const getAllUsers = async (req, res) => {
       return next;
     });
 
-    let finalCounts = {
-      total: users.length,
-      loginAccounts: loginAccountsCount,
-      operationalStaff: operationalStaffCount,
-      vacancies: vacanciesCount,
-      archivedDemos: archivedDemosCount
+    // Known identifiers from existing DB users (for strict deduplication by ID and email)
+    const existingEmpIdSet = new Set(sanitizedDbUsers.map(u => String(u.employeeId || '').trim()).filter(Boolean));
+    const existingEmailSet = new Set(sanitizedDbUsers.map(u => String(u.email || '').toLowerCase().trim()).filter(Boolean));
+
+    // Dynamic WDT Participant Ingestion:
+    // Seamlessly supplement any operational workforce records present in WDT submissions that are missing from User collection
+    // High-performance projection: retrieve only employee subdocument fields, excluding large payloads/activity arrays
+    const wdtSubmissions = await WDTSubmission.find(
+      {},
+      {
+        'employee.employeeId': 1,
+        'employee.name': 1,
+        'employee.email': 1,
+        'employee.department': 1,
+        'employee.designation': 1,
+        'employee.grade': 1,
+        'employee.organization': 1,
+        'employee.location': 1,
+        'employee.supervisorName': 1,
+        'employee.supervisorTitle': 1,
+        'employee.isVacant': 1,
+        submittedAt: 1
+      }
+    )
+      .sort({ submittedAt: -1 })
+      .lean();
+
+    const supplementalRoster = [];
+    const seenWdtEmpIds = new Set();
+
+    for (const s of wdtSubmissions) {
+      const empId = String(s.employee?.employeeId || '').trim();
+      const email = String(s.employee?.email || '').toLowerCase().trim();
+
+      if (!empId || seenWdtEmpIds.has(empId) || EXCLUDED_WORKFORCE_IDS.includes(empId)) continue;
+      seenWdtEmpIds.add(empId);
+
+      // Deduplicate: If this employeeId or email already exists in User collection, preserve the User collection record
+      if (existingEmpIdSet.has(empId) || (email && existingEmailSet.has(email))) {
+        continue;
+      }
+
+      const rawName = String(s.employee?.name || '').trim();
+      const isVac = rawName.toLowerCase() === 'vacant' || s.employee?.isVacant === true;
+
+      // For vacancies, do not display synthetic demo emails; present as empty string ("No Web Login")
+      const resolvedEmail = isVac ? '' : (s.employee?.email || '');
+
+      supplementalRoster.push({
+        _id: `roster-${empId}`,
+        employeeId: empId,
+        name: isVac ? `Vacant Position (${empId})` : (rawName || 'Unknown Staff'),
+        email: resolvedEmail,
+        department: s.employee?.department || 'Finance & Accounting',
+        designation: s.employee?.designation || (isVac ? 'Budgeted Vacant Position' : 'Operational Staff'),
+        band: s.employee?.grade || 'L1',
+        client: s.employee?.organization || 'BU011',
+        location: s.employee?.location || '',
+        supervisorName: s.employee?.supervisorName || '',
+        supervisorTitle: s.employee?.supervisorTitle || '',
+        employeeType: 'Full-time',
+        role: isVac ? 'position' : 'employee',
+        status: isVac ? 'Inactive' : 'Active',
+        recordCategory: isVac ? 'position' : 'operational_staff',
+        isRosterOnly: true,
+        isVacant: isVac,
+        isArchivedDemo: false,
+        hasPassword: false,
+        maxMonthlyHours: standardMonthlyHours,
+        hasCustomMaxHours: false,
+        effectiveMaxMonthlyHours: standardMonthlyHours,
+        source: 'wdt_participants'
+      });
+    }
+
+    // Unified full workforce list (User DB accounts + non-colliding WDT participants)
+    const combinedWorkforce = [...sanitizedDbUsers, ...supplementalRoster];
+
+    // Compute authoritative reconciled counts across the entire operational workforce:
+    // - Operational Staff: genuine non-vacant operational profiles in scope (248)
+    // - Vacant Positions: genuine planned vacancy positions in scope (78)
+    // - Login Accounts: verified system user accounts with login credentials (9 accounts: Admin, Manager, Employees)
+    const operationalStaffRecords = combinedWorkforce.filter(u => u.recordCategory === 'operational_staff');
+    const loginAccountsRecords = combinedWorkforce.filter(u => u.recordCategory === 'login_account');
+    const vacanciesRecords = combinedWorkforce.filter(u => u.recordCategory === 'position');
+    const archivedDemosRecords = combinedWorkforce.filter(u => u.recordCategory === 'archived_demo');
+
+    const finalCounts = {
+      total: combinedWorkforce.length,
+      operationalStaff: operationalStaffRecords.length,
+      loginAccounts: loginAccountsRecords.length,
+      vacancies: vacanciesRecords.length,
+      archivedDemos: archivedDemosRecords.length
     };
 
-    // Fallback: If no authoritative roster is synced to the users collection,
-    // dynamically supplement with unique participants from WDT submissions (Option A - read only)
-    if (!hasAuthoritativeRoster) {
-      const wdtSubmissions = await WDTSubmission.find({}, { employee: 1, submittedAt: 1 })
-        .sort({ submittedAt: -1 })
-        .lean();
-      
-      const existingEmpIdSet = new Set(sanitizedUsers.map(u => String(u.employeeId || '').trim()).filter(Boolean));
-      const existingEmailSet = new Set(sanitizedUsers.map(u => String(u.email || '').toLowerCase().trim()).filter(Boolean));
+    // Filter combined workforce according to query parameters
+    let filteredResults = combinedWorkforce;
 
-      const participantMap = new Map();
-      for (const s of wdtSubmissions) {
-        const empId = String(s.employee?.employeeId || '').trim();
-        if (!empId || participantMap.has(empId)) continue;
-        const rawName = String(s.employee?.name || '').trim();
-        const isVac = rawName.toLowerCase() === 'vacant';
+    const requestedCategory = recordType || req.query.recordCategory;
+    if (requestedCategory === 'login_accounts' || requestedCategory === 'login_account') {
+      filteredResults = loginAccountsRecords;
+    } else if (requestedCategory === 'operational_staff' || requestedCategory === 'roster_only') {
+      filteredResults = operationalStaffRecords;
+    } else if (requestedCategory === 'vacancies' || requestedCategory === 'position') {
+      filteredResults = vacanciesRecords;
+    } else if (requestedCategory === 'archived_demos' || requestedCategory === 'archived_demo') {
+      filteredResults = archivedDemosRecords;
+    }
 
-        participantMap.set(empId, {
-          _id: `roster-${empId}`,
-          employeeId: empId,
-          name: isVac ? `Vacant Position (${empId})` : (rawName || 'Unknown Staff'),
-          email: s.employee?.email || `${empId}@demo.optinext.com`,
-          department: s.employee?.department || 'Finance & Accounting',
-          designation: s.employee?.designation || (isVac ? 'Budgeted Vacant Position' : 'Operational Staff'),
-          band: s.employee?.grade || 'L1',
-          client: s.employee?.organization || 'BU011',
-          location: s.employee?.location || '',
-          supervisorName: s.employee?.supervisorName || '',
-          supervisorTitle: s.employee?.supervisorTitle || '',
-          employeeType: 'Full-time',
-          role: isVac ? 'position' : 'employee',
-          status: isVac ? 'Inactive' : 'Active',
-          recordCategory: isVac ? 'position' : 'roster_only',
-          isRosterOnly: true,
-          isVacant: isVac,
-          isArchivedDemo: false,
-          hasPassword: false,
-          maxMonthlyHours: standardMonthlyHours,
-          hasCustomMaxHours: false,
-          effectiveMaxMonthlyHours: standardMonthlyHours,
-          source: 'wdt_participants'
-        });
-      }
+    if (role && role !== 'All') {
+      const normRole = role.toLowerCase().trim();
+      filteredResults = filteredResults.filter(r => String(r.role).toLowerCase().trim() === normRole);
+    }
 
-      const allParticipants = Array.from(participantMap.values());
-      const participantNamedStaff = allParticipants.filter(p => !p.isVacant);
-      const participantVacancies = allParticipants.filter(p => p.isVacant);
+    if (department && department !== 'All') {
+      filteredResults = filteredResults.filter(r => r.department === department);
+    }
 
-      finalCounts = {
-        total: loginAccountsCount + allParticipants.length,
-        loginAccounts: loginAccountsCount,
-        operationalStaff: participantNamedStaff.length,
-        vacancies: participantVacancies.length,
-        archivedDemos: archivedDemosCount
-      };
+    if (status && status !== 'All') {
+      filteredResults = filteredResults.filter(r => r.status === status);
+    }
 
-      // Filter participant records by requested recordType if applicable
-      let supplementalRecords = allParticipants;
-      if (recordType === 'login_accounts') {
-        supplementalRecords = [];
-      } else if (recordType === 'operational_staff') {
-        supplementalRecords = participantNamedStaff;
-      } else if (recordType === 'vacancies') {
-        supplementalRecords = participantVacancies;
-      } else if (recordType === 'archived_demos') {
-        supplementalRecords = [];
-      }
-
-      // Filter by role if requested
-      if (role && role !== 'All') {
-        const normRole = role.toLowerCase().trim();
-        supplementalRecords = supplementalRecords.filter(r => r.role === normRole);
-      }
-
-      // Filter by department if requested
-      if (department && department !== 'All') {
-        supplementalRecords = supplementalRecords.filter(r => r.department === department);
-      }
-
-      // Filter by status if requested
-      if (status && status !== 'All') {
-        supplementalRecords = supplementalRecords.filter(r => r.status === status);
-      }
-
-      // Filter by search query if requested
-      if (search && search.trim()) {
-        const q = search.trim().toLowerCase();
-        supplementalRecords = supplementalRecords.filter(r =>
-          String(r.name || '').toLowerCase().includes(q) ||
-          String(r.employeeId || '').toLowerCase().includes(q) ||
-          String(r.email || '').toLowerCase().includes(q) ||
-          String(r.designation || '').toLowerCase().includes(q)
-        );
-      }
-
-      // Merge avoiding any duplicate employee IDs with genuine login accounts
-      const nonCollidingSupplemental = supplementalRecords.filter(r => !existingEmpIdSet.has(r.employeeId));
-      
-      if (recordType === 'login_accounts') {
-        // Keep sanitizedUsers as login accounts only
-      } else if (recordType === 'operational_staff') {
-        sanitizedUsers = nonCollidingSupplemental;
-      } else if (recordType === 'vacancies') {
-        sanitizedUsers = nonCollidingSupplemental;
-      } else if (recordType === 'archived_demos') {
-        // sanitizedUsers already filtered
-      } else {
-        // recordType === 'all' or default: combine login accounts + participants
-        sanitizedUsers = [...sanitizedUsers, ...nonCollidingSupplemental];
-      }
+    if (search && search.trim()) {
+      const q = search.trim().toLowerCase();
+      filteredResults = filteredResults.filter(r =>
+        String(r.name || '').toLowerCase().includes(q) ||
+        String(r.employeeId || '').toLowerCase().includes(q) ||
+        String(r.email || '').toLowerCase().includes(q) ||
+        String(r.designation || '').toLowerCase().includes(q) ||
+        String(r.supervisorName || '').toLowerCase().includes(q) ||
+        String(r.department || '').toLowerCase().includes(q)
+      );
     }
 
     res.json({
-      users: sanitizedUsers,
+      users: filteredResults,
       counts: finalCounts
     });
   } catch (err) {

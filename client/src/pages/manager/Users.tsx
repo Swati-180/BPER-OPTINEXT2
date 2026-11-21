@@ -156,10 +156,10 @@ export default function UsersPage() {
 					};
 				});
 
-				// Calculate exact counts across the loaded dataset
-				const counts: WorkforceCounts = {
+				// Use backend authoritative counts if provided, otherwise compute from loaded rows
+				const counts: WorkforceCounts = data.counts || {
 					total: mapped.length,
-					operationalStaff: mapped.filter(u => !u.isVacant && !u.isArchivedDemo && u.role === 'employee').length,
+					operationalStaff: mapped.filter(u => u.recordCategory === 'roster_only' || u.recordCategory === 'operational_staff').length,
 					loginAccounts: mapped.filter(u => u.recordCategory === 'login_account').length,
 					vacancies: mapped.filter(u => u.isVacant || u.role === 'position' || u.recordCategory === 'position').length,
 					archivedDemos: mapped.filter(u => u.isArchivedDemo || u.role === 'archived_demo' || u.recordCategory === 'archived_demo').length,
@@ -188,7 +188,7 @@ export default function UsersPage() {
 		return userRows.filter((user) => {
 			// 1. Record Category Filter
 			if (categoryFilter === 'operational_staff') {
-				if (user.isVacant || user.isArchivedDemo || user.role !== 'employee') return false;
+				if (user.recordCategory !== 'roster_only' && user.recordCategory !== 'operational_staff') return false;
 			} else if (categoryFilter === 'login_accounts') {
 				if (user.recordCategory !== 'login_account') return false;
 			} else if (categoryFilter === 'vacancies') {

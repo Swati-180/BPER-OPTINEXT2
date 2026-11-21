@@ -159,10 +159,30 @@ const taxonomyData = [
 
 async function seed() {
   try {
+    // Unconditional Production Environment Safeguard
+    // Blocks execution unconditionally whenever running in production or staging, regardless of database record count.
+    const isProductionOrStaging = process.env.NODE_ENV === 'production' ||
+                                  process.env.NODE_ENV === 'staging' ||
+                                  String(process.env.MONGODB_URI || '').includes('mongodb.net');
+
+    if (isProductionOrStaging) {
+      console.error('CRITICAL SECURITY GUARD: seed_bper is permanently disabled against remote/production databases to prevent data loss or sample pollution.');
+      if (require.main === module) process.exit(1);
+      return;
+    }
+
     const connStr = process.env.MONGODB_URI;
     console.log('Connecting to:', connStr);
     await mongoose.connect(connStr);
-    console.log('Connected to MongoDB Atlas');
+    console.log('Connected to MongoDB');
+
+    // Secondary safety check: do not clear if operational data exists
+    const existingWdtCount = await WDTSubmission.countDocuments();
+    if (existingWdtCount > 0) {
+      console.error(`CRITICAL: Database contains ${existingWdtCount} operational submissions. Seeding aborted to prevent data loss.`);
+      if (require.main === module) process.exit(1);
+      return;
+    }
 
     // Clear existing
     await User.deleteMany({});

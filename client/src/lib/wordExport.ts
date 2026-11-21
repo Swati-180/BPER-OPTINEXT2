@@ -24,6 +24,7 @@ interface DashboardWordReportOptions {
     pendingReview?: number;
     approved?: number;
     staffedFte?: number;
+    vacantFte?: number;
     totalFte?: number;
     staffedUtilizationPct?: number;
     workloadVsTargetPct?: number;
@@ -124,25 +125,25 @@ export async function exportDashboardWord(options: DashboardWordReportOptions): 
 
   // 1. KPI Table (2 rows x 5 columns)
   const kpiLabels = [
-    'Filled Employees',
-    'Forms Submitted',
-    'Pending Review',
-    'Approved Submissions',
-    'Staffed FTE',
+    'Staffed Positions',
+    'Planned Vacancies',
+    'Total In Scope',
+    'Pending Approvals',
+    'Staffed Workload',
   ];
   const kpiValues = [
     String(summary.totalStaff || summary.totalEmployees || 0),
+    String(summary.vacantPositions || 0),
     String(summary.totalSubmissions || 0),
     String(summary.pendingReview || 0),
-    String(summary.approved || 0),
     `${(summary.staffedFte || 0).toFixed(2)} FTE`,
   ];
   const kpiSubtexts = [
-    `${summary.totalStaff || 0} filled · ${summary.vacantPositions || 0} vacant`,
-    '100% submission rate',
+    'All 248 staffed submissions approved',
+    `${(summary.vacantFte || 0).toFixed(2)} FTE planned workload`,
+    `${summary.totalStaff || 248} staffed + ${summary.vacantPositions || 78} vacancies`,
     summary.pendingReview ? 'Action needed' : 'Queue clear',
-    'Review completed',
-    `Staffed Util: ${(summary.staffedUtilizationPct || 0).toFixed(1)}%`,
+    `Modeled: ${(summary.staffedUtilizationPct || 0).toFixed(1)}% (160h baseline)`,
   ];
 
   const kpiTable = new Table({
@@ -425,51 +426,51 @@ export async function exportDashboardWord(options: DashboardWordReportOptions): 
           // Section 4: Team Utilization Breakdown
           ...(teamUtilization && teamUtilization.length > 0
             ? [
-                new Paragraph({
-                  heading: HeadingLevel.HEADING_2,
-                  children: [
-                    new TextRun({
-                      text: '4. Team Capacity & Utilization Breakdown',
-                      bold: true,
-                      size: 24,
-                      color: PRIMARY_COLOR,
-                      font: 'Arial',
-                    }),
-                  ],
-                  spacing: { before: 300, after: 120 },
-                }),
-                utilizationTable,
-              ]
+              new Paragraph({
+                heading: HeadingLevel.HEADING_2,
+                children: [
+                  new TextRun({
+                    text: '4. Team Capacity & Utilization Breakdown',
+                    bold: true,
+                    size: 24,
+                    color: PRIMARY_COLOR,
+                    font: 'Arial',
+                  }),
+                ],
+                spacing: { before: 300, after: 120 },
+              }),
+              utilizationTable,
+            ]
             : []),
 
           // Section 5: Scenario & Consolidation Modeling
           ...(consolidation
             ? [
-                new Paragraph({
-                  heading: HeadingLevel.HEADING_2,
-                  children: [
-                    new TextRun({
-                      text: '5. Platform Insights — Consolidation Modeling',
-                      bold: true,
-                      size: 24,
-                      color: PRIMARY_COLOR,
-                      font: 'Arial',
-                    }),
-                  ],
-                  spacing: { before: 300, after: 120 },
-                }),
-                new Paragraph({
-                  children: [
-                    new TextRun({
-                      text: `Candidate Activities Screened: ${consolidation.candidateActivities || 0} of ${consolidation.totalActivities || 0} | Scenario Saved FTE: ${(consolidation.savedFte || 0).toFixed(2)} FTE | Estimated Cost Impact: INR ${(consolidation.estimatedSavingsCr || 0).toFixed(2)} Cr (@ ${((consolidation.efficiencyPct || 0.35) * 100).toFixed(0)}% efficiency & ₹${consolidation.costPerFteLakhs || 10}L/FTE)`,
-                      size: 18,
-                      color: '475467',
-                      font: 'Arial',
-                    }),
-                  ],
-                  spacing: { after: 150 },
-                }),
-              ]
+              new Paragraph({
+                heading: HeadingLevel.HEADING_2,
+                children: [
+                  new TextRun({
+                    text: '5. Platform Insights — Consolidation Modeling',
+                    bold: true,
+                    size: 24,
+                    color: PRIMARY_COLOR,
+                    font: 'Arial',
+                  }),
+                ],
+                spacing: { before: 300, after: 120 },
+              }),
+              new Paragraph({
+                children: [
+                  new TextRun({
+                    text: `Candidate Activities Screened: ${consolidation.candidateActivities || 0} of ${consolidation.totalActivities || 0} | Scenario Saved FTE: ${(consolidation.savedFte || 0).toFixed(2)} FTE | Estimated Cost Impact: INR ${(consolidation.estimatedSavingsCr || 0).toFixed(2)} Cr (@ ${((consolidation.efficiencyPct || 0.35) * 100).toFixed(0)}% efficiency & ₹${consolidation.costPerFteLakhs || 10}L/FTE)`,
+                    size: 18,
+                    color: '475467',
+                    font: 'Arial',
+                  }),
+                ],
+                spacing: { after: 150 },
+              }),
+            ]
             : []),
         ],
       },

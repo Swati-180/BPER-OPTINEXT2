@@ -1215,8 +1215,10 @@ async function getFitmentSummaryReport(req, res) {
           },
           pilotAssessments: {
             totalCount: pilotProfiles.length,
-            label: 'Sandbox / Pilot Baseline Records',
-            notice: 'Historical pilot assessments performed during initial setup on sandbox accounts; kept separate from operational staff.'
+            label: pilotProfiles.length > 0 ? 'Pilot Baseline Records' : 'No Verified Assessments',
+            notice: pilotProfiles.length > 0
+              ? 'Historical pilot assessments kept separate from operational staff.'
+              : 'No verified competency assessments have been completed yet. Baseline assessment phase pending.'
           }
         },
         charts: {
