@@ -275,18 +275,21 @@ export default function Profile() {
                 <List size={14} />
                 Profile Details
               </button>
-              <button
-                type="button"
-                onClick={openEdit}
-                className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-bold transition ${
-                  activePanel === 'edit'
-                    ? 'bg-[#165BAA] text-white shadow-sm'
-                    : 'text-[#1D3655] hover:bg-white'
-                }`}
-              >
-                <PencilLine size={14} />
-                Edit Profile
-              </button>
+              {/* Edit Profile button hidden for Employee Portal per client usability requirements; preserved for easy restoration */}
+              {false && (
+                <button
+                  type="button"
+                  onClick={openEdit}
+                  className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-bold transition ${
+                    activePanel === 'edit'
+                      ? 'bg-[#165BAA] text-white shadow-sm'
+                      : 'text-[#1D3655] hover:bg-white'
+                  }`}
+                >
+                  <PencilLine size={14} />
+                  Edit Profile
+                </button>
+              )}
               <button
                 type="button"
                 onClick={() => {

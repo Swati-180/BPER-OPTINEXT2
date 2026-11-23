@@ -24,6 +24,7 @@ function MultiSelectPillGrid({
   searchPlaceholder,
   isLoading,
   extraPill,
+  renderItem,
 }: {
   items: string[];
   selected: string[];
@@ -33,6 +34,7 @@ function MultiSelectPillGrid({
   searchPlaceholder: string;
   isLoading: boolean;
   extraPill?: React.ReactNode;
+  renderItem?: (item: string, isSelected: boolean) => React.ReactNode;
 }) {
   const filtered = items.filter(
     (item) =>
@@ -73,6 +75,9 @@ function MultiSelectPillGrid({
           ) : (
             filtered.map((item) => {
               const isSelected = selected.includes(item);
+              if (renderItem) {
+                return renderItem(item, isSelected);
+              }
               return (
                 <button
                   key={item}
@@ -260,8 +265,28 @@ export function ProcessSelectionPanel({
   const handleSelectMajor = (item: string) => {
     setSelectedMajors((prev) => {
       const exists = prev.includes(item);
-      if (exists) return prev.filter((p) => p !== item);
-      return [...prev, item];
+      const nextMajors = exists ? prev.filter((p) => p !== item) : [...prev, item];
+
+      // Prune downstream selections whose parent major is no longer selected
+      setSelectedProcesses((prevProcs) =>
+        prevProcs.filter((procStr) => {
+          const [maj] = procStr.split(" / ").map((s) => s.trim());
+          return nextMajors.includes(maj);
+        })
+      );
+
+      setSelectedSubProcesses((prevSubs) =>
+        prevSubs.filter((subJson) => {
+          try {
+            const parsed = JSON.parse(subJson);
+            return nextMajors.includes(parsed.majorProcess);
+          } catch {
+            return false;
+          }
+        })
+      );
+
+      return nextMajors;
     });
   };
 
@@ -274,8 +299,22 @@ export function ProcessSelectionPanel({
   const handleSelectProcess = (item: string) => {
     setSelectedProcesses((prev) => {
       const exists = prev.includes(item);
-      if (exists) return prev.filter((p) => p !== item);
-      return [...prev, item];
+      const nextProcs = exists ? prev.filter((p) => p !== item) : [...prev, item];
+
+      // Prune downstream sub-processes whose parent process is no longer selected
+      const allowedCombos = new Set(nextProcs);
+      setSelectedSubProcesses((prevSubs) =>
+        prevSubs.filter((subJson) => {
+          try {
+            const parsed = JSON.parse(subJson);
+            return allowedCombos.has(`${parsed.majorProcess} / ${parsed.process}`);
+          } catch {
+            return false;
+          }
+        })
+      );
+
+      return nextProcs;
     });
   };
 
@@ -293,17 +332,6 @@ export function ProcessSelectionPanel({
       return [...prev, item];
     });
   };
-
-  useEffect(() => {
-    // clear lower-level selections when majors change
-    setSelectedProcesses([]);
-    setSelectedSubProcesses([]);
-  }, [selectedMajors]);
-
-  useEffect(() => {
-    // clear subprocess selections when processes change
-    setSelectedSubProcesses([]);
-  }, [selectedProcesses]);
 
   const handleAddSelections = () => {
     if (selectedSubProcesses.length === 0) return;
@@ -410,23 +438,43 @@ export function ProcessSelectionPanel({
             {completedSelections.map((selection, index) => (
               <div
                 key={`${selection.majorProcess}-${selection.process}-${selection.subProcess}-${index}`}
-                className="rounded-xl border border-slate-200 bg-white px-3 py-2 flex items-start justify-between gap-3"
+                className="rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 flex items-start justify-between gap-3 shadow-2xs"
               >
-                <div>
-                  <p className="text-sm font-semibold text-slate-900">
-                    {selection.majorProcess || "Additional Activities"}
-                  </p>
-                  {!selection.isMiscellaneous && (
-                    <p className="text-xs text-slate-500">
-                      {selection.process} / {selection.subProcess}
-                    </p>
+                <div className="min-w-0 flex-1">
+                  {selection.isMiscellaneous ? (
+                    <div>
+                      <span className="inline-flex items-center rounded-md bg-purple-50 px-2 py-0.5 text-[10px] font-bold text-purple-700 border border-purple-200">
+                        Additional Activity
+                      </span>
+                      <p className="text-xs font-semibold text-slate-800 mt-1">
+                        {selection.subProcess || 'Custom Activity'}
+                      </p>
+                    </div>
+                  ) : (
+                    <div>
+                      <div className="flex items-center gap-1.5 text-[11px] font-medium text-slate-500 mb-0.5 flex-wrap">
+                        <span className="font-semibold text-blue-900 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-100">
+                          {selection.majorProcess}
+                        </span>
+                        <ChevronRight size={11} className="text-slate-400 shrink-0" />
+                        <span className="text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded">
+                          {selection.process}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1.5 mt-1">
+                        <span className="text-xs font-bold text-slate-900">
+                          {selection.subProcess}
+                        </span>
+                      </div>
+                    </div>
                   )}
                 </div>
                 <button
                   type="button"
                   onClick={() => handleRemoveSelection(selection)}
-                  className="rounded-full border border-slate-200 bg-slate-50 p-1 text-slate-500 hover:border-red-300 hover:text-red-600 transition-colors"
+                  className="rounded-full border border-slate-200 bg-slate-50 p-1 text-slate-400 hover:border-red-300 hover:bg-red-50 hover:text-red-600 transition-colors shrink-0 mt-0.5"
                   aria-label="Remove selection"
+                  title="Remove from selection"
                 >
                   <X size={14} />
                 </button>
@@ -538,55 +586,54 @@ export function ProcessSelectionPanel({
           <SelectionBadgeStrip label="Major Process" items={selectedMajors.length ? selectedMajors : []} />
           <SelectionBadgeStrip label="Process" items={selectedProcesses.length ? selectedProcesses : []} />
           <MultiSelectPillGrid
-            items={subItems.map((s) => {
-              try {
-                const obj = JSON.parse(s);
-                return obj?.subProcess ?? s;
-              } catch {
-                return s;
-              }
-            })}
-            selected={selectedSubProcesses.map((s) => {
-              try {
-                const obj = JSON.parse(s);
-                return obj?.subProcess ?? s;
-              } catch {
-                return s;
-              }
-            })}
+            items={subItems}
+            selected={selectedSubProcesses}
             searchQuery={subSearch}
             onSearchChange={setSubSearch}
-            onSelect={(subProcessName) => {
-              // Find matching JSON payloads for this displayed name.
-              const matches = subItems.filter((json) => {
-                try {
-                  const obj = JSON.parse(json);
-                  return obj?.subProcess === subProcessName;
-                } catch {
-                  return false;
-                }
-              });
-
-              if (matches.length === 0) return;
-
-              // Toggle all matches to avoid silently dropping duplicates.
-              setSelectedSubProcesses((prev) => {
-                const next = [...prev];
-                matches.forEach((m) => {
-                  const exists = next.includes(m);
-                  if (exists) {
-                    const idx = next.indexOf(m);
-                    if (idx !== -1) next.splice(idx, 1);
-                  } else {
-                    next.push(m);
-                  }
-                });
-                return next;
-              });
+            onSelect={(jsonItem) => {
+              handleSelectSubProcess(jsonItem);
             }}
-            searchPlaceholder="Search sub-processes..."
+            searchPlaceholder="Search sub-processes or activities..."
             isLoading={loadingSub}
             extraPill={undefined}
+            renderItem={(jsonItem, isSelected) => {
+              let parsed = { majorProcess: '', process: '', subProcess: jsonItem };
+              try {
+                parsed = JSON.parse(jsonItem);
+              } catch {}
+              return (
+                <button
+                  key={jsonItem}
+                  type="button"
+                  onClick={() => handleSelectSubProcess(jsonItem)}
+                  className={`flex flex-col text-left rounded-xl border p-2.5 transition-all duration-150 w-full sm:w-[calc(50%-0.5rem)] lg:w-[calc(33.333%-0.5rem)] ${
+                    isSelected
+                      ? "border-blue-600 bg-blue-50/70 shadow-sm ring-1 ring-blue-500"
+                      : "border-slate-200 bg-white hover:border-blue-300 hover:bg-slate-50"
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <span className="text-xs font-semibold text-slate-800 line-clamp-2">
+                      {parsed.subProcess}
+                    </span>
+                    <span className={`inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full border ${
+                      isSelected ? 'border-blue-600 bg-blue-600 text-white' : 'border-slate-300 bg-white'
+                    }`}>
+                      {isSelected && <Check size={10} />}
+                    </span>
+                  </div>
+                  <div className="mt-1.5 flex items-center gap-1 text-[10px] text-slate-500 overflow-hidden">
+                    <span className="truncate max-w-[45%] font-medium text-slate-600" title={parsed.majorProcess}>
+                      {parsed.majorProcess}
+                    </span>
+                    <ChevronRight size={10} className="shrink-0 text-slate-400" />
+                    <span className="truncate max-w-[45%] text-slate-500" title={parsed.process}>
+                      {parsed.process}
+                    </span>
+                  </div>
+                </button>
+              );
+            }}
           />
           {subProcesses.length === 0 && !loadingSub && (
             <p className="text-xs text-slate-500 mt-1">

@@ -313,3 +313,26 @@
   }
 }
 
+
+/* Fullscreen portal styles for WDT Table and Additional Activities */
+.wdt-workspace-fullscreen {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  z-index: 99999 !important;
+  margin: 0 !important;
+  background-color: #f8fafc !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+}
+
+.wdt-workspace-content {
+  flex: 1 1 0% !important;
+  overflow-y: auto !important;
+  padding: 1.5rem !important;
+}

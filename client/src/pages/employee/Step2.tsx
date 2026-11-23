@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
-import { ArrowLeft, ArrowRight, CircleHelp, Plus, Trash2, Sparkles, AlertCircle, Lock, GitPullRequest, CheckCircle2, Clock, XCircle } from "lucide-react";
+import { ArrowLeft, ArrowRight, CircleHelp, Plus, Trash2, Sparkles, AlertCircle, Lock, GitPullRequest, CheckCircle2, Clock, XCircle, Maximize2, Minimize2 } from "lucide-react";
 import type { WdtActivityRow, WdtPayload, EmployeeSnapshot } from "./formTypes";
 import { apiFetch, getMyActivityRequests, type ActivityRequestItem } from "../../lib/api";
 import { RequestActivityModal } from "./MyActivityRequests";
@@ -78,6 +78,31 @@ export function Step2({ employee, payload, onNext, onPrev, onPayloadChange, onAd
   } | undefined>(undefined);
   const [requestTargetRowIndex, setRequestTargetRowIndex] = useState<number | null>(null);
   const [requestSuccessBanner, setRequestSuccessBanner] = useState<string | null>(null);
+  const [isFullScreen, setIsFullScreen] = useState(false);
+  const [isAdditionalFullScreen, setIsAdditionalFullScreen] = useState(false);
+
+  // Handle ESC key to exit full screen modes cleanly
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        if (isFullScreen) setIsFullScreen(false);
+        if (isAdditionalFullScreen) setIsAdditionalFullScreen(false);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isFullScreen, isAdditionalFullScreen]);
+
+  // Prevent body scroll when either full screen mode is active
+  useEffect(() => {
+    if (isFullScreen || isAdditionalFullScreen) {
+      const prevOverflow = document.body.style.overflow;
+      document.body.style.overflow = "hidden";
+      return () => {
+        document.body.style.overflow = prevOverflow;
+      };
+    }
+  }, [isFullScreen, isAdditionalFullScreen]);
 
   const handleKeepCustomRequest = () => {
     const targetIdx = editor ? editor.rowIndex : null;
@@ -527,8 +552,35 @@ export function Step2({ employee, payload, onNext, onPrev, onPayloadChange, onAd
 
   return (
     <div className="bg-white rounded-b-md border-x border-b border-slate-200 shadow-sm font-sans flex flex-col relative overflow-hidden">
-      <div className="bg-linear-to-r from-blue-50 to-slate-50 px-5 py-4 border-b border-blue-100">
-        <h2 className="text-[17px] font-bold text-slate-900">Please add details for selected processes</h2>
+      <div className="bg-linear-to-r from-blue-50 to-slate-50 px-5 py-4 border-b border-blue-100 flex items-center justify-between gap-3 shrink-0 sticky top-0 z-20 backdrop-blur-xs bg-white/95">
+        <div>
+          <h2 className="text-[17px] font-bold text-slate-900">Please add details for selected processes</h2>
+          <p className="text-xs text-slate-500 mt-0.5">Enter monthly frequency, volume, time per transaction, and supporting comments.</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setIsFullScreen(!isFullScreen)}
+            className={`inline-flex items-center gap-1.5 rounded-lg border px-3.5 py-1.5 text-xs font-bold transition-all shadow-2xs ${
+              isFullScreen
+                ? 'border-blue-300 bg-blue-100 text-blue-900 hover:bg-blue-200'
+                : 'border-slate-300 bg-white text-slate-700 hover:border-blue-400 hover:bg-blue-50 hover:text-blue-800'
+            }`}
+            title={isFullScreen ? 'Exit dedicated full screen workspace (Esc)' : 'Expand table to dedicated full screen workspace'}
+          >
+            {isFullScreen ? (
+              <>
+                <Minimize2 size={14} className="text-blue-800" />
+                Exit Full Screen
+              </>
+            ) : (
+              <>
+                <Maximize2 size={14} className="text-slate-600" />
+                Full Screen
+              </>
+            )}
+          </button>
+        </div>
       </div>
 
       {requestSuccessBanner && (
@@ -816,8 +868,142 @@ export function Step2({ employee, payload, onNext, onPrev, onPayloadChange, onAd
               </tbody>
             </table>
           </div>
-        </div>
 
+          {/* Responsive Card Layout for Small Screens (< 1024px) */}
+          <div className="block lg:hidden divide-y divide-slate-100">
+            {coreEntries.map(({ row, rowIndex }) => (
+              <div key={`card-core-${rowIndex}-${row.majorProcess}-${row.subProcess}`} className="p-4 space-y-3 bg-white">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="space-y-1">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-blue-600 bg-blue-50 px-2 py-0.5 rounded">
+                      {row.majorProcess || "Major Process"} &gt; {row.process || "Process"}
+                    </span>
+                    <h4 className="text-sm font-bold text-slate-900 mt-1">
+                      {row.subProcess || "Unspecified Subprocess"}
+                    </h4>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => removeRow(rowIndex)}
+                    className="text-slate-400 hover:text-red-500 p-1"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+                  <div>
+                    <label className="text-[10px] font-semibold text-slate-500 uppercase">Frequency*</label>
+                    <CellPreview
+                      value={row.frequency}
+                      placeholder="Frequency"
+                      onClick={() =>
+                        openEditor({
+                          rowIndex,
+                          field: "frequency",
+                          label: "Frequency",
+                          description: "Select frequency to auto-populate monthly volume multiplier.",
+                          kind: "select",
+                          options: frequencyOptions,
+                        })
+                      }
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-semibold text-slate-500 uppercase">Vol ({row.frequency || "Freq"})*</label>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        openEditor({
+                          rowIndex,
+                          field: "volumesPerFrequency",
+                          label: `Volume (${row.frequency || "Selected Frequency"})`,
+                          description: `Enter volume for ${row.frequency || "selected frequency"}.`,
+                          kind: "number",
+                          placeholder: "e.g. 10",
+                        })
+                      }
+                      className="w-full min-h-11 rounded border border-blue-200 bg-blue-50/40 px-2 py-2 text-center text-xs font-bold text-blue-800"
+                    >
+                      {row.volumesPerFrequency !== undefined ? Number(row.volumesPerFrequency).toFixed(1) : "0"}
+                    </button>
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-semibold text-slate-500 uppercase">Vol/Mo</label>
+                    <div className="w-full min-h-11 rounded border border-slate-200 bg-slate-50 px-2 py-2 text-center text-xs font-bold text-slate-700 flex items-center justify-center">
+                      {Number(row.volumesMonthly || 0)}
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-semibold text-slate-500 uppercase">Min/Trans*</label>
+                    <CellPreview
+                      value={row.timePerTransactionMinutes !== undefined && row.timePerTransactionMinutes !== null ? String(row.timePerTransactionMinutes) : "0"}
+                      placeholder="0"
+                      mono
+                      onClick={() =>
+                        openEditor({
+                          rowIndex,
+                          field: "timePerTransactionMinutes",
+                          label: "Time Per Trans (Min)",
+                          description: "Average minutes taken to complete one transaction.",
+                          kind: "number",
+                          placeholder: "e.g. 15",
+                        })
+                      }
+                    />
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between pt-2 border-t border-slate-100 text-xs">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[10px] font-semibold uppercase text-slate-500">Total Hours:</span>
+                    <span className="font-bold text-blue-800">
+                      {(((Number(row.volumesMonthly) || 0) * (Number(row.timePerTransactionMinutes) || 0)) / 60).toFixed(1)}h / mo
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        openEditor({
+                          rowIndex,
+                          field: "applicationsUsed",
+                          label: "Applications Used",
+                          description: "List applications and tools used for this process.",
+                          kind: "single",
+                          placeholder: "e.g. SAP, Excel",
+                          suggestions: applicationSuggestions,
+                        })
+                      }
+                      className="text-xs text-blue-600 underline font-medium"
+                    >
+                      {row.applicationsUsed ? `Apps: ${row.applicationsUsed}` : '+ Add Apps'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        openEditor({
+                          rowIndex,
+                          field: "comments",
+                          label: "Comments & Process Controls",
+                          description: "Provide controls, assumptions, and notes.",
+                          kind: "multi",
+                          placeholder: "Write comments and process controls",
+                        })
+                      }
+                      className="text-xs text-blue-600 underline font-medium"
+                    >
+                      {row.comments ? 'Edit Notes' : '+ Add Notes'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+            {coreEntries.length === 0 && (
+              <div className="py-8 text-center text-slate-500 text-xs">No process entries yet.</div>
+            )}
+          </div>
+        </div>
           <div className="mt-5 flex justify-start">
             <button
               type="button"
@@ -830,34 +1016,59 @@ export function Step2({ employee, payload, onNext, onPrev, onPayloadChange, onAd
           </div>
 
         <div className="mt-8 rounded-xl border border-slate-200 bg-white shadow-[0_8px_20px_-14px_rgba(15,23,42,0.35)] overflow-hidden">
-          <div className="px-6 py-5 border-b border-slate-100 bg-linear-to-r from-blue-50 to-slate-50">
+          <div className="px-6 py-4 border-b border-slate-100 bg-linear-to-r from-blue-50 to-slate-50 flex items-center justify-between gap-3 shrink-0">
             <div className="flex items-center gap-3">
-              <div className="flex h-9 w-9 items-center justify-center rounded-md bg-blue-700 text-white shadow-sm">
+              <div className="flex h-9 w-9 items-center justify-center rounded-md bg-blue-700 text-white shadow-sm shrink-0">
                 <CircleHelp size={16} />
               </div>
               <div>
-                <h3 className="text-lg font-bold text-slate-900 tracking-tight">Additional Activities</h3>
-                <p className="text-sm text-slate-500">These entries will appear as Support Activities in the Review step.</p>
+                <h3 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight">Additional Activities</h3>
+                <p className="text-xs text-slate-500">Ad-hoc, administrative, or non-catalog support tasks.</p>
               </div>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={() => setIsAdditionalFullScreen(!isAdditionalFullScreen)}
+                className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-bold transition-all shadow-2xs ${
+                  isAdditionalFullScreen
+                    ? 'border-blue-300 bg-blue-100 text-blue-900 hover:bg-blue-200'
+                    : 'border-slate-300 bg-white text-slate-700 hover:border-blue-400 hover:bg-blue-50 hover:text-blue-800'
+                }`}
+                title={isAdditionalFullScreen ? 'Exit dedicated full screen workspace (Esc)' : 'Expand Additional Activities to full screen workspace'}
+              >
+                {isAdditionalFullScreen ? (
+                  <>
+                    <Minimize2 size={13} className="text-blue-800" />
+                    Exit Full Screen
+                  </>
+                ) : (
+                  <>
+                    <Maximize2 size={13} className="text-slate-600" />
+                    Full Screen
+                  </>
+                )}
+              </button>
             </div>
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse min-w-7xl">
+          {/* Desktop Table View */}
+          <div className="hidden md:block overflow-x-auto">
+            <table className={`w-full text-left border-collapse ${isAdditionalFullScreen ? "min-w-[1000px] table-fixed" : "table-fixed"}`}>
               <thead>
-                <tr className="bg-slate-50/80 text-[11px] font-semibold text-slate-500 tracking-[0.18em] uppercase border-y border-slate-200">
-                  <th className="py-3 px-3 w-[30%]">Activity Description</th>
-                  <th className="py-3 px-3 text-center w-28">Vol/Mo</th>
-                  <th className="py-3 px-3 text-center w-28">Min/Trans</th>
-                  <th className="py-3 px-3 text-center w-28">Total Hrs</th>
-                  <th className="py-3 px-3 w-[25%]">Comments</th>
-                  <th className="py-3 pr-2 w-10"></th>
+                <tr className="bg-slate-50/80 text-[11px] font-semibold text-slate-500 tracking-[0.14em] uppercase border-y border-slate-200">
+                  <th className="py-3 px-3 w-[45%]">Activity Description*</th>
+                  <th className="py-3 px-2 text-center w-[12%]">Vol/Mo*</th>
+                  <th className="py-3 px-2 text-center w-[13%]">Min/Trans*</th>
+                  <th className="py-3 px-2 text-center w-[12%]">Total Hrs</th>
+                  <th className="py-3 px-3 w-[14%]">Comments</th>
+                  <th className="py-3 pr-2 w-[4%]"></th>
                 </tr>
               </thead>
               <tbody>
                 {supportEntries.map(({ row, rowIndex }) => (
-                  <tr key={`support-${rowIndex}-${row.subProcess || "activity"}`} className="border-b border-slate-100 last:border-0 align-top">
-                    <td className="py-3 px-2">
+                  <tr key={`support-${rowIndex}-${row.subProcess || "activity"}`} className="border-b border-slate-100 last:border-0 align-top hover:bg-slate-50/40">
+                    <td className="py-3 px-3">
                       <div className="space-y-1.5">
                         <CellPreview
                           value={row.subProcess}
@@ -875,29 +1086,28 @@ export function Step2({ employee, payload, onNext, onPrev, onPayloadChange, onAd
                           }
                         />
                         {row.approvalStatus === 'Pending' && (
-                          <div className="flex items-center gap-1.5 text-[11px] font-semibold text-amber-700 bg-amber-50 border border-amber-200/80 rounded-md px-2 py-0.5 w-fit">
-                            <Clock size={12} className="text-amber-600 shrink-0" />
-                            <span>Pending Approval</span>
+                          <div className="flex items-center gap-1.5 text-[10px] font-semibold text-amber-700 bg-amber-50 border border-amber-200/80 rounded-md px-2 py-0.5 w-fit">
+                            <Clock size={11} className="text-amber-600 shrink-0" />
+                            <span>Pending</span>
                           </div>
                         )}
                         {row.approvalStatus === 'Approved' && (
-                          <div className="flex items-center gap-1.5 text-[11px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200/80 rounded-md px-2 py-0.5 w-fit">
-                            <CheckCircle2 size={12} className="text-emerald-600 shrink-0" />
+                          <div className="flex items-center gap-1.5 text-[10px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200/80 rounded-md px-2 py-0.5 w-fit">
+                            <CheckCircle2 size={11} className="text-emerald-600 shrink-0" />
                             <span>Approved</span>
                           </div>
                         )}
                         {row.approvalStatus === 'Rejected' && (
                           <div
-                            className="flex flex-col gap-0.5 text-[11px] font-semibold text-red-700 bg-red-50 border border-red-200/80 rounded-md px-2 py-1 w-fit max-w-full"
+                            className="flex flex-col gap-0.5 text-[10px] font-semibold text-red-700 bg-red-50 border border-red-200/80 rounded-md px-2 py-1 w-fit max-w-full"
                             title={row.rejectionReason ? `Reason: ${row.rejectionReason}` : 'Rejected by reviewer'}
                           >
                             <div className="flex items-center gap-1.5">
-                              <XCircle size={12} className="text-red-600 shrink-0" />
+                              <XCircle size={11} className="text-red-600 shrink-0" />
                               <span>Rejected</span>
-                              <span className="text-[10px] font-normal text-red-500">(Excluded from approved workload)</span>
                             </div>
                             {row.rejectionReason && (
-                              <p className="text-[10px] font-normal text-red-600 pl-4 italic">
+                              <p className="text-[9px] font-normal text-red-600 pl-3 italic">
                                 Reason: {row.rejectionReason}
                               </p>
                             )}
@@ -940,14 +1150,14 @@ export function Step2({ employee, payload, onNext, onPrev, onPayloadChange, onAd
                       />
                     </td>
                     <td className="py-3 px-2 text-center bg-slate-50/20">
-                      <div className="text-sm font-bold text-slate-700 tabular-nums">
+                      <div className="text-xs font-bold text-slate-700 tabular-nums">
                         {(((Number(row.volumesMonthly) || 0) * (Number(row.timePerTransactionMinutes) || 0)) / 60).toFixed(1)}h
                       </div>
                     </td>
-                    <td className="py-3 px-2">
+                    <td className="py-3 px-3">
                       <CellPreview
                         value={row.comments}
-                        placeholder="Add controls or notes"
+                        placeholder="Add notes"
                         onClick={() =>
                           openEditor({
                             rowIndex,
@@ -960,11 +1170,12 @@ export function Step2({ employee, payload, onNext, onPrev, onPayloadChange, onAd
                         }
                       />
                     </td>
-                    <td className="py-3 pl-2 text-right">
+                    <td className="py-3 pl-1 pr-2 text-right">
                       <button
                         type="button"
                         onClick={() => removeRow(rowIndex)}
                         className="text-slate-400 hover:text-red-500 transition-colors p-1"
+                        title="Delete entry"
                       >
                         <Trash2 size={16} />
                       </button>
@@ -973,21 +1184,128 @@ export function Step2({ employee, payload, onNext, onPrev, onPayloadChange, onAd
                 ))}
                 {supportEntries.length === 0 && (
                   <tr>
-                    <td colSpan={5} className="py-6 text-center text-slate-500">No additional activities added yet.</td>
+                    <td colSpan={6} className="py-8 text-center text-slate-500 text-xs">No additional activities added yet.</td>
                   </tr>
                 )}
               </tbody>
             </table>
           </div>
 
-          <div className="px-6 py-5 border-t border-slate-100 bg-slate-50/60">
+          {/* Responsive Card Layout for Small Screens (< 768px) */}
+          <div className="block md:hidden divide-y divide-slate-100">
+            {supportEntries.map(({ row, rowIndex }) => (
+              <div key={`card-support-${rowIndex}`} className="p-4 space-y-3 bg-white">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="space-y-1 flex-1">
+                    <label className="text-[10px] font-semibold text-slate-500 uppercase">Activity Description*</label>
+                    <CellPreview
+                      value={row.subProcess}
+                      placeholder="Enter activity description"
+                      onClick={() =>
+                        openEditor({
+                          rowIndex,
+                          field: "subProcess",
+                          label: "Activity Description",
+                          description: "Describe the support activity in detail.",
+                          kind: "multi",
+                          placeholder: "Enter additional activity description",
+                          suggestions: getSubProcessSuggestions(rowIndex),
+                        })
+                      }
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => removeRow(rowIndex)}
+                    className="text-slate-400 hover:text-red-500 p-1 mt-4"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-3 gap-2 text-xs">
+                  <div>
+                    <label className="text-[10px] font-semibold text-slate-500 uppercase">Vol/Mo*</label>
+                    <CellPreview
+                      value={row.volumesMonthly !== undefined && row.volumesMonthly !== null ? String(row.volumesMonthly) : "0"}
+                      placeholder="0"
+                      mono
+                      onClick={() =>
+                        openEditor({
+                          rowIndex,
+                          field: "volumesMonthly",
+                          label: "Volumes (Monthly)",
+                          description: "Enter monthly support volume.",
+                          kind: "number",
+                          placeholder: "e.g. 20",
+                        })
+                      }
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-semibold text-slate-500 uppercase">Min/Trans*</label>
+                    <CellPreview
+                      value={row.timePerTransactionMinutes !== undefined && row.timePerTransactionMinutes !== null ? String(row.timePerTransactionMinutes) : "0"}
+                      placeholder="0"
+                      mono
+                      onClick={() =>
+                        openEditor({
+                          rowIndex,
+                          field: "timePerTransactionMinutes",
+                          label: "Time Per Trans (Min)",
+                          description: "Minutes per transaction for this support activity.",
+                          kind: "number",
+                          placeholder: "e.g. 15",
+                        })
+                      }
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-semibold text-slate-500 uppercase">Total Hrs</label>
+                    <div className="w-full min-h-11 rounded border border-slate-200 bg-slate-50 px-2 py-2 text-center text-xs font-bold text-slate-700 flex items-center justify-center">
+                      {(((Number(row.volumesMonthly) || 0) * (Number(row.timePerTransactionMinutes) || 0)) / 60).toFixed(1)}h
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      openEditor({
+                        rowIndex,
+                        field: "comments",
+                        label: "Comments",
+                        description: "Add additional notes or controls for this support activity.",
+                        kind: "multi",
+                        placeholder: "Add controls or notes",
+                      })
+                    }
+                    className="text-xs text-blue-600 underline font-medium"
+                  >
+                    {row.comments ? `Notes: ${row.comments}` : '+ Add Notes'}
+                  </button>
+                </div>
+              </div>
+            ))}
+            {supportEntries.length === 0 && (
+              <div className="py-6 text-center text-slate-500 text-xs">No additional activities added yet.</div>
+            )}
+          </div>
+
+          <div className="px-6 py-4 border-t border-slate-100 bg-slate-50/60 flex items-center justify-between">
             <button
               type="button"
               onClick={addSupportRow}
-              className="text-blue-700 font-semibold text-sm bg-white border border-slate-300 py-2.5 px-5 rounded-md hover:border-blue-600 hover:text-blue-800 transition-colors inline-flex items-center gap-2"
+              className="text-blue-700 font-semibold text-xs sm:text-sm bg-white border border-slate-300 py-2 sm:py-2.5 px-4 sm:px-5 rounded-md hover:border-blue-600 hover:text-blue-800 transition-colors inline-flex items-center gap-2"
             >
               <Plus size={16} /> Add Additional Activity
             </button>
+            {isAdditionalFullScreen && (
+              <div className="text-xs font-semibold text-slate-600">
+                Additional Support Effort: <span className="font-bold text-blue-800">{supportHours.toFixed(1)}h / mo</span>
+              </div>
+            )}
           </div>
         </div>
 
@@ -1312,6 +1630,582 @@ export function Step2({ employee, payload, onNext, onPrev, onPayloadChange, onAd
           </div>,
           document.body
         )}
+
+      {/* ------------------------------------------------------------- */}
+      {/* MAIN WDT TABLE FULL-SCREEN PORTAL WORKSPACE (True Viewport) */}
+      {/* ------------------------------------------------------------- */}
+      {isFullScreen && typeof document !== "undefined" && createPortal(
+        <div 
+          className="fixed inset-0 z-[999999] flex flex-col bg-slate-100 overflow-hidden select-none animate-in fade-in duration-200"
+          style={{ width: "100vw", height: "100vh" }}
+        >
+          {/* Top Sticky Header */}
+          <div className="bg-white border-b border-slate-300 px-6 py-4 flex items-center justify-between gap-4 shadow-sm shrink-0 z-20">
+            <div className="flex items-center gap-4">
+              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-700 text-white font-bold text-sm shadow-md">
+                WDT
+              </span>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-lg font-bold text-slate-900 tracking-tight">Main Process Table — Full-Screen Workspace</h2>
+                  <span className="text-[10px] font-bold uppercase tracking-wider bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full border border-blue-200">
+                    Dedicated Viewport
+                  </span>
+                </div>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Expanded layout with generous column spacing. Press <kbd className="px-1.5 py-0.5 rounded bg-slate-100 border border-slate-300 text-[10px] font-mono text-slate-700 shadow-2xs font-semibold">Esc</kbd> or click Exit Full Screen anytime.
+                </p>
+              </div>
+            </div>
+
+            {/* Live Progress & Hours */}
+            <div className="flex items-center gap-6">
+              <div className="hidden sm:flex items-center gap-3 bg-slate-50 border border-slate-200 px-4 py-2 rounded-xl">
+                <div>
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Total Workload</span>
+                  <div className="flex items-baseline gap-1.5">
+                    <span className={`text-xl font-bold tabular-nums ${(totalHours || 0) > effectiveLimit ? 'text-red-600' : 'text-blue-900'}`}>
+                      {(totalHours || 0).toFixed(1)}
+                    </span>
+                    <span className="text-[10px] font-semibold text-slate-500 uppercase">/ {effectiveLimit}h</span>
+                  </div>
+                </div>
+                <div className="w-24 h-2 rounded-full bg-slate-200 overflow-hidden ml-2">
+                  <div 
+                    className={`h-full rounded-full transition-all duration-300 ${
+                      (totalHours / effectiveLimit) > 1 ? 'bg-red-500' : (totalHours / effectiveLimit) > 0.8 ? 'bg-amber-500' : 'bg-emerald-500'
+                    }`}
+                    style={{ width: `${Math.min(100, ((totalHours || 0) / effectiveLimit) * 100)}%` }}
+                  />
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={triggerAddRow}
+                disabled={hoursExceeded}
+                className="inline-flex items-center gap-1.5 rounded-xl bg-blue-50 border border-blue-200 px-4 py-2 text-xs font-bold text-blue-800 hover:bg-blue-100 transition-colors shadow-2xs disabled:opacity-50"
+              >
+                <Plus size={15} /> Add Row
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setIsFullScreen(false)}
+                className="inline-flex items-center gap-2 rounded-xl bg-blue-700 hover:bg-blue-800 text-white px-5 py-2.5 text-xs font-bold transition-all shadow-md hover:shadow-lg active:scale-95"
+                title="Exit Full Screen Workspace (Esc)"
+              >
+                <Minimize2 size={16} /> Exit Full Screen
+              </button>
+            </div>
+          </div>
+
+          {/* Full Screen Scrollable Table Container */}
+          <div className="flex-1 overflow-auto p-6 bg-slate-100/70 custom-scrollbar select-text">
+            <div className="rounded-xl border border-slate-300 bg-white shadow-md overflow-hidden min-w-[1350px]">
+              <table className="w-full text-left border-collapse table-auto">
+                <thead>
+                  <tr className="bg-slate-100/90 text-[11px] font-bold text-slate-700 tracking-wider uppercase border-b border-slate-300 sticky top-0 z-10 backdrop-blur-xs">
+                    <th className="py-3.5 px-3 w-[14%]">
+                      <span className="inline-flex items-center gap-1.5 text-slate-700">
+                        <Lock size={12} className="text-slate-400" />
+                        Major Process
+                      </span>
+                    </th>
+                    <th className="py-3.5 px-3 w-[15%]">
+                      <span className="inline-flex items-center gap-1.5 text-slate-700">
+                        <Lock size={12} className="text-slate-400" />
+                        Process
+                      </span>
+                    </th>
+                    <th className="py-3.5 px-3 w-[20%] text-slate-800 font-bold">Subprocess / Activity*</th>
+                    <th className="py-3.5 px-2.5 text-center w-[9%]">
+                      <HeaderWithTooltip
+                        title="Frequency"
+                        required
+                        centered
+                        tooltip="Represents how frequently the activity / sub process is carried out."
+                      />
+                    </th>
+                    <th className="py-3.5 px-2 text-center w-[7%]">
+                      <HeaderWithTooltip
+                        title="Vol"
+                        required
+                        centered
+                        tooltip="Enter the volume for the selected frequency."
+                      />
+                    </th>
+                    <th className="py-3.5 px-2 text-center w-[7%]">
+                      <HeaderWithTooltip
+                        title="Vol/Mo"
+                        required
+                        centered
+                        tooltip="Auto-calculated monthly volume."
+                      />
+                    </th>
+                    <th className="py-3.5 px-2.5 text-center w-[8%]">
+                      <HeaderWithTooltip
+                        title="Min/Trans"
+                        required
+                        centered
+                        tooltip="Time taken per single transaction in minutes."
+                      />
+                    </th>
+                    <th className="py-3.5 px-2.5 text-center w-[7.5%]">
+                      <HeaderWithTooltip
+                        title="Total Hrs"
+                        centered
+                        tooltip="Automatically calculated: (Vol * Min) / 60."
+                      />
+                    </th>
+                    <th className="py-3.5 px-3 w-[10%]">
+                      <HeaderWithTooltip
+                        title="Apps Used"
+                        tooltip="List of the systems being used to perform the task."
+                      />
+                    </th>
+                    <th className="py-3.5 px-3 w-[13%]">
+                      <HeaderWithTooltip
+                        title="Comments"
+                        tooltip="Additional comments and process controls."
+                      />
+                    </th>
+                    <th className="py-3.5 pr-3 text-right w-[4%]"></th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-200">
+                  {coreEntries.map(({ row, rowIndex }) => (
+                    <tr key={`fs-core-${rowIndex}-${row.majorProcess}-${row.subProcess}`} className="align-top hover:bg-blue-50/30 transition-colors">
+                      <td className="py-3 px-3">
+                        <div className="w-full min-h-11 rounded-lg border border-slate-200 bg-blue-50/50 px-3 py-2 text-left text-xs leading-relaxed" title={row.majorProcess}>
+                          <span className="line-clamp-3 font-semibold text-blue-950">
+                            {row.majorProcess || <span className="text-slate-400 italic">—</span>}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="py-3 px-3">
+                        <div className="w-full min-h-11 rounded-lg border border-slate-200 bg-blue-50/50 px-3 py-2 text-left text-xs leading-relaxed" title={row.process}>
+                          <span className="line-clamp-3 font-semibold text-blue-950">
+                            {row.process || <span className="text-slate-400 italic">—</span>}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="py-3 px-3">
+                        <div className="space-y-1.5">
+                          <CellPreview
+                            value={row.subProcess}
+                            placeholder="Select subprocess"
+                            multiline
+                            onClick={() =>
+                              openEditor({
+                                rowIndex,
+                                field: "subProcess",
+                                label: "Activity Description",
+                                description: "Review or modify the activity description.",
+                                kind: "multi",
+                                placeholder: "Enter activity description",
+                                suggestions: getSubProcessSuggestions(rowIndex),
+                              })
+                            }
+                          />
+                          {row.approvalStatus === 'Pending' && (
+                            <div className="flex items-center gap-1.5 text-[10px] font-semibold text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-2 py-0.5 w-fit">
+                              <Clock size={11} className="text-amber-600 shrink-0" />
+                              <span>Pending</span>
+                            </div>
+                          )}
+                          {row.approvalStatus === 'Approved' && (
+                            <div className="flex items-center gap-1.5 text-[10px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-md px-2 py-0.5 w-fit">
+                              <CheckCircle2 size={11} className="text-emerald-600 shrink-0" />
+                              <span>Approved</span>
+                            </div>
+                          )}
+                          {row.approvalStatus === 'Rejected' && (
+                            <div className="flex flex-col gap-0.5 text-[10px] font-semibold text-red-700 bg-red-50 border border-red-200 rounded-md px-2 py-1 w-fit">
+                              <div className="flex items-center gap-1.5">
+                                <XCircle size={11} className="text-red-600 shrink-0" />
+                                <span>Rejected</span>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </td>
+                      <td className="py-3 px-2.5">
+                        <CellPreview
+                          value={row.frequency}
+                          placeholder="Frequency"
+                          align="center"
+                          onClick={() =>
+                            openEditor({
+                              rowIndex,
+                              field: "frequency",
+                              label: "Frequency",
+                              description: "Select frequency to auto-populate monthly volume multiplier.",
+                              kind: "select",
+                              options: frequencyOptions,
+                            })
+                          }
+                        />
+                      </td>
+                      <td className="py-3 px-2 text-center">
+                        <CellPreview
+                          value={row.volumesPerFrequency !== undefined && row.volumesPerFrequency !== null ? String(row.volumesPerFrequency) : "0"}
+                          placeholder="0"
+                          mono
+                          align="center"
+                          onClick={() =>
+                            openEditor({
+                              rowIndex,
+                              field: "volumesPerFrequency",
+                              label: `Volume (${row.frequency || "Selected Frequency"})`,
+                              description: `Enter volume for ${row.frequency || "selected frequency"}.`,
+                              kind: "number",
+                              placeholder: "e.g. 5",
+                            })
+                          }
+                        />
+                      </td>
+                      <td className="py-3 px-2 text-center bg-slate-50/50">
+                        <div className="w-full min-h-11 rounded-lg border border-slate-200 bg-slate-100/80 px-2 py-2 text-center text-xs font-bold text-slate-800 flex items-center justify-center">
+                          <span className="font-mono tabular-nums">
+                            {row.volumesMonthly !== undefined && row.volumesMonthly !== null ? String(row.volumesMonthly) : "0"}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="py-3 px-2.5 text-center">
+                        <CellPreview
+                          value={row.timePerTransactionMinutes !== undefined && row.timePerTransactionMinutes !== null ? String(row.timePerTransactionMinutes) : "0"}
+                          placeholder="0"
+                          mono
+                          align="center"
+                          onClick={() =>
+                            openEditor({
+                              rowIndex,
+                              field: "timePerTransactionMinutes",
+                              label: "Time Per Trans (Min)",
+                              description: "Average minutes taken to complete one transaction.",
+                              kind: "number",
+                              placeholder: "e.g. 15",
+                            })
+                          }
+                        />
+                      </td>
+                      <td className="py-3 px-2.5 text-center bg-blue-50/30">
+                        <div className="w-full min-h-11 rounded-lg border border-blue-100 bg-blue-50/60 px-2 py-2 text-center text-xs font-bold text-blue-900 flex items-center justify-center tabular-nums">
+                          {(((Number(row.volumesMonthly) || 0) * (Number(row.timePerTransactionMinutes) || 0)) / 60).toFixed(1)}h
+                        </div>
+                      </td>
+                      <td className="py-3 px-3">
+                        <CellPreview
+                          value={row.applicationsUsed}
+                          placeholder="Apps used"
+                          multiline
+                          onClick={() =>
+                            openEditor({
+                              rowIndex,
+                              field: "applicationsUsed",
+                              label: "Applications Used",
+                              description: "List applications and tools used for this process.",
+                              kind: "single",
+                              placeholder: "e.g. SAP, Excel",
+                              suggestions: applicationSuggestions,
+                            })
+                          }
+                        />
+                      </td>
+                      <td className="py-3 px-3">
+                        <CellPreview
+                          value={row.comments}
+                          placeholder="Add notes"
+                          multiline
+                          onClick={() =>
+                            openEditor({
+                              rowIndex,
+                              field: "comments",
+                              label: "Comments & Process Controls",
+                              description: "Provide controls, assumptions, and notes in full sentence format.",
+                              kind: "multi",
+                              placeholder: "Write comments and process controls",
+                            })
+                          }
+                        />
+                      </td>
+                      <td className="py-3 pl-1 pr-3 text-right">
+                        <button
+                          type="button"
+                          onClick={() => removeRow(rowIndex)}
+                          className="text-slate-400 hover:text-red-500 transition-colors p-2 rounded-lg hover:bg-red-50"
+                          title="Delete entry"
+                        >
+                          <Trash2 size={17} />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                  {coreEntries.length === 0 && (
+                    <tr>
+                      <td colSpan={11} className="py-16 text-center">
+                        <div className="flex flex-col items-center gap-3">
+                          <div className="w-14 h-14 rounded-full bg-blue-50 flex items-center justify-center">
+                            <Plus size={26} className="text-blue-500" />
+                          </div>
+                          <p className="text-base font-bold text-slate-700">No process entries yet</p>
+                          <p className="text-xs text-slate-500">Click Add Row to add your first process entry.</p>
+                          <button
+                            type="button"
+                            onClick={triggerAddRow}
+                            className="mt-2 inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-xs font-bold text-white hover:bg-blue-700 shadow-md"
+                          >
+                            <Plus size={16} /> Add First Row
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Bottom Action Bar in Full Screen */}
+          <div className="bg-white border-t border-slate-300 px-6 py-3 flex items-center justify-between shrink-0 shadow-lg z-20">
+            <span className="text-xs font-semibold text-slate-500">
+              Showing <span className="font-bold text-slate-800">{coreEntries.length}</span> process entries | Full Viewport Mode
+            </span>
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setIsFullScreen(false)}
+                className="rounded-xl border border-slate-300 bg-white hover:bg-slate-100 text-slate-700 px-5 py-2 text-xs font-bold transition-colors shadow-2xs"
+              >
+                Close Full Screen (Esc)
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* ----------------------------------------------------------------------- */}
+      {/* ADDITIONAL ACTIVITIES FULL-SCREEN PORTAL WORKSPACE (True Viewport)      */}
+      {/* ----------------------------------------------------------------------- */}
+      {isAdditionalFullScreen && typeof document !== "undefined" && createPortal(
+        <div 
+          className="fixed inset-0 z-[999999] flex flex-col bg-slate-100 overflow-hidden select-none animate-in fade-in duration-200"
+          style={{ width: "100vw", height: "100vh" }}
+        >
+          {/* Top Sticky Header */}
+          <div className="bg-white border-b border-slate-300 px-6 py-4 flex items-center justify-between gap-4 shadow-sm shrink-0 z-20">
+            <div className="flex items-center gap-4">
+              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-700 text-white font-bold text-sm shadow-md">
+                <CircleHelp size={20} />
+              </span>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-lg font-bold text-slate-900 tracking-tight">Additional Activities — Full-Screen Workspace</h2>
+                  <span className="text-[10px] font-bold uppercase tracking-wider bg-indigo-100 text-indigo-800 px-2 py-0.5 rounded-full border border-indigo-200">
+                    Support Tasks
+                  </span>
+                </div>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Ad-hoc, administrative, or non-catalog support tasks. Press <kbd className="px-1.5 py-0.5 rounded bg-slate-100 border border-slate-300 text-[10px] font-mono text-slate-700 shadow-2xs font-semibold">Esc</kbd> or click Exit Full Screen anytime.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-5">
+              <div className="bg-blue-50 border border-blue-200 px-4 py-2 rounded-xl text-right">
+                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Additional Support Effort</span>
+                <span className="text-base font-bold text-blue-900 tabular-nums">
+                  {supportHours.toFixed(1)} <span className="text-xs font-semibold text-slate-600">h / mo</span>
+                </span>
+              </div>
+
+              <button
+                type="button"
+                onClick={addSupportRow}
+                className="inline-flex items-center gap-1.5 rounded-xl bg-blue-50 border border-blue-200 px-4 py-2 text-xs font-bold text-blue-800 hover:bg-blue-100 transition-colors shadow-2xs"
+              >
+                <Plus size={15} /> Add Additional Activity
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setIsAdditionalFullScreen(false)}
+                className="inline-flex items-center gap-2 rounded-xl bg-blue-700 hover:bg-blue-800 text-white px-5 py-2.5 text-xs font-bold transition-all shadow-md hover:shadow-lg active:scale-95"
+                title="Exit Full Screen Workspace (Esc)"
+              >
+                <Minimize2 size={16} /> Exit Full Screen
+              </button>
+            </div>
+          </div>
+
+          {/* Full Screen Scrollable Table Container */}
+          <div className="flex-1 overflow-auto p-6 bg-slate-100/70 custom-scrollbar select-text">
+            <div className="rounded-xl border border-slate-300 bg-white shadow-md overflow-hidden min-w-[1100px]">
+              <table className="w-full text-left border-collapse table-auto">
+                <thead>
+                  <tr className="bg-slate-100/90 text-[11px] font-bold text-slate-700 tracking-wider uppercase border-b border-slate-300 sticky top-0 z-10 backdrop-blur-xs">
+                    <th className="py-3.5 px-4 w-[46%] text-slate-800 font-bold">Activity Description*</th>
+                    <th className="py-3.5 px-3 text-center w-[12%]">Vol / Mo*</th>
+                    <th className="py-3.5 px-3 text-center w-[13%]">Min / Trans*</th>
+                    <th className="py-3.5 px-3 text-center w-[12%]">Total Hrs</th>
+                    <th className="py-3.5 px-4 w-[13%]">Comments</th>
+                    <th className="py-3.5 pr-3 text-right w-[4%]"></th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-200">
+                  {supportEntries.map(({ row, rowIndex }) => (
+                    <tr key={`fs-support-${rowIndex}-${row.subProcess || "act"}`} className="align-top hover:bg-blue-50/30 transition-colors">
+                      <td className="py-3.5 px-4">
+                        <div className="space-y-1.5">
+                          <CellPreview
+                            value={row.subProcess}
+                            placeholder="Enter additional activity description"
+                            multiline
+                            onClick={() =>
+                              openEditor({
+                                rowIndex,
+                                field: "subProcess",
+                                label: "Activity Description",
+                                description: "Describe the support activity in detail.",
+                                kind: "multi",
+                                placeholder: "Enter additional activity description",
+                                suggestions: getSubProcessSuggestions(rowIndex),
+                              })
+                            }
+                          />
+                          {row.approvalStatus === 'Pending' && (
+                            <div className="flex items-center gap-1.5 text-[10px] font-semibold text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-2 py-0.5 w-fit">
+                              <Clock size={11} className="text-amber-600 shrink-0" />
+                              <span>Pending</span>
+                            </div>
+                          )}
+                          {row.approvalStatus === 'Approved' && (
+                            <div className="flex items-center gap-1.5 text-[10px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-md px-2 py-0.5 w-fit">
+                              <CheckCircle2 size={11} className="text-emerald-600 shrink-0" />
+                              <span>Approved</span>
+                            </div>
+                          )}
+                          {row.approvalStatus === 'Rejected' && (
+                            <div className="flex flex-col gap-0.5 text-[10px] font-semibold text-red-700 bg-red-50 border border-red-200 rounded-md px-2 py-1 w-fit">
+                              <div className="flex items-center gap-1.5">
+                                <XCircle size={11} className="text-red-600 shrink-0" />
+                                <span>Rejected</span>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </td>
+                      <td className="py-3.5 px-3 text-center">
+                        <CellPreview
+                          value={row.volumesMonthly !== undefined && row.volumesMonthly !== null ? String(row.volumesMonthly) : "0"}
+                          placeholder="0"
+                          mono
+                          align="center"
+                          onClick={() =>
+                            openEditor({
+                              rowIndex,
+                              field: "volumesMonthly",
+                              label: "Volumes (Monthly)",
+                              description: "Enter monthly support volume.",
+                              kind: "number",
+                              placeholder: "e.g. 20",
+                            })
+                          }
+                        />
+                      </td>
+                      <td className="py-3.5 px-3 text-center">
+                        <CellPreview
+                          value={row.timePerTransactionMinutes !== undefined && row.timePerTransactionMinutes !== null ? String(row.timePerTransactionMinutes) : "0"}
+                          placeholder="0"
+                          mono
+                          align="center"
+                          onClick={() =>
+                            openEditor({
+                              rowIndex,
+                              field: "timePerTransactionMinutes",
+                              label: "Time Per Trans (Min)",
+                              description: "Minutes per transaction for this support activity.",
+                              kind: "number",
+                              placeholder: "e.g. 15",
+                            })
+                          }
+                        />
+                      </td>
+                      <td className="py-3.5 px-3 text-center bg-blue-50/30">
+                        <div className="w-full min-h-11 rounded-lg border border-blue-100 bg-blue-50/60 px-2 py-2 text-center text-xs font-bold text-blue-900 flex items-center justify-center tabular-nums">
+                          {(((Number(row.volumesMonthly) || 0) * (Number(row.timePerTransactionMinutes) || 0)) / 60).toFixed(1)}h
+                        </div>
+                      </td>
+                      <td className="py-3.5 px-4">
+                        <CellPreview
+                          value={row.comments}
+                          placeholder="Add notes"
+                          multiline
+                          onClick={() =>
+                            openEditor({
+                              rowIndex,
+                              field: "comments",
+                              label: "Comments",
+                              description: "Add additional notes or controls for this support activity.",
+                              kind: "multi",
+                              placeholder: "Add controls or notes",
+                            })
+                          }
+                        />
+                      </td>
+                      <td className="py-3.5 pl-1 pr-3 text-right">
+                        <button
+                          type="button"
+                          onClick={() => removeRow(rowIndex)}
+                          className="text-slate-400 hover:text-red-500 transition-colors p-2 rounded-lg hover:bg-red-50"
+                          title="Delete entry"
+                        >
+                          <Trash2 size={17} />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                  {supportEntries.length === 0 && (
+                    <tr>
+                      <td colSpan={6} className="py-16 text-center">
+                        <div className="flex flex-col items-center gap-3">
+                          <p className="text-base font-bold text-slate-700">No additional activities added yet</p>
+                          <p className="text-xs text-slate-500">Add ad-hoc or non-catalog support tasks to capture support effort.</p>
+                          <button
+                            type="button"
+                            onClick={addSupportRow}
+                            className="mt-2 inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-xs font-bold text-white hover:bg-blue-700 shadow-md"
+                          >
+                            <Plus size={16} /> Add Additional Activity
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Bottom Action Bar in Full Screen */}
+          <div className="bg-white border-t border-slate-300 px-6 py-3 flex items-center justify-between shrink-0 shadow-lg z-20">
+            <span className="text-xs font-semibold text-slate-500">
+              Showing <span className="font-bold text-slate-800">{supportEntries.length}</span> additional activities | Full Viewport Mode
+            </span>
+            <button
+              type="button"
+              onClick={() => setIsAdditionalFullScreen(false)}
+              className="rounded-xl border border-slate-300 bg-white hover:bg-slate-100 text-slate-700 px-5 py-2 text-xs font-bold transition-colors shadow-2xs"
+            >
+              Close Full Screen (Esc)
+            </button>
+          </div>
+        </div>,
+        document.body
+      )}
+
       <RequestActivityModal
         isOpen={isRequestModalOpen}
         onClose={() => {
@@ -1379,21 +2273,31 @@ function CellPreview({
   placeholder,
   onClick,
   mono = false,
+  multiline = false,
+  align = "left",
 }: {
   value: string;
   placeholder: string;
   onClick: () => void;
   mono?: boolean;
+  multiline?: boolean;
+  align?: "left" | "center" | "right";
 }) {
-  const hasValue = value.trim().length > 0;
+  const hasValue = value && value.trim().length > 0;
+  const alignmentClass = align === "center" ? "text-center justify-center" : align === "right" ? "text-right justify-end" : "text-left justify-start";
 
   return (
     <button
       type="button"
       onClick={onClick}
-      className="w-full min-h-11 rounded border border-slate-200 bg-slate-100/90 px-3 py-2 text-left text-sm text-slate-700 transition-colors hover:border-blue-300 hover:bg-white"
+      className={`w-full min-h-11 rounded-lg border border-slate-200 bg-slate-100/90 px-2.5 py-2 text-sm text-slate-700 transition-colors hover:border-blue-400 hover:bg-white flex items-center ${alignmentClass}`}
     >
-      <span className={`block truncate ${mono ? "font-mono tabular-nums" : ""} ${hasValue ? "text-slate-700" : "text-slate-400"}`}>
+      <span
+        className={`block ${multiline ? "line-clamp-2 leading-relaxed" : "truncate"} ${mono ? "font-mono tabular-nums font-semibold" : ""} ${
+          hasValue ? "text-slate-800" : "text-slate-400 italic"
+        }`}
+        title={hasValue ? value : undefined}
+      >
         {hasValue ? value : placeholder}
       </span>
     </button>

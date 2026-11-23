@@ -29,7 +29,7 @@ import { useNavigate } from 'react-router-dom';
 import { formatDateISO } from '../employee/bperSubmissionStorage';
 import { InlineUpdatingBadge, SkeletonBlock } from '../../components/PortalSkeletons';
 
-type Trend = 'up' | 'steady' | 'down';
+type Trend = 'up' | 'steady' | 'down' | 'baseline' | null;
 
 type ActivityInsight = {
   name: string;
@@ -37,7 +37,8 @@ type ActivityInsight = {
   monthlyHours: number;
   fte: number;
   consolidate: boolean;
-  trend: Trend;
+  trend?: Trend;
+  history?: number[];
 };
 
 type DashboardReport = {
@@ -683,8 +684,8 @@ export default function Dashboard() {
         </div>
 
         {isDashboardLoading ? (
-          <div className="mt-3 grid grid-cols-1 gap-2.5 sm:grid-cols-2 xl:grid-cols-5">
-            {[1, 2, 3, 4, 5].map((i) => (
+          <div className="mt-3 grid grid-cols-1 gap-2.5 sm:grid-cols-2 xl:grid-cols-4">
+            {[1, 2, 3, 4].map((i) => (
               <div key={i} className="rounded-xl border border-[#D8E1EE] bg-white p-3.5 shadow-sm space-y-2">
                 <SkeletonBlock className="h-8 w-8 rounded-lg" />
                 <SkeletonBlock className="h-3 w-20" />
@@ -697,90 +698,134 @@ export default function Dashboard() {
           <SectionError message={dashboardError} onRetry={() => loadDashboardData(false)} />
         ) : (
           <>
-          <div className="mt-3 grid grid-cols-1 gap-2.5 sm:grid-cols-2 xl:grid-cols-5">
-            <KpiCard
-              icon={UserCheck}
-              label="Staffed Positions"
-              value={String(summary.totalStaff != null ? summary.totalStaff : (summary.totalEmployees != null ? summary.totalEmployees : 248))}
-              helper="All 248 staffed submissions approved"
-            />
-            <KpiCard
-              icon={UserX}
-              label="Planned Vacancies"
-              value={String(summary.vacantPositions != null ? summary.vacantPositions : 78)}
-              helper={`${safeNumber(summary.vacantFte, 120.64).toFixed(2)} FTE planned workload · Open positions`}
-            />
-            <KpiCard
-              icon={Users}
-              label="Total Positions in Scope"
-              value={String(safeNumber(summary.totalSubmissions, 326))}
-              helper={`${summary.totalStaff || 248} staffed + ${summary.vacantPositions || 78} planned vacancies`}
-              tooltip="Represents 326 distinct physical roles/seats (248 staffed positions + 78 planned vacancies) modeled in the project scope, which collectively generate 499.46 FTE of modeled activity workload."
-            />
-            <KpiCard
-              icon={Clock3}
-              label="Pending Approvals"
-              value={String(safeNumber(summary.pendingReview, 0))}
-              helper={safeNumber(summary.pendingReview) > 0 ? `Needs ${roleLabel.toLowerCase()} action` : 'All submissions approved · Queue clear'}
-            />
-            <KpiCard
-              icon={TrendingUp}
-              label="Staffed Workload"
-              value={`${safeNumber(summary.staffedFte != null ? summary.staffedFte : summary.primaryEmployeeFte, 378.82).toFixed(2)} FTE`}
-              helper="Modeled activity workload is 152.8% of standard capacity (160 hours/month)"
-              tooltip="152.8% modeled workload rate represents the total modeled activity hours (60,611h across 248 staffed positions) relative to a standard 160h/month contractual baseline (39,680h standard capacity). Operational capacity is capped at 100% for standard sustainable capacity modeling."
-              highlight
-            />
-          </div>
+            {/* SECTION 1: WORKFORCE OVERVIEW */}
+            <div className="mt-3.5">
+              <div className="mb-2">
+                <h2 className="text-sm font-bold uppercase tracking-wider text-[#102B52]">Workforce Overview</h2>
+                <p className="text-[11px] text-[#637F9F]">Current staffing position and approval status.</p>
+              </div>
+              <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 xl:grid-cols-4">
+                <KpiCard
+                  icon={UserCheck}
+                  label="Staffed Positions"
+                  value={String(summary.totalStaff != null ? summary.totalStaff : (summary.totalEmployees != null ? summary.totalEmployees : 248))}
+                  helper="Occupied positions."
+                />
+                <KpiCard
+                  icon={UserX}
+                  label="Planned Vacancies"
+                  value={String(summary.vacantPositions != null ? summary.vacantPositions : 78)}
+                  helper="Unoccupied planned positions."
+                />
+                <KpiCard
+                  icon={Users}
+                  label="Total Positions"
+                  value={String(safeNumber(summary.totalSubmissions, 326))}
+                  helper="248 staffed + 78 vacancies."
+                  tooltip="Represents 326 distinct physical positions (248 staffed positions + 78 planned vacancies) modeled in the project scope."
+                />
+                <KpiCard
+                  icon={Clock3}
+                  label="Pending Approvals"
+                  value={String(safeNumber(summary.pendingReview, 0))}
+                  helper="Current approval queue."
+                />
+              </div>
+            </div>
 
-            {/* Headcount & FTE Completeness Check Section (Sir's Review Item 4a) */}
-            <div className="mt-3.5 rounded-xl border border-[#DCE7F5] bg-gradient-to-r from-[#F7FAFE] via-white to-[#F7FAFE] p-3.5 shadow-sm">
+            {/* SECTION 2: WORKLOAD ANALYSIS */}
+            <div className="mt-4 rounded-xl border border-[#DCE7F5] bg-gradient-to-r from-[#F7FAFE] via-white to-[#F7FAFE] p-4 shadow-sm">
               <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#E3EDF9] pb-2.5">
-                <div className="flex items-center gap-2">
-                  <div className="flex h-5 w-5 items-center justify-center rounded-md bg-[#EEF5FF] border border-[#BFD5F2]">
-                    <Check className="h-3.5 w-3.5 text-[#1E5EAB]" />
-                  </div>
-                  <div>
-                    <h4 className="text-xs font-bold uppercase tracking-wider text-[#102B52]">Headcount & FTE Completeness Reconciliation</h4>
-                    <p className="text-[10px] text-[#607D9E]">Authoritative reconciliation across submitted positions and modeled activity workload FTE</p>
-                  </div>
+                <div>
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-[#102B52]">Workload Analysis</h3>
+                  <p className="text-[11px] text-[#607D9E]">Monthly activity workload expressed as Full-Time Equivalent (FTE).</p>
                 </div>
-                <span className="inline-flex items-center rounded-lg border border-[#CDE0F7] bg-[#EEF5FF] px-2.5 py-0.5 text-[10px] font-bold text-[#1E5EAB]">
-                  Total Positions: {safeNumber(summary.totalSubmissions, 326)} · Total Modeled Workload: {safeNumber(summary.totalFte != null ? summary.totalFte : 499.46).toFixed(2)} FTE
+                <span className="inline-flex items-center rounded-lg border border-[#CDE0F7] bg-[#EEF5FF] px-2.5 py-1 text-[11px] font-bold text-[#1E5EAB]">
+                  Calculation: 378.82 + 120.64 = 499.46 FTE
                 </span>
               </div>
 
-              <div className="mt-3 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5 text-center">
-                <div className="rounded-lg bg-white border border-[#E1EAF5] p-2.5 shadow-xs">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-[#6B85A5]">Total Positions</p>
-                  <p className="mt-0.5 text-lg font-black text-[#102B52]">{safeNumber(summary.totalSubmissions, 326)} <span className="text-[11px] font-semibold text-[#8DA3BD]">Positions</span></p>
-                  <p className="text-[9px] text-[#869EB8] mt-0.5">Total in scope</p>
+              <div className="mt-3.5 grid grid-cols-1 md:grid-cols-3 gap-3">
+                {/* 1. Staffed Workload (Green) */}
+                <div className="rounded-xl bg-white border border-[#BBF7D0] p-4 shadow-xs relative overflow-hidden flex flex-col justify-between">
+                  <div className="absolute top-0 left-0 right-0 h-1 bg-[#16A34A]" />
+                  <div>
+                    <div className="flex items-center justify-between">
+                      <p className="text-[11px] font-bold uppercase tracking-wider text-[#166534]">Staffed Workload</p>
+                      <span className="inline-flex items-center rounded-full bg-[#DCFCE7] px-2 py-0.5 text-[10px] font-semibold text-[#15803D]">
+                        248 Positions
+                      </span>
+                    </div>
+                    <div className="mt-2 flex items-baseline gap-1.5">
+                      <span className="text-2xl font-black text-[#15803D]">
+                        {safeNumber(summary.staffedFte != null ? summary.staffedFte : summary.primaryEmployeeFte, 378.82).toFixed(2)}
+                      </span>
+                      <span className="text-xs font-bold text-[#16A34A]">FTE</span>
+                    </div>
+                    <p className="mt-1 text-xs font-medium text-[#166534]">
+                      {safeNumber(summary.staffedHours, 60611.64).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} hours/month
+                    </p>
+                  </div>
+                  <div className="mt-3 pt-2.5 border-t border-[#DCFCE7] text-[11px] text-[#15803D]">
+                    Based on 248 staffed positions.
+                  </div>
                 </div>
-                <div className="rounded-lg bg-white border border-[#E1EAF5] p-2.5 shadow-xs">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-[#6B85A5]">Staffed Positions</p>
-                  <p className="mt-0.5 text-lg font-black text-[#15803D]">{summary.completeness?.filledSubmitted != null ? summary.completeness.filledSubmitted : (summary.totalStaff != null ? summary.totalStaff : 248)} <span className="text-[11px] font-semibold text-[#86EFAC]">Positions</span></p>
-                  <p className="text-[9px] text-[#166534] mt-0.5">{summary.completeness?.approvedFilled != null ? `${summary.completeness.approvedFilled} approved` : '248 approved staff'}</p>
+
+                {/* 2. Vacancy Workload (Amber) */}
+                <div className="rounded-xl bg-white border border-[#FED7AA] p-4 shadow-xs relative overflow-hidden flex flex-col justify-between">
+                  <div className="absolute top-0 left-0 right-0 h-1 bg-[#D97706]" />
+                  <div>
+                    <div className="flex items-center justify-between">
+                      <p className="text-[11px] font-bold uppercase tracking-wider text-[#9A3412]">Vacancy Workload</p>
+                      <span className="inline-flex items-center rounded-full bg-[#FEF3C7] px-2 py-0.5 text-[10px] font-semibold text-[#B45309]">
+                        78 Vacancies
+                      </span>
+                    </div>
+                    <div className="mt-2 flex items-baseline gap-1.5">
+                      <span className="text-2xl font-black text-[#B45309]">
+                        {safeNumber(summary.vacantFte, 120.64).toFixed(2)}
+                      </span>
+                      <span className="text-xs font-bold text-[#D97706]">FTE</span>
+                    </div>
+                    <p className="mt-1 text-xs font-medium text-[#9A3412]">
+                      {safeNumber(summary.vacantHours, 19302.27).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} hours/month
+                    </p>
+                  </div>
+                  <div className="mt-3 pt-2.5 border-t border-[#FEF3C7] text-[11px] text-[#B45309]">
+                    Based on 78 planned vacancies.
+                  </div>
                 </div>
-                <div className="rounded-lg bg-white border border-[#E1EAF5] p-2.5 shadow-xs">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-[#6B85A5]">Planned Vacancies</p>
-                  <p className="mt-0.5 text-lg font-black text-[#B45309]">{summary.completeness?.vacantSubmitted != null ? summary.completeness.vacantSubmitted : (summary.vacantPositions != null ? summary.vacantPositions : 78)} <span className="text-[11px] font-semibold text-[#FCD34D]">Positions</span></p>
-                  <p className="text-[9px] text-[#92400E] mt-0.5">78 planned vacancy profiles</p>
+
+                {/* 3. Total Modeled Workload (Blue) */}
+                <div className="rounded-xl bg-gradient-to-b from-[#EFF6FF] to-white border border-[#93C5FD] p-4 shadow-xs relative overflow-hidden flex flex-col justify-between">
+                  <div className="absolute top-0 left-0 right-0 h-1 bg-[#2563EB]" />
+                  <div>
+                    <div className="flex items-center justify-between">
+                      <p className="text-[11px] font-bold uppercase tracking-wider text-[#1E40AF]">Total Modeled Workload</p>
+                      <span className="inline-flex items-center rounded-full bg-[#DBEAFE] px-2 py-0.5 text-[10px] font-semibold text-[#1D4ED8]">
+                        326 Positions
+                      </span>
+                    </div>
+                    <div className="mt-2 flex items-baseline gap-1.5">
+                      <span className="text-2xl font-black text-[#1E3A8A]">
+                        {safeNumber(summary.totalFte != null ? summary.totalFte : 499.46).toFixed(2)}
+                      </span>
+                      <span className="text-xs font-bold text-[#2563EB]">FTE</span>
+                    </div>
+                    <p className="mt-1 text-xs font-medium text-[#1D4ED8]">
+                      {safeNumber(summary.totalHours, 79913.91).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} hours/month
+                    </p>
+                  </div>
+                  <div className="mt-3 pt-2.5 border-t border-[#DBEAFE] text-[11px] text-[#1E40AF]">
+                    Based on staffed and planned vacancy workload combined.
+                  </div>
                 </div>
-                <div className="rounded-lg bg-white border border-[#E1EAF5] p-2.5 shadow-xs">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-[#6B85A5]">Staffed Workload FTE</p>
-                  <p className="mt-0.5 text-lg font-black text-[#1D4ED8]">{safeNumber(summary.staffedFte != null ? summary.staffedFte : summary.primaryEmployeeFte, 378.82).toFixed(2)}</p>
-                  <p className="text-[9px] text-[#1E40AF] mt-0.5">From {summary.totalStaff || 248} staffed ({safeNumber(summary.staffedHours, 60611.2).toLocaleString()}h)</p>
-                </div>
-                <div className="rounded-lg bg-white border border-[#E1EAF5] p-2.5 shadow-xs">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-[#6B85A5]">Planned Vacancy Workload FTE</p>
-                  <p className="mt-0.5 text-lg font-black text-[#D97706]">{safeNumber(summary.vacantFte, 120.64).toFixed(2)} <span className="text-[11px] font-semibold text-[#FBBF24]">FTE</span></p>
-                  <p className="text-[9px] text-[#B45309] mt-0.5">From {summary.vacantPositions || 78} vacancies ({safeNumber(summary.vacantHours, 19302.4).toLocaleString()}h)</p>
-                </div>
-                <div className="rounded-lg bg-white border border-[#BFDBFE] p-2.5 shadow-xs bg-gradient-to-b from-[#EFF6FF] to-white">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-[#1E40AF]">Total Modeled Workload</p>
-                  <p className="mt-0.5 text-lg font-black text-[#1E3A8A]">{safeNumber(summary.totalFte != null ? summary.totalFte : 499.46).toFixed(2)} <span className="text-[11px] font-semibold text-[#60A5FA]">FTE</span></p>
-                  <p className="text-[9px] text-[#1D4ED8] mt-0.5">{safeNumber(summary.totalHours, 79913.6).toLocaleString()}h / {summary.completeness?.baselineHoursPerMonth || summary.baselineHoursPerMonth || 160}h standard baseline</p>
-                </div>
+              </div>
+
+              {/* Explanatory Note */}
+              <div className="mt-3 pt-2.5 border-t border-[#E3EDF9] flex items-center gap-2 text-[11px] text-[#607D9E]">
+                <span className="inline-flex items-center justify-center h-4 w-4 rounded-full bg-[#E0EDFB] text-[#1E5EAB] text-[10px] font-bold shrink-0">i</span>
+                <span>FTE represents workload equivalent, not the number of employees or positions. One FTE is calculated using the standard reference capacity of 160 hours per month.</span>
               </div>
             </div>
           </>
@@ -969,7 +1014,7 @@ export default function Dashboard() {
                             {fteVal.toFixed(2)}
                           </td>
                           <td className="px-2 py-2.5">
-                            <TrendSpark trend={activity.trend || 'steady'} monthlyHours={hoursVal} />
+                            <TrendSpark trend={activity.trend} history={activity.history} monthlyHours={hoursVal} />
                           </td>
                           <td className="px-2 py-2.5">
                             <div className="flex justify-center">
@@ -1287,15 +1332,59 @@ function StatusRow({ label, value, colorClass, count }: { label: string; value: 
   );
 }
 
-function TrendSpark({ trend, monthlyHours }: { trend: Trend; monthlyHours?: number }) {
-  const stroke = trend === 'up' ? '#16A34A' : trend === 'down' ? '#64748B' : '#64748B';
-  const d = trend === 'up' ? 'M4 16 L16 12 L28 12 L40 10 L52 9' : trend === 'down' ? 'M4 9 L16 10 L28 11 L40 13 L52 13' : 'M4 12 L16 12 L28 12 L40 12 L52 12';
+function TrendSpark({
+  trend,
+  history,
+  monthlyHours,
+}: {
+  trend?: Trend;
+  history?: number[];
+  monthlyHours?: number;
+}) {
+  // If genuine multi-period historical points are present, dynamically render a polyline sparkline
+  if (Array.isArray(history) && history.length >= 2) {
+    const minVal = Math.min(...history);
+    const maxVal = Math.max(...history);
+    const range = maxVal - minVal || 1;
+    const width = 56;
+    const height = 22;
+    const padding = 3;
+    const availableHeight = height - padding * 2;
+    const stepX = (width - padding * 2) / (history.length - 1);
 
+    const points = history
+      .map((val, idx) => {
+        const x = padding + idx * stepX;
+        const y = height - padding - ((val - minVal) / range) * availableHeight;
+        return `${x.toFixed(1)},${y.toFixed(1)}`;
+      })
+      .join(' ');
+
+    const strokeColor =
+      trend === 'up'
+        ? '#16A34A'
+        : trend === 'down'
+          ? '#DC2626'
+          : '#64748B';
+
+    return (
+      <div className="flex justify-center" title="Historical dynamic trend">
+        <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} fill="none" aria-label={`Dynamic activity trend: ${trend || 'historical'}`}>
+          <polyline points={points} stroke={strokeColor} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </div>
+    );
+  }
+
+  // Baseline / Single-period state: Insufficient historical data
   return (
-    <div className="flex justify-center">
-      <svg width="56" height="22" viewBox="0 0 56 22" fill="none" aria-label={`Activity trend: ${trend}`}>
-        <path d={d} stroke={stroke} strokeWidth="2" strokeLinecap="round" />
-      </svg>
+    <div
+      className="flex justify-center items-center"
+      title="Insufficient historical data to determine trend."
+    >
+      <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold tracking-wide bg-[#F1F5F9] text-[#64748B] border border-[#E2E8F0] cursor-help">
+        Baseline
+      </span>
     </div>
   );
 }

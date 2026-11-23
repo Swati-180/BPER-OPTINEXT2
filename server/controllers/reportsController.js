@@ -209,9 +209,17 @@ function buildConsolidationSignal(row) {
 }
 
 function buildTrend(row) {
-  if (row.monthlyHours >= 40) return 'up';
-  if (row.monthlyHours <= 20) return 'down';
-  return 'steady';
+  // If multi-period historical trend points exist in row.history, calculate trajectory
+  if (Array.isArray(row.history) && row.history.length >= 2) {
+    const first = row.history[0];
+    const last = row.history[row.history.length - 1];
+    const delta = last - first;
+    if (delta > 0.05 * first) return 'up';
+    if (delta < -0.05 * first) return 'down';
+    return 'steady';
+  }
+  // Baseline or single-period snapshot: genuine historical trend data is not yet available
+  return null;
 }
 
 function getSubmissionWindowStatus() {
