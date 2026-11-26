@@ -47,23 +47,28 @@ const FIN_OPS_PROJECT_CONFIG = {
 };
 
 // Explicitly approved OptiNext production roster
+// NOTE: admin@optinext.test is flagged as requiring explicit production identity confirmation.
+// In production mode, migration will halt if admin@optinext.test is used without explicit approval.
 const APPROVED_OPTINEXT_ROSTER = [
   {
     email: 'admin@optinext.test',
     expectedCompanyRole: 'company_admin',
     expectedProjectRole: 'project_admin',
-    description: 'OptiNext Company & Project Administrator (anchor account)'
+    requiresProductionConfirmation: true,
+    description: 'OptiNext Company & Project Administrator (anchor account - REQUIRES IDENTITY CONFIRMATION)'
   },
   {
     email: 'manager@bper.com',
     expectedCompanyRole: 'member',
     expectedProjectRole: 'manager',
+    requiresProductionConfirmation: false,
     description: 'Finance & Accounting Operations Line Manager'
   },
   {
     email: 'employee@bper.com',
     expectedCompanyRole: 'member',
     expectedProjectRole: 'employee',
+    requiresProductionConfirmation: false,
     description: 'Operational Process Contributor (EMP-001)'
   }
 ];
@@ -205,6 +210,13 @@ async function migrateOptiNextTenant(dbConnection, options = { dryRun: true }) {
 
   // B. Process each approved identity
   for (const rosterEntry of APPROVED_OPTINEXT_ROSTER) {
+    if (rosterEntry.requiresProductionConfirmation) {
+      if (!options.dryRun && !options.confirmAdminTestIdentity) {
+        throw new Error(`[SAFETY HALT] ${rosterEntry.email} requires explicit production identity confirmation. Migration blocked from executing against unconfirmed admin account.`);
+      }
+      console.log(`[OptiNext Migration WARNING] Account ${rosterEntry.email} is flagged as requiring production identity confirmation (uses .test domain).`);
+    }
+
     const user = await User.findOne({ email: rosterEntry.email });
     if (!user) {
       console.warn(`[OptiNext Migration WARNING] Approved roster user not found in database: ${rosterEntry.email}`);
@@ -405,6 +417,7 @@ if (require.main === module) {
   const isDryRun = process.argv.includes('--dry-run') || !process.argv.includes('--execute');
   const allowExecution = process.argv.includes('--execute');
   const confirmRemoteProduction = process.argv.includes('--confirm-production');
+  const confirmAdminTestIdentity = process.argv.includes('--confirm-admin-identity');
   const mongoUri = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27018/bper_isolated_local_test';
 
   mongoose.connect(mongoUri).then(async (conn) => {
@@ -412,7 +425,8 @@ if (require.main === module) {
       await migrateOptiNextTenant(mongoose.connection, {
         dryRun: isDryRun,
         allowExecution,
-        confirmRemoteProduction
+        confirmRemoteProduction,
+        confirmAdminTestIdentity
       });
       process.exit(0);
     } catch (err) {
