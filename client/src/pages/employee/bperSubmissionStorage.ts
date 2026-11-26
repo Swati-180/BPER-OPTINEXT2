@@ -1,5 +1,6 @@
 import type { EmployeeSnapshot, WdtPayload } from "./formTypes";
 import { API_BASE_URL } from "../../lib/config";
+import { loadTenantContext } from "../../lib/authStorage";
 
 export type BperSubmissionStatus = "Under Review" | "Approved" | "Changes Requested";
 
@@ -92,6 +93,7 @@ export function buildBperSubmission(payload: WdtPayload, profile?: EmployeeSnaps
 export async function loadBperSubmissions(options?: { summary?: boolean; department?: string }): Promise<BperSubmissionRecord[]> {
   try {
     const token = localStorage.getItem('bper.auth.token');
+    const tenant = loadTenantContext();
     const params = new URLSearchParams();
     if (options?.summary) {
       params.append('summary', 'true');
@@ -101,7 +103,11 @@ export async function loadBperSubmissions(options?: { summary?: boolean; departm
     }
     const queryString = params.toString() ? `?${params.toString()}` : '';
     const response = await fetch(`${API_BASE_URL}/api/wdt/submissions${queryString}`, {
-      headers: { 'Authorization': `Bearer ${token}` }
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        ...(tenant?.companyId ? { 'x-company-id': tenant.companyId } : {}),
+        ...(tenant?.projectId ? { 'x-project-id': tenant.projectId } : {})
+      }
     });
     const data = await readJson<BperSubmissionRecord[]>(response);
     return response.ok ? (Array.isArray(data) ? data : []) : [];
@@ -114,8 +120,13 @@ export async function loadBperSubmissions(options?: { summary?: boolean; departm
 export async function loadBperSubmissionDetail(referenceId: string): Promise<BperSubmissionRecord | null> {
   try {
     const token = localStorage.getItem('bper.auth.token');
+    const tenant = loadTenantContext();
     const response = await fetch(`${API_BASE_URL}/api/wdt/submissions/${encodeURIComponent(referenceId)}`, {
-      headers: { 'Authorization': `Bearer ${token}` }
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        ...(tenant?.companyId ? { 'x-company-id': tenant.companyId } : {}),
+        ...(tenant?.projectId ? { 'x-project-id': tenant.projectId } : {})
+      }
     });
     const data = await readJson<BperSubmissionRecord>(response);
     return response.ok && data ? data : null;
@@ -128,11 +139,14 @@ export async function loadBperSubmissionDetail(referenceId: string): Promise<Bpe
 export async function saveBperSubmission(record: BperSubmissionRecord) {
   try {
     const token = localStorage.getItem('bper.auth.token');
+    const tenant = loadTenantContext();
     const response = await fetch(`${API_BASE_URL}/api/wdt/submit`, {
       method: 'POST',
       headers: { 
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
+        'Authorization': `Bearer ${token}`,
+        ...(tenant?.companyId ? { 'x-company-id': tenant.companyId } : {}),
+        ...(tenant?.projectId ? { 'x-project-id': tenant.projectId } : {})
       },
       body: JSON.stringify(record)
     });
@@ -190,11 +204,14 @@ export async function applyManagerReviewToSubmission(input: {
 }) {
   try {
     const token = localStorage.getItem('bper.auth.token');
+    const tenant = loadTenantContext();
     const response = await fetch(`${API_BASE_URL}/api/wdt/submissions/${input.referenceId}`, {
       method: 'PATCH',
       headers: { 
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
+        'Authorization': `Bearer ${token}`,
+        ...(tenant?.companyId ? { 'x-company-id': tenant.companyId } : {}),
+        ...(tenant?.projectId ? { 'x-project-id': tenant.projectId } : {})
       },
       body: JSON.stringify({
         status: input.status,

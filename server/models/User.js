@@ -7,8 +7,8 @@ const userSchema = new mongoose.Schema({
   password: {
     type: String,
     required: function() {
-      // Password is only required if user is an active login account (not a roster-only record or vacant position)
-      return !this.isRosterOnly && !this.isVacant && this.role !== 'position';
+      // Password is only required if user is an active login account (not a roster-only record, vacant position, or non-login employee record)
+      return !this.isRosterOnly && !this.isVacant && this.role !== 'position' && (this.role === 'admin' || this.role === 'super_admin' || this.role === 'manager');
     }
   },
   employeeId: { type: String, unique: true, sparse: true },
@@ -22,7 +22,7 @@ const userSchema = new mongoose.Schema({
   employeeType: { type: String, default: 'Full-time' },
   role: {
     type: String,
-    enum: ['admin', 'manager', 'employee', 'position', 'archived_demo', 'Admin', 'Manager', 'Employee'],
+    enum: ['super_admin', 'admin', 'manager', 'employee', 'position', 'archived_demo', 'Admin', 'Manager', 'Employee'],
     default: 'employee',
     lowercase: true,
     trim: true,

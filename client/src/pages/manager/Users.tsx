@@ -156,10 +156,10 @@ export default function UsersPage() {
 					};
 				});
 
-				// Use backend authoritative counts if provided, otherwise compute from loaded rows
-				const counts: WorkforceCounts = data.counts || {
+				// Calculate exact counts across the loaded dataset
+				const counts: WorkforceCounts = {
 					total: mapped.length,
-					operationalStaff: mapped.filter(u => u.recordCategory === 'roster_only' || u.recordCategory === 'operational_staff').length,
+					operationalStaff: mapped.filter(u => !u.isVacant && !u.isArchivedDemo && u.role === 'employee').length,
 					loginAccounts: mapped.filter(u => u.recordCategory === 'login_account').length,
 					vacancies: mapped.filter(u => u.isVacant || u.role === 'position' || u.recordCategory === 'position').length,
 					archivedDemos: mapped.filter(u => u.isArchivedDemo || u.role === 'archived_demo' || u.recordCategory === 'archived_demo').length,
@@ -188,7 +188,7 @@ export default function UsersPage() {
 		return userRows.filter((user) => {
 			// 1. Record Category Filter
 			if (categoryFilter === 'operational_staff') {
-				if (user.recordCategory !== 'roster_only' && user.recordCategory !== 'operational_staff') return false;
+				if (user.isVacant || user.isArchivedDemo || user.role !== 'employee') return false;
 			} else if (categoryFilter === 'login_accounts') {
 				if (user.recordCategory !== 'login_account') return false;
 			} else if (categoryFilter === 'vacancies') {
@@ -595,7 +595,7 @@ export default function UsersPage() {
 						<select
 							value={roleFilter}
 							onChange={(event) => setRoleFilter(event.target.value as 'All' | UserRole)}
-							className="h-9 w-full rounded-lg border border-[#D6E0EE] bg-white px-3 text-xs font-medium text-[#243A59] outline-none transition-all focus:border-[#6E97CB] focus:ring-2 focus:ring-[#D7E6F7]"
+							className="h-9 w-full rounded-lg border border-[#D6E0EE] bg-white pl-3 pr-8 text-xs font-medium text-[#243A59] outline-none transition-all focus:border-[#6E97CB] focus:ring-2 focus:ring-[#D7E6F7]"
 						>
 							<option value="All">All Roles</option>
 							<option value="Manager">Manager</option>
@@ -608,7 +608,7 @@ export default function UsersPage() {
 						<select
 							value={departmentFilter}
 							onChange={(event) => setDepartmentFilter(event.target.value)}
-							className="h-9 w-full rounded-lg border border-[#D6E0EE] bg-white px-3 text-xs font-medium text-[#243A59] outline-none transition-all focus:border-[#6E97CB] focus:ring-2 focus:ring-[#D7E6F7]"
+							className="h-9 w-full rounded-lg border border-[#D6E0EE] bg-white pl-3 pr-8 text-xs font-medium text-[#243A59] outline-none transition-all focus:border-[#6E97CB] focus:ring-2 focus:ring-[#D7E6F7]"
 						>
 							<option value="All">All Departments</option>
 							{Array.from(new Set(userRows.map(u => u.department))).filter(d => d && d !== 'Unassigned').map(dept => (
@@ -622,7 +622,7 @@ export default function UsersPage() {
 						<select
 							value={statusFilter}
 							onChange={(event) => setStatusFilter(event.target.value as 'All' | UserStatus)}
-							className="h-9 w-full rounded-lg border border-[#D6E0EE] bg-white px-3 text-xs font-medium text-[#243A59] outline-none transition-all focus:border-[#6E97CB] focus:ring-2 focus:ring-[#D7E6F7]"
+							className="h-9 w-full rounded-lg border border-[#D6E0EE] bg-white pl-3 pr-8 text-xs font-medium text-[#243A59] outline-none transition-all focus:border-[#6E97CB] focus:ring-2 focus:ring-[#D7E6F7]"
 						>
 							<option value="All">Any Status</option>
 							<option value="Active">Active</option>
@@ -631,20 +631,20 @@ export default function UsersPage() {
 					</label>
 				</div>
 
-				<div className="mt-3 overflow-hidden rounded-xl border border-[#DCE6F3]">
-					<div className="overflow-x-auto">
-						<table className="w-full min-w-240 border-collapse text-left">
+				<div className="mt-3 overflow-hidden rounded-xl border border-[#DCE6F3] bg-white shadow-2xs">
+					<div className="bper-table-container">
+						<table className="w-full min-w-[1080px] border-collapse text-left">
 							<thead>
-								<tr className="bg-[#F5F8FD] text-[10px] font-bold uppercase tracking-[0.14em] text-[#617D9D] border-b border-[#E3EAF4]">
-									<th className="px-4 py-3">Employee ID</th>
-									<th className="px-4 py-3">Name / Role</th>
-									<th className="px-4 py-3">Record Type</th>
-									<th className="px-4 py-3">Contact</th>
-									<th className="px-4 py-3">Department</th>
-									<th className="px-4 py-3">Band</th>
-									<th className="px-4 py-3">Max Hrs</th>
-									<th className="px-4 py-3">Status</th>
-									<th className="px-4 py-3 text-right min-w-[130px]">Actions</th>
+								<tr className="bg-[#F5F8FD] text-[11px] font-bold uppercase tracking-[0.08em] text-[#557193] border-b border-[#E3EAF4]">
+									<th className="px-4 py-3.5 whitespace-nowrap min-w-[120px]">Employee ID</th>
+									<th className="px-4 py-3.5 whitespace-nowrap min-w-[220px]">Name / Role</th>
+									<th className="px-4 py-3.5 whitespace-nowrap min-w-[170px]">Record Type</th>
+									<th className="px-4 py-3.5 whitespace-nowrap min-w-[200px]">Contact Email</th>
+									<th className="px-4 py-3.5 whitespace-nowrap min-w-[150px]">Department</th>
+									<th className="px-4 py-3.5 whitespace-nowrap min-w-[80px]">Band</th>
+									<th className="px-4 py-3.5 whitespace-nowrap min-w-[100px]">Max Hrs</th>
+									<th className="px-4 py-3.5 whitespace-nowrap min-w-[100px]">Status</th>
+									<th className="px-4 py-3.5 text-right whitespace-nowrap min-w-[140px] sticky right-0 bg-[#F5F8FD] shadow-[-6px_0_10px_rgba(0,0,0,0.02)]">Actions</th>
 								</tr>
 							</thead>
 							<tbody>
@@ -737,7 +737,7 @@ export default function UsersPage() {
 													{user.status}
 												</span>
 											</td>
-											<td className="px-4 py-3 text-right whitespace-nowrap">
+											<td className="px-4 py-3 text-right whitespace-nowrap sticky right-0 bg-white group-hover:bg-[#FAFCFF] shadow-[-6px_0_10px_rgba(0,0,0,0.02)]">
 												{user.isVacant ? (
 													<span className="inline-flex items-center rounded bg-orange-50 border border-orange-200 px-2 py-0.5 text-[11px] font-semibold text-orange-800" title="Budgeted vacant position. Unfilled.">
 														Vacant Position

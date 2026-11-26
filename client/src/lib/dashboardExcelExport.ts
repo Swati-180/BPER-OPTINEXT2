@@ -11,7 +11,6 @@ export interface DashboardExcelExportParams {
     pendingReview?: number;
     approved?: number;
     staffedFte?: number;
-    vacantFte?: number;
     totalFte?: number;
     staffedUtilizationPct?: number;
     workloadVsTargetPct?: number;
@@ -73,14 +72,15 @@ export function exportDashboardExcel(params: DashboardExcelExportParams): void {
     [`Generated: ${new Date(generatedAt).toLocaleString()}`],
     [],
     ['Key Performance Indicator', 'Value', 'Unit / Details'],
-    ['Staffed Positions', summary.totalEmployees ?? summary.totalStaff ?? 0, 'Staffed Positions (100% Approved)'],
-    ['Planned Vacancies', summary.vacantPositions ?? 0, 'Planned Vacancy Requisitions'],
-    ['Total Positions in Scope', summary.totalSubmissions ?? 0, 'Total Positions (248 Staffed + 78 Planned Vacancies)'],
-    ['Pending Approvals', summary.pendingReview ?? 0, summary.pendingReview ? 'Action Required' : 'All Approved (Queue Clear)'],
-    ['Staffed Workload Allocation', Number((summary.staffedFte ?? 0).toFixed(2)), 'FTE (Staffed Positions)'],
-    ['Planned Vacancy Workload', Number((summary.vacantFte ?? 0).toFixed(2)), 'FTE (Planned Vacancies)'],
-    ['Total Modeled Workload FTE', Number((summary.totalFte ?? 0).toFixed(2)), `FTE (Total Modeled Workload / ${baselineHours}h)`],
-    ['Staffed Workload Rate', `${Number((summary.staffedUtilizationPct ?? summary.avgUtilizationPct ?? 0).toFixed(1))}%`, `Modeled activity rate vs ${baselineHours}h standard baseline (100% capped)`],
+    ['Filled In-Scope Headcount', summary.totalEmployees ?? summary.totalStaff ?? 0, 'Active Employees'],
+    ['Vacant Positions', summary.vacantPositions ?? 0, 'Approved Vacancies'],
+    ['Total Forms Submitted', summary.totalSubmissions ?? 0, 'Submissions'],
+    ['Pending Reviews', summary.pendingReview ?? 0, summary.pendingReview ? 'Action Required' : 'Queue Clear'],
+    ['Approved Submissions', summary.approved ?? 0, 'Verified Forms'],
+    ['Staffed FTE Allocation', Number((summary.staffedFte ?? 0).toFixed(2)), 'FTE (Filled Workforce)'],
+    ['Total Portfolio FTE', Number((summary.totalFte ?? 0).toFixed(2)), `FTE (Total Workload / ${baselineHours}h)`],
+    ['Staffed Capacity Utilization', `${Number((summary.staffedUtilizationPct ?? summary.avgUtilizationPct ?? 0).toFixed(1))}%`, `Workload vs ${baselineHours}h standard capacity`],
+    ['Workload vs Headcount Target', summary.workloadVsTargetPct ? `${Number(summary.workloadVsTargetPct.toFixed(1))}%` : 'N/A', 'Workforce Alignment'],
   ];
   const wsKpis = XLSX.utils.aoa_to_sheet(kpiData);
   wsKpis['!cols'] = [{ wch: 35 }, { wch: 20 }, { wch: 40 }];

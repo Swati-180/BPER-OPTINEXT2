@@ -269,9 +269,9 @@ export default function WDTAnalyticsPage() {
         <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5">
           <KpiCard icon={Clock3} label="Total Hours" value={safeNumber(summary.totalHours).toFixed(2)} helper="Total Organizational Workload" />
           <KpiCard icon={TrendingUp} label="Total FTE" value={totalFte.toFixed(2)} helper="Total Workload ÷ 160h baseline" />
-          <KpiCard icon={BriefcaseBusiness} label="Recorded Profiles" value={String(safeNumber(summary.totalSubmissions))} helper="248 Filled + 78 Vacant" />
+          <KpiCard icon={BriefcaseBusiness} label="Recorded Profiles" value={String(safeNumber(summary.totalSubmissions))} helper={`${safeNumber((report as any)?.collectionStatus?.recordedProfiles?.filledCount, safeNumber(summary.totalStaff))} Filled · ${safeNumber((report as any)?.collectionStatus?.recordedProfiles?.vacantCount, safeNumber(summary.vacantPositions))} Vacant`} />
           <KpiCard icon={BarChart3} label="Avg Hours / Profile" value={safeNumber(summary.avgHoursPerSubmission).toFixed(1)} helper="Operational workload average" />
-          <KpiCard icon={Layers3} label="Employee Approval Rate" value={`${safeNumber(summary.approvalRatePct)}%`} helper="248 approved / 248 filled staff (78 vacancies separate)" />
+          <KpiCard icon={Layers3} label="Employee Approval Rate" value={`${safeNumber(summary.approvalRatePct)}%`} helper={`${safeNumber((report as any)?.collectionStatus?.recordedProfiles?.filledCount, safeNumber(summary.totalStaff))} filled staff (${safeNumber((report as any)?.collectionStatus?.recordedProfiles?.vacantCount, safeNumber(summary.vacantPositions))} vacancies)`} />
         </div>
       </section>
 
@@ -341,31 +341,33 @@ export default function WDTAnalyticsPage() {
             <div className="rounded-xl border border-[#BAE6FD] bg-[#F0F9FF] p-3 text-center">
               <p className="text-[10px] font-bold uppercase tracking-wider text-[#0284C7]">WDT Profiles Recorded</p>
               <p className="mt-1 text-2xl font-extrabold text-[#0369A1]">
-                {(report as any)?.collectionStatus?.recordedProfiles?.count ?? 326}
+                {(report as any)?.collectionStatus?.recordedProfiles?.count ?? safeNumber(summary.totalSubmissions)}
               </p>
-              <p className="mt-0.5 text-[10px] text-[#0284C7]">248 Filled · 78 Vacant</p>
+              <p className="mt-0.5 text-[10px] text-[#0284C7]">
+                {safeNumber((report as any)?.collectionStatus?.recordedProfiles?.filledCount, safeNumber(summary.totalStaff))} Filled · {safeNumber((report as any)?.collectionStatus?.recordedProfiles?.vacantCount, safeNumber(summary.vacantPositions))} Vacant
+              </p>
               <p className="mt-1 text-[11px] font-bold text-[#0284C7]">
-                {(report as any)?.collectionStatus?.recordedProfiles?.pct ?? 65.2}%
+                {(report as any)?.collectionStatus?.recordedProfiles?.pct ?? 0}%
               </p>
             </div>
             <div className="rounded-xl border border-[#A7F3D0] bg-[#ECFDF5] p-3 text-center">
               <p className="text-[10px] font-bold uppercase tracking-wider text-[#059669]">Filled Employee Profiles</p>
               <p className="mt-1 text-2xl font-extrabold text-[#047857]">
-                {(report as any)?.collectionStatus?.filledEmployees?.count ?? 248}
+                {(report as any)?.collectionStatus?.filledEmployees?.count ?? safeNumber(summary.totalStaff)}
               </p>
               <p className="mt-0.5 text-[10px] text-[#059669]">Named employees with WDT hours</p>
               <p className="mt-1 text-[11px] font-bold text-[#059669]">
-                {(report as any)?.collectionStatus?.filledEmployees?.pct ?? 49.6}%
+                {(report as any)?.collectionStatus?.filledEmployees?.pct ?? 0}%
               </p>
             </div>
             <div className="rounded-xl border border-[#FED7AA] bg-[#FFF7ED] p-3 text-center">
               <p className="text-[10px] font-bold uppercase tracking-wider text-[#EA580C]">Target Not Represented</p>
               <p className="mt-1 text-2xl font-extrabold text-[#C2410C]">
-                {(report as any)?.collectionStatus?.targetNotRepresented?.count ?? 174}
+                {(report as any)?.collectionStatus?.targetNotRepresented?.count ?? 0}
               </p>
-              <p className="mt-0.5 text-[10px] text-[#EA580C]">Remaining against 500 HC target</p>
+              <p className="mt-0.5 text-[10px] text-[#EA580C]">Remaining against target</p>
               <p className="mt-1 text-[11px] font-bold text-[#EA580C]">
-                {(report as any)?.collectionStatus?.targetNotRepresented?.pct ?? 34.8}%
+                {(report as any)?.collectionStatus?.targetNotRepresented?.pct ?? 0}%
               </p>
             </div>
           </div>
@@ -488,16 +490,16 @@ export default function WDTAnalyticsPage() {
           </div>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-180 border-collapse text-left">
+        <div className="bper-table-container">
+          <table className="w-full min-w-[780px] border-collapse text-left">
             <thead>
-              <tr className="bg-[#F5F8FD] text-[11px] font-bold uppercase tracking-[0.13em] text-[#617D9D] border-b border-[#E3EAF4]">
-                <th className="px-5 py-3">Form ID</th>
-                <th className="px-5 py-3">Employee</th>
-                <th className="px-5 py-3">Department</th>
-                <th className="px-5 py-3">Hours</th>
-                <th className="px-5 py-3">Status</th>
-                <th className="px-5 py-3">Date</th>
+              <tr className="bg-[#F5F8FD] text-[11px] font-bold uppercase tracking-[0.08em] text-[#557193] border-b border-[#E3EAF4]">
+                <th className="px-5 py-3.5 whitespace-nowrap min-w-[140px]">Form ID</th>
+                <th className="px-5 py-3.5 whitespace-nowrap min-w-[180px]">Employee</th>
+                <th className="px-5 py-3.5 whitespace-nowrap min-w-[160px]">Department</th>
+                <th className="px-5 py-3.5 whitespace-nowrap min-w-[100px]">Hours</th>
+                <th className="px-5 py-3.5 whitespace-nowrap min-w-[120px]">Status</th>
+                <th className="px-5 py-3.5 whitespace-nowrap min-w-[120px]">Date</th>
               </tr>
             </thead>
             <tbody>

@@ -45,7 +45,8 @@ const CalculationCenter = lazy(() => import('./pages/manager/CalculationCenter')
 const WorkforceCapacityPlanning = lazy(() => import('./pages/manager/WorkforceCapacityPlanning'));
 const OrganizationAssumptions = lazy(() => import('./pages/manager/OrganizationAssumptions'));
 const UtilizationAnalysis = lazy(() => import('./pages/manager/UtilizationAnalysis'));
-const ManagerFitmentAnalytics = lazy(() => import('./pages/manager/FitmentAnalytics'));
+const SuperAdminDashboard = lazy(() => import('./pages/superadmin/SuperAdminDashboard'));
+const ProjectSelectionHub = lazy(() => import('./pages/admin/ProjectSelectionHub'));
 
 import Unauthorized from './pages/Unauthorized';
 import { clearActiveUnderReviewReferenceId } from './pages/employee/bperSubmissionStorage';
@@ -135,8 +136,10 @@ function LoginPage({ onLogin }: { onLogin: (user: AppAuthUser) => void }) {
       saveAuthUser(nextUser);
 
       onLogin(nextUser);
-      if (nextUser.role === 'admin') {
-        navigate('/admin-portal', { replace: true });
+      if (nextUser.role === 'super_admin') {
+        navigate('/super-admin', { replace: true });
+      } else if (nextUser.role === 'admin') {
+        navigate('/admin/projects', { replace: true });
       } else if (nextUser.role === 'manager') {
         navigate('/choose-portal', { replace: true });
       } else {
@@ -264,11 +267,17 @@ function ManagerChoosePortalRoute({ user }: { user: AppAuthUser | null }) {
     return <Navigate to="/auth/login" replace />;
   }
 
-  if (user.role === 'admin') {
-    return <Navigate to="/admin-portal" replace />;
+  const role = String(user.role || '').toLowerCase();
+
+  if (role === 'super_admin') {
+    return <Navigate to="/super-admin" replace />;
   }
 
-  if (user.role === 'employee') {
+  if (role === 'admin') {
+    return <Navigate to="/admin/projects" replace />;
+  }
+
+  if (role === 'employee') {
     return <Navigate to="/employee-portal" replace />;
   }
 
@@ -320,6 +329,31 @@ export default function App() {
         <Route path="/auth/signup" element={<InviteSignupPage onLogin={handleLogin} />} />
         <Route path="/register/invite/:token" element={<InviteRegistration />} />
         <Route path="/choose-portal" element={<ManagerChoosePortalRoute user={user} />} />
+        
+        {/* Super Admin Route */}
+        <Route
+          path="/super-admin/*"
+          element={
+            <ProtectedRoute user={user} allowedRoles={["super_admin"]}>
+              <Suspense fallback={<TablePageSkeleton rows={7} />}>
+                <SuperAdminDashboard onLogout={handleLogout} />
+              </Suspense>
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Company Admin Project Selection Hub */}
+        <Route
+          path="/admin/projects"
+          element={
+            <ProtectedRoute user={user} allowedRoles={["admin", "super_admin"]}>
+              <Suspense fallback={<TablePageSkeleton rows={7} />}>
+                <ProjectSelectionHub user={user} onLogout={handleLogout} />
+              </Suspense>
+            </ProtectedRoute>
+          }
+        />
+
         <Route
           path="/employee-portal"
           element={
@@ -337,8 +371,10 @@ export default function App() {
               user.role === 'manager'
                 ? <Navigate to="/manager/forms" replace />
                 : user.role === 'admin'
-                  ? <Navigate to="/admin/dashboard" replace />
-                  : <Navigate to="/employee-portal" replace />
+                  ? <Navigate to="/admin/projects" replace />
+                  : user.role === 'super_admin'
+                    ? <Navigate to="/super-admin" replace />
+                    : <Navigate to="/employee-portal" replace />
             ) : (
               <Navigate to="/auth/login" replace />
             )
@@ -349,8 +385,10 @@ export default function App() {
           element={
             user ? (
               user.role === 'admin'
-                ? <Navigate to="/admin/dashboard" replace />
-                : <Navigate to={user.role === 'manager' ? '/manager-portal' : '/employee-portal'} replace />
+                ? <Navigate to="/admin/projects" replace />
+                : user.role === 'super_admin'
+                  ? <Navigate to="/super-admin" replace />
+                  : <Navigate to={user.role === 'manager' ? '/manager-portal' : '/employee-portal'} replace />
             ) : (
               <Navigate to="/auth/login" replace />
             )
@@ -405,7 +443,7 @@ export default function App() {
         <Route
           path="/admin/*"
           element={
-            <ProtectedRoute user={user} allowedRoles={["admin"]}>
+            <ProtectedRoute user={user} allowedRoles={["admin", "super_admin"]}>
               <ManagerLayout user={user} onLogout={handleLogout}>
                 <Suspense fallback={<TablePageSkeleton rows={7} />}>
                   <Routes>
@@ -425,8 +463,7 @@ export default function App() {
                     <Route path="api-debug" element={<APIDebug />} />
                     <Route path="my-profile" element={<PersonalProfile />} />
                     <Route path="employee-invites" element={<EmployeeInvites />} />
-                    <Route path="fitment-scorer" element={<ManagerFitmentAnalytics />} />
-                    <Route path="fitment" element={<ManagerFitmentAnalytics />} />
+                    <Route path="fitment-scorer" element={<DeepAnalysis />} />
                     <Route path="process-analytics" element={<ProcessOperationsHub />} />
                     <Route path="employee-360" element={<PersonalProfile />} />
                     <Route path="calculation-center" element={<CalculationCenter />} />

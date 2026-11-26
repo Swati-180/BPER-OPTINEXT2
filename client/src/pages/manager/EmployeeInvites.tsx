@@ -522,17 +522,17 @@ export default function EmployeeInvites() {
               No invites {filter !== 'all' ? `with status "${filter}"` : ''} yet.
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
+            <div className="bper-table-container border border-slate-200 rounded-xl overflow-hidden shadow-2xs">
+              <table className="w-full text-left border-collapse min-w-[880px]">
                 <thead>
                   <tr className="bg-slate-50 text-[11px] font-bold text-slate-500 uppercase tracking-wider border-b border-slate-200">
-                    <th className="py-3 px-4">Employee ID</th>
-                    <th className="py-3 px-4">Name</th>
-                    <th className="py-3 px-4">Email</th>
-                    <th className="py-3 px-4">Status</th>
-                    <th className="py-3 px-4">Invite Link</th>
-                    <th className="py-3 px-4">Date</th>
-                    <th className="py-3 px-4"></th>
+                    <th className="py-3.5 px-4 whitespace-nowrap min-w-[120px]">Employee ID</th>
+                    <th className="py-3.5 px-4 whitespace-nowrap min-w-[160px]">Name</th>
+                    <th className="py-3.5 px-4 whitespace-nowrap min-w-[200px]">Email</th>
+                    <th className="py-3.5 px-4 whitespace-nowrap min-w-[120px]">Status</th>
+                    <th className="py-3.5 px-4 whitespace-nowrap min-w-[160px]">Invite Link</th>
+                    <th className="py-3.5 px-4 whitespace-nowrap min-w-[120px]">Date</th>
+                    <th className="py-3.5 px-4 text-right whitespace-nowrap min-w-[100px] sticky right-0 bg-slate-50 shadow-[-6px_0_10px_rgba(0,0,0,0.02)]">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">

@@ -1,7 +1,9 @@
 const mongoose = require('mongoose');
 
 const fitmentSchema = new mongoose.Schema({
-  employeeId: { type: String, required: true, unique: true },
+  companyId: { type: mongoose.Schema.Types.ObjectId, ref: 'Company', default: null, index: true },
+  projectId: { type: mongoose.Schema.Types.ObjectId, ref: 'Project', default: null, index: true },
+  employeeId: { type: String, required: true },
   parameters: [{
     parameter: { type: String, required: true },
     response: { type: String, default: '' },
@@ -28,5 +30,7 @@ fitmentSchema.pre('save', function(next) {
   }
   next();
 });
+
+fitmentSchema.index({ projectId: 1, employeeId: 1 }, { unique: true });
 
 module.exports = mongoose.model('Fitment', fitmentSchema);

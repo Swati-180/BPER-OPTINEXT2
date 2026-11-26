@@ -64,44 +64,35 @@ function invalidateSixBySixCache() {
   sixBySixCache.clear();
 }
 
-function normalizeDepartmentKey(dept) {
-  if (!dept || dept === 'All Departments') return '__ALL__';
-  return String(dept).trim();
+function normalizeCacheKey(dept, tenantScope = {}) {
+  const deptKey = !dept || dept === 'All Departments' ? '__ALL__' : String(dept).trim();
+  const companyKey = tenantScope.companyId ? String(tenantScope.companyId) : 'default';
+  const projectKey = tenantScope.projectId ? String(tenantScope.projectId) : 'default';
+  return `${companyKey}::${projectKey}::${deptKey}`;
 }
 
-function getDepartmentFilter(dept) {
-  if (!dept || dept === 'All Departments') {
-    return { $in: ['Finance & Accounting', 'F&A', 'Finance', 'Finance & Accounts', 'HR', 'Human Resources', 'Logistics', 'SCM'] };
-  }
-  const clean = String(dept).trim();
-  if (clean === 'Finance & Accounting' || clean === 'F&A' || clean === 'Finance' || clean === 'Finance & Accounts') {
-    return { $in: ['Finance & Accounting', 'F&A', 'Finance', 'Finance & Accounts'] };
-  }
-  if (clean === 'HR' || clean === 'Human Resources') {
-    return { $in: ['HR', 'Human Resources'] };
-  }
-  return clean;
-}
-
-function normalizeDepartmentName(dept) {
-  const d = String(dept || '').trim();
-  if (d === 'F&A' || d === 'Finance' || d === 'Finance & Accounts') return 'Finance & Accounting';
-  if (d === 'Human Resources') return 'HR';
-  return d || 'Finance & Accounting';
-}
-
-async function computeSixBySixData(department) {
+async function computeSixBySixData(department, tenantScope = {}) {
   const [standardMonthlyHours, categoryMap] = await Promise.all([
     getEffectiveStandardMonthlyHours(),
     getEffectiveCategoryMap()
   ]);
   // 1. Sync new processes from WDT submissions
   const { SYSTEM_TEST_ACCOUNT_IDS } = require('../utils/gradeStandardizer');
-  const deptFilter = getDepartmentFilter(department);
+  const VALID_DEPARTMENTS = ['Finance & Accounting', 'HR', 'Logistics', 'SCM'];
   let matchStage = {
     'employee.employeeId': { $nin: SYSTEM_TEST_ACCOUNT_IDS },
-    'employee.department': deptFilter
   };
+  if (tenantScope.companyId) {
+    matchStage.companyId = tenantScope.companyId;
+  }
+  if (tenantScope.projectId) {
+    matchStage.projectId = tenantScope.projectId;
+  }
+  if (department && department !== 'All Departments') {
+     matchStage['employee.department'] = department;
+  } else {
+     matchStage['employee.department'] = { $in: VALID_DEPARTMENTS };
+  }
   
   // High-performance aggregation: $project needed fields before $unwind to avoid duplicating large document structures
   const aggregatedProcesses = await WDTSubmission.aggregate([
@@ -139,9 +130,13 @@ async function computeSixBySixData(department) {
   ]);
   
   // 2. Synchronize newly aggregated processes into ProcessAnalysis using batching (O(1) lookups)
-  const existingProcesses = await ProcessAnalysis.find({
+  const existingProcessQuery = {
     department: matchStage['employee.department']
-  }).select('process').lean();
+  };
+  if (tenantScope.companyId) existingProcessQuery.companyId = tenantScope.companyId;
+  if (tenantScope.projectId) existingProcessQuery.projectId = tenantScope.projectId;
+
+  const existingProcesses = await ProcessAnalysis.find(existingProcessQuery).select('process').lean();
   
   const existingProcessSet = new Set(existingProcesses.map(p => p.process));
   const newProcessDocs = [];
@@ -156,6 +151,8 @@ async function computeSixBySixData(department) {
     if (!existingProcessSet.has(processName)) {
       const effectiveType = resolveActivityCategory(item._id?.majorProcess, item._id?.type, categoryMap);
       newProcessDocs.push({
+        companyId: tenantScope.companyId || null,
+        projectId: tenantScope.projectId || null,
         process: processName,
         department: deptName,
         type: effectiveType || 'core',
@@ -176,9 +173,18 @@ async function computeSixBySixData(department) {
   }
 
   // 3. Query with strict matching
-  const query = { department: deptFilter };
-  const rawData = await ProcessAnalysis.find(query).sort({ department: 1, type: 1 }).lean();
-  const data = rawData.map(r => ({ ...r, department: normalizeDepartmentName(r.department) }));
+  let query = {};
+  if (tenantScope.companyId) query.companyId = tenantScope.companyId;
+  if (tenantScope.projectId) query.projectId = tenantScope.projectId;
+
+  if (department && department !== 'All Departments') {
+     query.department = department;
+  } else {
+     // Return all authoritative departments
+     query.department = { $in: VALID_DEPARTMENTS };
+  }
+
+  const data = await ProcessAnalysis.find(query).sort({ department: 1, type: 1 }).lean();
   const taxonomyData = await Taxonomy.find({}).lean();
 
   // Build O(1) index for Taxonomy lookup
@@ -218,8 +224,7 @@ async function computeSixBySixData(department) {
                 majorToTax.get(normalized.process);
 
     const key = `${normalized.department}::${normalized.process}`;
-    const fte = fteLookup[key] || fteLookup[normalized.process] || fteLookup[normalized.process.toLowerCase()] || 0;
-    const isConsolidationCandidate = normalized.consolidated === true || fte >= (26 / 160);
+    const fte = fteLookup[key] || 0;
 
     let subProcessGroup = tax && tax.process ? tax.process : 'Unknown';
     if (subProcessGroup.startsWith('Payroll - ')) {
@@ -241,8 +246,6 @@ async function computeSixBySixData(department) {
       ...normalized,
       assessmentStatus,
       isPendingAssessment: isAllPending,
-      isConsolidationCandidate,
-      screeningSignal: isConsolidationCandidate ? 'Consolidation Candidate (≥26h / Assessed)' : null,
       tower: tax ? tax.majorProcess : 'Unknown',
       subProcessGroup,
       displayProcess,
@@ -257,7 +260,7 @@ async function computeSixBySixData(department) {
 const getSixBySixData = async (req, res) => {
   try {
     const { department } = req.query;
-    const cacheKey = normalizeDepartmentKey(department);
+    const cacheKey = normalizeCacheKey(department, req.tenantScope || {});
     const now = Date.now();
 
     const cached = sixBySixCache.get(cacheKey);
@@ -271,7 +274,7 @@ const getSixBySixData = async (req, res) => {
       return res.json(data);
     }
 
-    const inFlightPromise = computeSixBySixData(department)
+    const inFlightPromise = computeSixBySixData(department, req.tenantScope || {})
       .then((data) => {
         sixBySixCache.set(cacheKey, {
           data,
@@ -315,15 +318,15 @@ const bulkUpdateProcessRecords = async (req, res) => {
     const { rows } = req.body;
     if (!Array.isArray(rows)) return res.status(400).json({ message: 'rows must be an array' });
 
+    // Iterate safely to ensure the 'pre' save hooks apply securely computing the score natively 
     const results = [];
     for (const row of rows) {
-      if (!row._id) continue;
       const record = await ProcessAnalysis.findById(row._id);
       if (record) {
-        if (Array.isArray(row.criteria)) record.criteria = row.criteria;
-        if (row.consolidated !== undefined) record.consolidated = row.consolidated;
-        await record.save();
-        results.push(record);
+         record.criteria = row.criteria;
+         record.consolidated = row.consolidated;
+         await record.save(); // pre-save hook handles calculating .score correctly!
+         results.push(record);
       }
     }
     

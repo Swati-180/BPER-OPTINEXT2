@@ -39,6 +39,8 @@ const exportRoutes = require('./routes/export');
 const inviteRoutes = require('./routes/invite');
 const adminWhitelistRoutes = require('./routes/adminWhitelist');
 const configRoutes = require('./routes/config');
+const companyRoutes = require('./routes/company');
+const projectRoutes = require('./routes/project');
 
 const app = express();
 
@@ -84,6 +86,8 @@ app.use('/api/export', exportRoutes);
 app.use('/api/invite', inviteRoutes);
 app.use('/api/admin-whitelist', adminWhitelistRoutes);
 app.use('/api/config', configRoutes);
+app.use('/api/companies', companyRoutes);
+app.use('/api/projects', projectRoutes);
 
 async function startServer() {
   const fs = require('fs');
@@ -94,9 +98,9 @@ async function startServer() {
 
   if (fs.existsSync(localTestInfo)) {
     try {
-      const { uri } = JSON.parse(fs.readFileSync(localTestInfo, 'utf-8'));
+      const { uri, dbName } = JSON.parse(fs.readFileSync(localTestInfo, 'utf-8'));
       if (uri && (uri.startsWith('mongodb://127.0.0.1:27018') || uri.startsWith('mongodb://localhost:27018'))) {
-        mongoUri = uri;
+        mongoUri = uri.endsWith('/') ? `${uri}${dbName || 'bper_isolated_local_test'}` : `${uri}/${dbName || 'bper_isolated_local_test'}`;
         console.log(`[ISOLATION MODE] Connecting exclusively to verified isolated local test DB: ${mongoUri}`);
       }
     } catch (e) {

@@ -1,4 +1,4 @@
-﻿import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   AlertCircle,
@@ -644,7 +644,7 @@ function CompactCapacitySummaryCard({
             <span className="font-bold text-[#1E5EAB]">{staffedCapacityFte.toFixed(2)} FTE</span>
           </div>
           <p className="text-[11px] text-[#718BAA] mt-1">
-            {filledCount} active filled staff Ã— {baselineHours} standard hours.
+            {filledCount} active filled staff × {baselineHours} standard hours.
           </p>
         </div>
 
@@ -817,7 +817,7 @@ export function WorkforceCapacityWaterfall({
           </div>
           <div>
             <span className="font-bold">Planned Vacancy Clarification:</span>{' '}
-            Stage 4 (Planned Vacancy Workload: {plannedVacancyHours.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}h Â· {plannedVacancyFte.toFixed(2)} FTE) represents budgeted, documented process requirements designated for {vacantPositionsCount} open positions. It is planned operational demand awaiting staffing, and is strictly distinguished from currently active staffed capacity.
+            Stage 4 (Planned Vacancy Workload: {plannedVacancyHours.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}h · {plannedVacancyFte.toFixed(2)} FTE) represents budgeted, documented process requirements designated for {vacantPositionsCount} open positions. It is planned operational demand awaiting staffing, and is strictly distinguished from currently active staffed capacity.
           </div>
         </div>
       </div>
@@ -827,14 +827,14 @@ export function WorkforceCapacityWaterfall({
 
 /**
  * Responsive SVG implementation of the conventional Floating-Bar Waterfall Chart.
- *
+ * 
  * Computes:
  * - Stage 1 (Base): from 0 to 39,680h
  * - Stage 2 (Positive floating bar): from 39,680h to 60,611.64h
  * - Stage 3 (Subtotal): from 0 to 60,611.64h
  * - Stage 4 (Positive floating bar): from 60,611.64h to 79,913.91h
  * - Stage 5 (Final total): from 0 to 79,913.91h
- *
+ * 
  * Includes dotted connecting bridge lines between contiguous transitions,
  * crisp value labels, and hover tooltips.
  */

@@ -189,17 +189,17 @@ export default function FormStatus() {
           </div>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse min-w-225">
+        <div className="bper-table-container">
+          <table className="w-full text-left border-collapse min-w-[980px]">
             <thead>
-              <tr className="bg-slate-50 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 border-y border-slate-200">
-                <th className="px-6 py-4">Sr No.</th>
-                <th className="px-6 py-4">Form ID</th>
-                <th className="px-6 py-4">Submitted Date</th>
-                <th className="px-6 py-4">Form Status</th>
-                <th className="px-6 py-4">Check Comments</th>
-                <th className="px-6 py-4">Pending From</th>
-                <th className="px-6 py-4">Action</th>
+              <tr className="bg-slate-50 text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-600 border-y border-slate-200">
+                <th className="px-6 py-4 whitespace-nowrap min-w-[90px]">Sr No.</th>
+                <th className="px-6 py-4 whitespace-nowrap min-w-[150px]">Form ID</th>
+                <th className="px-6 py-4 whitespace-nowrap min-w-[160px]">Submitted Date</th>
+                <th className="px-6 py-4 whitespace-nowrap min-w-[140px]">Form Status</th>
+                <th className="px-6 py-4 whitespace-nowrap min-w-[150px]">Check Comments</th>
+                <th className="px-6 py-4 whitespace-nowrap min-w-[150px]">Pending From</th>
+                <th className="px-6 py-4 text-right whitespace-nowrap min-w-[120px] sticky right-0 bg-slate-50 shadow-[-6px_0_10px_rgba(0,0,0,0.02)]">Action</th>
               </tr>
             </thead>
             <tbody>

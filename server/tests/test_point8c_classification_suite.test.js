@@ -1,8 +1,8 @@
-﻿/**
+/**
  * test_point8c_classification_suite.test.js
- *
+ * 
  * Functional Verification Suite for Point 8(c): Configurable Core/Support Classification.
- *
+ * 
  * Tests:
  * 1. Existing mappings load correctly (18 processes, case-insensitive normalization).
  * 2. Admin can change a Major Process from Core to Support and back.
@@ -24,7 +24,7 @@ require('dotenv').config({ path: path.join(rootDir, '.env') });
 
 const JWT_SECRET = process.env.JWT_SECRET || 'bper_jwt_secret_key_2024';
 
-const adminToken = jwt.sign({ id: '6abe04ff6d2aa9e94496fc70', userId: '6abe04ff6d2aa9e94496fc70', role: 'admin', email: 'admin@bper.com' }, JWT_SECRET);
+const adminToken = jwt.sign({ id: '6b06c85eb4a87cbf1f4d5076', userId: '6b06c85eb4a87cbf1f4d5076', role: 'super_admin', email: 'superadmin@bper.test' }, JWT_SECRET);
 const employeeToken = jwt.sign({ id: '6abe04ff6d2aa9e94496fc71', userId: '6abe04ff6d2aa9e94496fc71', role: 'employee', email: 'employee@bper.com' }, JWT_SECRET);
 
 const BASE_URL = 'http://127.0.0.1:5000';
@@ -34,13 +34,25 @@ async function runPoint8cTests() {
   console.log('POINT 8(c): CONFIGURABLE CORE/SUPPORT CLASSIFICATION TEST SUITE');
   console.log('================================================================\n');
 
+  if (mongoose.connection.readyState === 0) {
+    await mongoose.connect(process.env.MONGODB_URI || 'mongodb://127.0.0.1:27018/bper_isolated_local_test');
+  }
+
   const testResults = [];
 
   // Helper for authenticated requests
   const apiCall = async (endpoint, method = 'GET', body = null, token = adminToken) => {
+    // Resolve OptiNext FIN_OPS project ID for tenant-scoped endpoints
+    const Company = require('../models/Company');
+    const Project = require('../models/Project');
+    const comp = await Company.findOne({ code: 'OPTINEXT' });
+    const proj = await Project.findOne({ code: 'FIN_OPS' });
+
     const headers = {
       Authorization: `Bearer ${token}`,
-      'Content-Type': 'application/json'
+      'Content-Type': 'application/json',
+      ...(comp && { 'x-company-id': comp._id.toString() }),
+      ...(proj && { 'x-project-id': proj._id.toString() })
     };
     const options = { method, headers };
     if (body) options.body = JSON.stringify(body);
@@ -61,7 +73,7 @@ async function runPoint8cTests() {
       const mappings = res.data?.processCategoryMappings;
       assert(Array.isArray(mappings), 'processCategoryMappings must be an array');
       assert.strictEqual(mappings.length, 18, `Expected exactly 18 mapped major processes, got ${mappings?.length}`);
-
+      
       const others = mappings.find(m => m.majorProcess === 'Others');
       assert.ok(others, 'Others process must be present');
       assert.strictEqual(others.category, 'support', 'Others default category must be support');
@@ -70,8 +82,8 @@ async function runPoint8cTests() {
       assert.ok(ap, 'Accounts Payable process must be present');
       assert.strictEqual(ap.category, 'core', 'Accounts Payable default category must be core');
 
-      console.log('âœ… PASS: Test 1 â€“ 18 baseline Major Process mappings loaded accurately.');
-      testResults.push({ test: 'Test 1 â€“ Existing mappings load correctly', status: 'PASS' });
+      console.log('✅ PASS: Test 1 – 18 baseline Major Process mappings loaded accurately.');
+      testResults.push({ test: 'Test 1 – Existing mappings load correctly', status: 'PASS' });
     }
 
     // -------------------------------------------------------------------------
@@ -110,8 +122,8 @@ async function runPoint8cTests() {
       const othersReverted = getRes2.data.processCategoryMappings.find(m => m.majorProcess === 'Others');
       assert.strictEqual(othersReverted.category, 'support', '"Others" should be reverted to "support"');
 
-      console.log('âœ… PASS: Test 2 â€“ Admin can change classification from Support to Core and back cleanly.');
-      testResults.push({ test: 'Test 2 â€“ Admin reclassification (round-trip)', status: 'PASS' });
+      console.log('✅ PASS: Test 2 – Admin can change classification from Support to Core and back cleanly.');
+      testResults.push({ test: 'Test 2 – Admin reclassification (round-trip)', status: 'PASS' });
     }
 
     // -------------------------------------------------------------------------
@@ -127,8 +139,8 @@ async function runPoint8cTests() {
       );
       assert.strictEqual(empAttempt.status, 403, `Expected HTTP 403, got ${empAttempt.status}`);
 
-      console.log('âœ… PASS: Test 3 â€“ Non-admin modification rejected with HTTP 403 Forbidden.');
-      testResults.push({ test: 'Test 3 â€“ Non-admin access rejection', status: 'PASS' });
+      console.log('✅ PASS: Test 3 – Non-admin modification rejected with HTTP 403 Forbidden.');
+      testResults.push({ test: 'Test 3 – Non-admin access rejection', status: 'PASS' });
     }
 
     // -------------------------------------------------------------------------
@@ -155,8 +167,8 @@ async function runPoint8cTests() {
       assert.strictEqual(invalidCatAttempt.status, 400, `Expected HTTP 400 for invalid category, got ${invalidCatAttempt.status}`);
       assert(invalidCatAttempt.data?.message?.includes('Invalid category'), `Expected category error, got: ${invalidCatAttempt.data?.message}`);
 
-      console.log('âœ… PASS: Test 4 â€“ Duplicate (case-insensitive) and invalid categories rejected with HTTP 400.');
-      testResults.push({ test: 'Test 4 â€“ Duplicate and invalid mappings rejection', status: 'PASS' });
+      console.log('✅ PASS: Test 4 – Duplicate (case-insensitive) and invalid categories rejected with HTTP 400.');
+      testResults.push({ test: 'Test 4 – Duplicate and invalid mappings rejection', status: 'PASS' });
     }
 
     // -------------------------------------------------------------------------
@@ -169,8 +181,8 @@ async function runPoint8cTests() {
       assert(Array.isArray(res.data?.unmappedProcesses), 'unmappedProcesses array must be returned');
       assert.strictEqual(res.data.unmappedProcesses.length, 0, 'All 18 current operational processes must be covered');
 
-      console.log('âœ… PASS: Test 5 â€“ Unmapped process detection returned cleanly (0 unmapped in active scope).');
-      testResults.push({ test: 'Test 5 â€“ Unmapped process detection', status: 'PASS' });
+      console.log('✅ PASS: Test 5 – Unmapped process detection returned cleanly (0 unmapped in active scope).');
+      testResults.push({ test: 'Test 5 – Unmapped process detection', status: 'PASS' });
     }
 
     // -------------------------------------------------------------------------
@@ -189,8 +201,8 @@ async function runPoint8cTests() {
       assert.strictEqual(totalHours, 79913.91, `Expected totalHours 79913.91, got ${totalHours}`);
       assert.strictEqual(Number((coreHours + supportHours).toFixed(2)), totalHours, 'Core + Support must equal Total Hours');
 
-      console.log('âœ… PASS: Test 6 â€“ Utilization report Core (71,587.07h) + Support (8,326.84h) reconcile exactly.');
-      testResults.push({ test: 'Test 6 â€“ Reporting consistency across endpoints', status: 'PASS' });
+      console.log('✅ PASS: Test 6 – Utilization report Core (71,587.07h) + Support (8,326.84h) reconcile exactly.');
+      testResults.push({ test: 'Test 6 – Reporting consistency across endpoints', status: 'PASS' });
     }
 
     // -------------------------------------------------------------------------
@@ -223,8 +235,8 @@ async function runPoint8cTests() {
       );
       await apiCall('/api/config/assumptions', 'PUT', { processCategoryMappings: restoreMappings });
 
-      console.log('âœ… PASS: Test 7 â€“ Reclassification preserves exact total hours (79,913.91h) with mathematical delta shift.');
-      testResults.push({ test: 'Test 7 â€“ Total hours invariance under reclassification', status: 'PASS' });
+      console.log('✅ PASS: Test 7 – Reclassification preserves exact total hours (79,913.91h) with mathematical delta shift.');
+      testResults.push({ test: 'Test 7 – Total hours invariance under reclassification', status: 'PASS' });
     }
 
     // -------------------------------------------------------------------------
@@ -258,8 +270,8 @@ async function runPoint8cTests() {
       const restored = await apiCall('/api/reports/utilization');
       assert.strictEqual(restored.data?.summary?.totalFte, 499.46, 'FTE must return to 499.46 at 160h');
 
-      console.log('âœ… PASS: Test 8 â€“ Baseline modification (161h) recalculated FTE (496.36 FTE) without changing hours (79,913.91h), restored cleanly to 160h (499.46 FTE).');
-      testResults.push({ test: 'Test 8 â€“ Baseline configuration recalculation & restore', status: 'PASS' });
+      console.log('✅ PASS: Test 8 – Baseline modification (161h) recalculated FTE (496.36 FTE) without changing hours (79,913.91h), restored cleanly to 160h (499.46 FTE).');
+      testResults.push({ test: 'Test 8 – Baseline configuration recalculation & restore', status: 'PASS' });
     }
 
     console.log('\n================================================================');
@@ -268,7 +280,7 @@ async function runPoint8cTests() {
 
     return testResults;
   } catch (err) {
-    console.error('\nâŒ TEST SUITE FAILED:', err);
+    console.error('\n❌ TEST SUITE FAILED:', err);
     throw err;
   }
 }

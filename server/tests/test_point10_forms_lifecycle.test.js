@@ -1,6 +1,6 @@
-﻿/**
+/**
  * POINT 10: COMPLETE FORM SUBMISSION, PERSISTENCE, & RETRIEVAL VERIFICATION
- *
+ * 
  * Verifies in an isolated in-memory MongoDB environment:
  * 1. Employee form submission validation & persistence via submitWDT
  * 2. Proper status transition to 'Under Review'
@@ -72,7 +72,7 @@ async function runPoint10TestSuite() {
       maxMonthlyHours: 160
     });
 
-    // â”€â”€â”€ TEST 1: Empty Queue Check (No Indefinite Skeleton) â”€â”€â”€
+    // ─── TEST 1: Empty Queue Check (No Indefinite Skeleton) ───
     console.log('--- Test 1: Empty Queue Verification ---');
     let req = { user: { userId: adminUser._id }, query: { summary: 'true' } };
     let res = createMockRes();
@@ -80,9 +80,9 @@ async function runPoint10TestSuite() {
     assert.strictEqual(res.statusCode, 200);
     assert.strictEqual(Array.isArray(res.body), true);
     assert.strictEqual(res.body.length, 0);
-    console.log('âœ… PASS: Empty queue returns HTTP 200 with empty array (client displays proper empty state).');
+    console.log('✅ PASS: Empty queue returns HTTP 200 with empty array (client displays proper empty state).');
 
-    // â”€â”€â”€ TEST 2: Valid Employee Form Submission (Upload) â”€â”€â”€
+    // ─── TEST 2: Valid Employee Form Submission (Upload) ───
     console.log('\n--- Test 2: Employee Form Submission (Upload) ---');
     const submissionPayload = {
       referenceId: 'BPER-EMP-9001-99881',
@@ -152,9 +152,9 @@ async function runPoint10TestSuite() {
     assert.strictEqual(res.statusCode, 201);
     assert.strictEqual(res.body.referenceId, 'BPER-EMP-9001-99881');
     assert.strictEqual(res.body.status, 'Under Review');
-    console.log('âœ… PASS: Form successfully submitted and persisted with HTTP 201 Created.');
+    console.log('✅ PASS: Form successfully submitted and persisted with HTTP 201 Created.');
 
-    // â”€â”€â”€ TEST 3: Appears in Admin Pending Queue â”€â”€â”€
+    // ─── TEST 3: Appears in Admin Pending Queue ───
     console.log('\n--- Test 3: Admin Summary Queue Inspection ---');
     req = { user: { userId: adminUser._id }, query: { summary: 'true' } };
     res = createMockRes();
@@ -168,9 +168,9 @@ async function runPoint10TestSuite() {
     // In summary mode, rows is sliced to 1 for comment preview
     assert.strictEqual(summaryItem.payload.rows.length, 1);
     assert.strictEqual(summaryItem.payload.rows[0].comments, 'High volume ledger postings during close period');
-    console.log('âœ… PASS: Submission appears in Admin Pending queue with summary preview data.');
+    console.log('✅ PASS: Submission appears in Admin Pending queue with summary preview data.');
 
-    // â”€â”€â”€ TEST 4: On-Demand Detail Loading (Full Activity Rows) â”€â”€â”€
+    // ─── TEST 4: On-Demand Detail Loading (Full Activity Rows) ───
     console.log('\n--- Test 4: On-Demand Detail Loading by Reference ID ---');
     req = { user: { userId: adminUser._id }, params: { referenceId: 'BPER-EMP-9001-99881' } };
     res = createMockRes();
@@ -182,9 +182,9 @@ async function runPoint10TestSuite() {
     assert.strictEqual(detailItem.payload.rows.length, 2);
     assert.strictEqual(detailItem.payload.rows[0].subProcess, 'Post Month-End Accruals');
     assert.strictEqual(detailItem.payload.rows[1].subProcess, 'Review Intercompany Balances');
-    console.log('âœ… PASS: Full activity detail resolves cleanly without getting stuck in loading state.');
+    console.log('✅ PASS: Full activity detail resolves cleanly without getting stuck in loading state.');
 
-    // â”€â”€â”€ TEST 5: Manager Review & Status Transition â”€â”€â”€
+    // ─── TEST 5: Manager Review & Status Transition ───
     console.log('\n--- Test 5: Manager Review Approval & Recall ---');
     // Approve
     req = {

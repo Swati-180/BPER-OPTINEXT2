@@ -1,15 +1,15 @@
-﻿/**
+/**
  * test_blank_submission_regression.test.js
- *
+ * 
  * Regression suite for Point 8(b): Blank Submission Validation & Profile Integrity.
- *
+ * 
  * Tests:
  * 1. Test 1 - Empty submission (payload.rows = []): Returns HTTP 400; no submission created.
  * 2. Test 2 - Zero-hour submission (empty description & 0 hours): Returns HTTP 400; no submission created.
  * 3. Test 3 - Blank submission approval: Attempting to approve an artificially blank submission returns HTTP 400; status unchanged.
  * 4. Test 4 - Vacancy profile integrity: 78 planned vacancy profiles have isVacant === true, positive workload hours, and existing rows.
  * 5. Test 5 - Filled employee profile integrity: 248 filled employee profiles have isVacant === false, positive workload hours, and existing rows.
- *
+ * 
  * Safety & Isolation:
  * - Tests 1, 2, and 3 run strictly against an ephemeral MongoMemoryServer instance (100% isolated, zero production DB writes).
  * - Tests 4 and 5 run read-only against the live database without performing any create, update, or delete operations.
@@ -110,9 +110,9 @@ async function runRegressionSuite() {
       );
       assert.strictEqual(countAfterTest1, 0, 'No document should have been created in database');
 
-      console.log('âœ… PASS: Test 1 â€“ Empty submission correctly rejected with HTTP 400; 0 submissions created.');
+      console.log('✅ PASS: Test 1 – Empty submission correctly rejected with HTTP 400; 0 submissions created.');
       testResults.push({
-        test: 'Test 1 â€“ Empty submission',
+        test: 'Test 1 – Empty submission',
         status: 'PASS',
         httpStatus: res1.statusCode,
         isolation: 'MongoMemoryServer (in-memory isolated)',
@@ -161,9 +161,9 @@ async function runRegressionSuite() {
       );
       assert.strictEqual(countAfterTest2, 0, 'No document should have been created in database');
 
-      console.log('âœ… PASS: Test 2 â€“ Zero-hour submission correctly rejected with HTTP 400; 0 submissions created.');
+      console.log('✅ PASS: Test 2 – Zero-hour submission correctly rejected with HTTP 400; 0 submissions created.');
       testResults.push({
-        test: 'Test 2 â€“ Zero-hour submission',
+        test: 'Test 2 – Zero-hour submission',
         status: 'PASS',
         httpStatus: res2.statusCode,
         isolation: 'MongoMemoryServer (in-memory isolated)',
@@ -217,9 +217,9 @@ async function runRegressionSuite() {
       const subInDb = await WDTSubmission.findOne({ referenceId: 'TEST-BLANK-SUB-001' });
       assert.strictEqual(subInDb.status, 'Under Review', 'Submission status must remain Under Review');
 
-      console.log('âœ… PASS: Test 3 â€“ Approval of blank form rejected with HTTP 400; status remains Under Review.');
+      console.log('✅ PASS: Test 3 – Approval of blank form rejected with HTTP 400; status remains Under Review.');
       testResults.push({
-        test: 'Test 3 â€“ Blank submission approval',
+        test: 'Test 3 – Blank submission approval',
         status: 'PASS',
         httpStatus: res3.statusCode,
         isolation: 'MongoMemoryServer (in-memory isolated)',
@@ -282,9 +282,9 @@ async function runRegressionSuite() {
       assert.strictEqual(emptyRowsCount, 0, 'Zero vacancy profiles may have empty activity rows');
       assert(totalVacantHours > 19000, `Total vacant hours must be ~19,302h, got ${totalVacantHours}`);
 
-      console.log(`âœ… PASS: Test 4 â€“ All 78 vacancy profiles verified (isVacant evaluation=true, totalHours=${totalVacantHours.toFixed(2)}h, 0 blank profiles).`);
+      console.log(`✅ PASS: Test 4 – All 78 vacancy profiles verified (isVacant evaluation=true, totalHours=${totalVacantHours.toFixed(2)}h, 0 blank profiles).`);
       testResults.push({
-        test: 'Test 4 â€“ Vacancy profile integrity',
+        test: 'Test 4 – Vacancy profile integrity',
         status: 'PASS',
         countVerified: vacancyProfiles.length,
         totalHours: Number(totalVacantHours.toFixed(2)),
@@ -325,9 +325,9 @@ async function runRegressionSuite() {
       assert.strictEqual(emptyRowsCount, 0, 'Zero filled profiles may have empty activity rows');
       assert(totalStaffedHours > 60000, `Total staffed hours must be ~60,611h, got ${totalStaffedHours}`);
 
-      console.log(`âœ… PASS: Test 5 â€“ All 248 filled employee profiles verified (isVacant evaluation=false, totalHours=${totalStaffedHours.toFixed(2)}h, 0 blank profiles).`);
+      console.log(`✅ PASS: Test 5 – All 248 filled employee profiles verified (isVacant evaluation=false, totalHours=${totalStaffedHours.toFixed(2)}h, 0 blank profiles).`);
       testResults.push({
-        test: 'Test 5 â€“ Filled employee profile integrity',
+        test: 'Test 5 – Filled employee profile integrity',
         status: 'PASS',
         countVerified: filledProfiles.length,
         totalHours: Number(totalStaffedHours.toFixed(2)),
@@ -349,7 +349,7 @@ async function runRegressionSuite() {
       try { await memoryServer.stop(); } catch (_) {}
     }
     try { await mongoose.disconnect(); } catch (_) {}
-    console.error('\nâŒ REGRESSION SUITE FAILED:', err);
+    console.error('\n❌ REGRESSION SUITE FAILED:', err);
     throw err;
   }
 }
