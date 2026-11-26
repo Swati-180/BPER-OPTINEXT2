@@ -1,6 +1,6 @@
 /**
  * POINT 9: EMPLOYEE INVITES LIFECYCLE & PARTITION REGRESSION SUITE
- *
+ * 
  * Tests the complete two-dimensional invite architecture:
  * 1. The exhaustive mathematical partition (N = sum(categories))
  * 2. All 4 registration combinations:
@@ -104,7 +104,7 @@ async function runTestSuite() {
   await mongoose.connect(uri);
 
   try {
-    // â”€â”€â”€ TEST 1: The 4 Registration Combinations â”€â”€â”€
+    // ─── TEST 1: The 4 Registration Combinations ───
     console.log('--- Test 1: Testing All 4 Registration Combinations ---');
 
     // Combination A: pending + registered
@@ -164,17 +164,17 @@ async function runTestSuite() {
     assert.strictEqual(updatedD.registrationStatus, 'registered');
     assert.strictEqual(updatedD.deliveryStatus, 'unknown');
 
-    console.log('âœ… PASS: All 4 registration combinations succeeded and stamped registeredAt without erasing delivery history.');
+    console.log('✅ PASS: All 4 registration combinations succeeded and stamped registeredAt without erasing delivery history.');
 
-    // â”€â”€â”€ TEST 2: Exhaustive Partition Verification â”€â”€â”€
+    // ─── TEST 2: Exhaustive Partition Verification ───
     console.log('\n--- Test 2: Exhaustive Mutually Exclusive Top-Level Partition ---');
     const allRegistered = await EmployeeInvite.find({});
     const { counts: pCounts, partitionSum } = calculateExhaustiveCounts(allRegistered);
     assert.strictEqual(pCounts.registered, 4);
     assert.strictEqual(partitionSum, allRegistered.length, 'Partition sum must equal total invitations');
-    console.log(`âœ… PASS: Partition invariant confirmed: Total (${allRegistered.length}) === PartitionSum (${partitionSum}).`);
+    console.log(`✅ PASS: Partition invariant confirmed: Total (${allRegistered.length}) === PartitionSum (${partitionSum}).`);
 
-    // â”€â”€â”€ TEST 3: Resend History Retention from 4 Different States â”€â”€â”€
+    // ─── TEST 3: Resend History Retention from 4 Different States ───
     console.log('\n--- Test 3: Resend History Retention from 4 States ---');
 
     // State 1: Resend from pending
@@ -235,9 +235,9 @@ async function runTestSuite() {
     assert.strictEqual(updatedR4.lifecycleHistory[0].registrationStatus, 'expired');
     assert.ok(updatedR4.expiresAt > new Date()); // Fresh 7 days
 
-    console.log('âœ… PASS: Resend from pending, email_sent, delivery_failed, and expired all preserved full lifecycle history.');
+    console.log('✅ PASS: Resend from pending, email_sent, delivery_failed, and expired all preserved full lifecycle history.');
 
-    // â”€â”€â”€ TEST 4: Permanent Registration Failures Contract & Precedence over Expired â”€â”€â”€
+    // ─── TEST 4: Permanent Registration Failures Contract & Precedence over Expired ───
     console.log('\n--- Test 4: Permanent Registration Failure Rejection & Precedence ---');
     // Create a vacant user
     await User.create({
@@ -276,9 +276,9 @@ async function runTestSuite() {
     const checkExhaustive = calculateExhaustiveCounts([expiredFailedInvite]);
     assert.strictEqual(checkExhaustive.counts.registrationFailed, 1, 'Must count as registrationFailed');
     assert.strictEqual(checkExhaustive.counts.expiredUnregistered, 0, 'Must not be double-counted under expired');
-    console.log('âœ… PASS: Permanent registration_failed takes strict precedence over expired token.');
+    console.log('✅ PASS: Permanent registration_failed takes strict precedence over expired token.');
 
-    // â”€â”€â”€ TEST 5: The Reviewer's 8-Person Business Scenario â”€â”€â”€
+    // ─── TEST 5: The Reviewer's 8-Person Business Scenario ───
     console.log('\n--- Test 5: Reconciling Reviewer 8-Person Scenario In-Memory ---');
     // Clean collection
     await EmployeeInvite.deleteMany({});
@@ -328,7 +328,7 @@ async function runTestSuite() {
     assert.strictEqual(scCounts.registrationFailed, 1);
     assert.strictEqual(scSum, 8);
 
-    console.log('âœ… PASS: Reviewer scenario reconciled: 8 Total = 1 Pending + 4 Registered + 2 Awaiting + 1 Reg Failed.');
+    console.log('✅ PASS: Reviewer scenario reconciled: 8 Total = 1 Pending + 4 Registered + 2 Awaiting + 1 Reg Failed.');
 
     console.log('\n================================================================');
     console.log('ALL POINT 9 TESTS PASSED PERFECTLY!');
@@ -344,3 +344,4 @@ runTestSuite().catch(err => {
   console.error('Test suite failed:', err);
   process.exit(1);
 });
+

@@ -13,7 +13,7 @@
  * 9. Configurable staleTime and TTL expiration
  */
 
-import { loadAuthUser } from './authStorage';
+import { loadAuthUser, loadTenantContext } from './authStorage';
 
 interface CacheEntry<T> {
   data: T;
@@ -53,6 +53,8 @@ export class QueryCacheManager {
     if (typeof window !== 'undefined') {
       // Clear or isolate on logout / auth-cleared
       window.addEventListener('bper:auth-cleared', () => this.clearAll());
+      // Invalidate all tenant-specific cached data when switching projects/tenants
+      window.addEventListener('bper:tenant-changed', () => this.clearAll());
       // Invalidate on mutations
       window.addEventListener('bper:data-updated', () => this.invalidateMatching(/.*\/reports\/.*/));
       window.addEventListener('bper:assumptions-updated', () => this.invalidateMatching(/.*(\/reports\/|\/config\/).*/));
@@ -65,9 +67,11 @@ export class QueryCacheManager {
    */
   public buildScopeKey(endpoint: string): string {
     const user = loadAuthUser();
+    const tenant = loadTenantContext();
     const userEmail = user?.email || 'anonymous';
     const userRole = user?.role || 'guest';
-    return `${userEmail}::${userRole}::${endpoint}`;
+    const tenantPrefix = tenant?.projectId ? `${tenant.companyId || 'c'}::${tenant.projectId}` : 'global';
+    return `${tenantPrefix}::${userEmail}::${userRole}::${endpoint}`;
   }
 
   /**

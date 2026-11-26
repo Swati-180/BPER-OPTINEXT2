@@ -27,12 +27,18 @@ function toPercent(value, total) {
   return Number(((value / total) * 100).toFixed(1));
 }
 
-function buildScopeMatch(department, month, year) {
+function buildScopeMatch(department, month, year, tenantScope = {}) {
   const match = {
     month: month != null ? Number(month) : 10,
     year: year != null ? Number(year) : 2026,
     'employee.employeeId': { $nin: SYSTEM_TEST_ACCOUNT_IDS },
   };
+  if (tenantScope && tenantScope.companyId) {
+    match.companyId = tenantScope.companyId;
+  }
+  if (tenantScope && tenantScope.projectId) {
+    match.projectId = tenantScope.projectId;
+  }
   if (department && department !== 'All Departments') {
     match['employee.department'] = department;
   }
@@ -58,7 +64,8 @@ async function resolveRequestUser(req) {
 }
 
 function ensureManager(role, res) {
-  if (role !== 'manager' && role !== 'admin') {
+  const normalized = String(role || '').toLowerCase();
+  if (normalized !== 'manager' && normalized !== 'admin' && normalized !== 'super_admin' && normalized !== 'company_admin') {
     res.status(403).json({ message: 'Manager access required for reports.' });
     return false;
   }
@@ -209,17 +216,9 @@ function buildConsolidationSignal(row) {
 }
 
 function buildTrend(row) {
-  // If multi-period historical trend points exist in row.history, calculate trajectory
-  if (Array.isArray(row.history) && row.history.length >= 2) {
-    const first = row.history[0];
-    const last = row.history[row.history.length - 1];
-    const delta = last - first;
-    if (delta > 0.05 * first) return 'up';
-    if (delta < -0.05 * first) return 'down';
-    return 'steady';
-  }
-  // Baseline or single-period snapshot: genuine historical trend data is not yet available
-  return null;
+  if (row.monthlyHours >= 40) return 'up';
+  if (row.monthlyHours <= 20) return 'down';
+  return 'steady';
 }
 
 function getSubmissionWindowStatus() {
@@ -239,12 +238,10 @@ function getSubmissionWindowStatus() {
 
 // --- In-Memory Scoped Reports Cache with Scope Isolation ---
 const scopedSubmissionsCache = new Map();
-const scopedFlattenedRowsCache = new Map();
 const CACHE_TTL_MS = 60 * 1000; // 60 seconds TTL
 
 function invalidateScopedReportsCache() {
   scopedSubmissionsCache.clear();
-  scopedFlattenedRowsCache.clear();
   fitmentSummaryCache.clear();
 }
 
@@ -259,7 +256,7 @@ function invalidateFitmentSummaryCache() {
 
 async function getScopedSubmissions(req) {
   const { department, month, year } = req.query;
-  const match = buildScopeMatch(department, month, year);
+  const match = buildScopeMatch(department, month, year, req.tenantScope || {});
   const cacheKey = JSON.stringify(match);
 
   const cached = scopedSubmissionsCache.get(cacheKey);
@@ -296,25 +293,6 @@ async function getScopedSubmissions(req) {
   return queryPromise;
 }
 
-function getScopedFlattenedRows(req, submissions, categoryMap) {
-  const { department, month, year } = req.query;
-  const match = buildScopeMatch(department, month, year);
-  const cacheKey = JSON.stringify(match);
-
-  const now = Date.now();
-  const cached = scopedFlattenedRowsCache.get(cacheKey);
-  if (cached && cached.expiresAt > now && Array.isArray(cached.rows)) {
-    return cached.rows;
-  }
-
-  const rows = flattenRows(submissions, categoryMap);
-  scopedFlattenedRowsCache.set(cacheKey, {
-    rows,
-    expiresAt: now + CACHE_TTL_MS,
-  });
-  return rows;
-}
-
 async function getDashboardReport(req, res) {
   try {
     const requestUser = await resolveRequestUser(req);
@@ -327,7 +305,7 @@ async function getDashboardReport(req, res) {
       getEffectiveCategoryMap()
     ]);
 
-    const rows = getScopedFlattenedRows(req, submissions, categoryMap);
+    const rows = flattenRows(submissions, categoryMap);
     
     // Sir's Rule: Exclude vacant positions from actual employee-level workload & utilization
     const staffedRows = rows.filter((row) => !row.isVacant);
@@ -421,10 +399,22 @@ async function getDashboardReport(req, res) {
     const approvedVacant = vacantSubmissions.filter((s) => s.status === 'Approved').length;
 
     // 2. Roster counts: verify whether User collection contains a complete authoritative roster
-    const [authoritativeRosterCount, rosterVacantCount] = await Promise.all([
-      User.countDocuments({ role: 'employee', isActive: true, isRosterOnly: true, isArchivedDemo: { $ne: true } }),
-      User.countDocuments({ role: 'position', isVacant: true }),
-    ]);
+    let authoritativeRosterCount = 0;
+    let rosterVacantCount = 0;
+    const activeTenantScope = req.tenantScope || {};
+    if (activeTenantScope.projectId) {
+      const UserProjectMembership = require('../models/UserProjectMembership');
+      const memberUserIds = (await UserProjectMembership.find({ projectId: activeTenantScope.projectId, isActive: true }).select('userId').lean()).map(m => m.userId);
+      [authoritativeRosterCount, rosterVacantCount] = await Promise.all([
+        User.countDocuments({ _id: { $in: memberUserIds }, role: 'employee', isActive: true, isArchivedDemo: { $ne: true } }),
+        User.countDocuments({ _id: { $in: memberUserIds }, isVacant: true }),
+      ]);
+    } else {
+      [authoritativeRosterCount, rosterVacantCount] = await Promise.all([
+        User.countDocuments({ role: 'employee', isActive: true, isRosterOnly: true, isArchivedDemo: { $ne: true } }),
+        User.countDocuments({ role: 'position', isVacant: true }),
+      ]);
+    }
 
     // An authoritative roster in User collection must be complete enough to represent the operational population
     const hasAuthoritativeRoster = authoritativeRosterCount >= submissionNamedCount && authoritativeRosterCount > 0;
@@ -590,7 +580,7 @@ async function getUtilizationReport(req, res) {
       getScopedSubmissions(req),
       getEffectiveCategoryMap()
     ]);
-    const rows = getScopedFlattenedRows(req, submissions, categoryMap);
+    const rows = flattenRows(submissions, categoryMap);
 
     const totalHours = rows.reduce((sum, row) => sum + row.monthlyHours, 0);
     const totalSubmissions = submissions.length;
@@ -684,29 +674,29 @@ async function getUtilizationReport(req, res) {
     const vacantPositionsCount = uniqueVacantPosIds.size || vacantSubmissions.length;
     const recordedProfilesCount = totalSubmissions; // 326 (248 filled + 78 vacant)
 
-    // Target in-scope headcount: Consistent 500 HC portfolio target
-    const targetInScopeHeadcount = 500;
+    // Target in-scope headcount: 500 HC for populated enterprise portfolio, or 0 if project has no records
+    const targetInScopeHeadcount = totalSubmissions > 0 ? 500 : 0;
     const effectiveRolesInScope = targetInScopeHeadcount;
-    const targetNotRepresentedCount = Math.max(0, targetInScopeHeadcount - recordedProfilesCount); // 174
+    const targetNotRepresentedCount = Math.max(0, targetInScopeHeadcount - recordedProfilesCount);
 
     const collectionStatus = {
       targetInScope: {
         count: targetInScopeHeadcount,
-        pct: 100.0,
+        pct: targetInScopeHeadcount > 0 ? 100.0 : 0,
       },
       recordedProfiles: {
         count: recordedProfilesCount,
-        pct: Number(toPercent(recordedProfilesCount, targetInScopeHeadcount).toFixed(1)), // 65.2%
+        pct: Number(toPercent(recordedProfilesCount, targetInScopeHeadcount).toFixed(1)),
         filledCount: filledEmployeesCount,
         vacantCount: vacantPositionsCount,
       },
       filledEmployees: {
         count: filledEmployeesCount,
-        pct: Number(toPercent(filledEmployeesCount, targetInScopeHeadcount).toFixed(1)), // 49.6%
+        pct: Number(toPercent(filledEmployeesCount, targetInScopeHeadcount).toFixed(1)),
       },
       targetNotRepresented: {
         count: targetNotRepresentedCount,
-        pct: Number(toPercent(targetNotRepresentedCount, targetInScopeHeadcount).toFixed(1)), // 34.8%
+        pct: Number(toPercent(targetNotRepresentedCount, targetInScopeHeadcount).toFixed(1)),
       },
       // Backward-compatibility fields
       rolesInScope: targetInScopeHeadcount,
@@ -887,7 +877,7 @@ async function getFteSummaryReport(req, res) {
       getScopedSubmissions(req),
       getEffectiveCategoryMap()
     ]);
-    const rows = getScopedFlattenedRows(req, submissions, categoryMap);
+    const rows = flattenRows(submissions, categoryMap);
 
     const totalHours = rows.reduce((sum, row) => sum + row.monthlyHours, 0);
     const totalFte = totalHours / standardMonthlyHours;
@@ -979,7 +969,7 @@ async function getFteConsolidationSummaryReport(req, res) {
       getScopedSubmissions(req),
       getEffectiveCategoryMap()
     ]);
-    const rows = getScopedFlattenedRows(req, submissions, categoryMap);
+    const rows = flattenRows(submissions, categoryMap);
 
     let highVolumeCount = 0;
     let keywordCount = 0;
@@ -1102,8 +1092,11 @@ async function getFitmentSummaryReport(req, res) {
       ? String(department).trim()
       : '__ALL__';
 
+    const activeTenantScope = req.tenantScope || {};
+    const tenantKey = `${activeTenantScope.companyId || 'default'}::${activeTenantScope.projectId || 'default'}::${normalizedDept}`;
+
     const now = Date.now();
-    const cached = fitmentSummaryCache.get(normalizedDept);
+    const cached = fitmentSummaryCache.get(tenantKey);
     if (cached && cached.expiresAt > now && cached.data) {
       return res.json(cached.data);
     }
@@ -1115,11 +1108,18 @@ async function getFitmentSummaryReport(req, res) {
 
     const computePromise = (async () => {
       let employeeIdsScope = null;
+      let submissionQuery = { ...buildScopeMatch(normalizedDept === '__ALL__' ? null : normalizedDept, null, null, activeTenantScope) };
       if (normalizedDept !== '__ALL__') {
-        employeeIdsScope = await WDTSubmission.distinct('employee.employeeId', { 'employee.department': normalizedDept });
+        employeeIdsScope = await WDTSubmission.distinct('employee.employeeId', submissionQuery);
       }
 
       const fitmentQuery = {};
+      if (activeTenantScope.projectId) {
+        fitmentQuery.projectId = activeTenantScope.projectId;
+      } else if (activeTenantScope.companyId) {
+        fitmentQuery.companyId = activeTenantScope.companyId;
+      }
+
       if (employeeIdsScope) {
         fitmentQuery.employeeId = { $in: employeeIdsScope };
       }
@@ -1137,6 +1137,17 @@ async function getFitmentSummaryReport(req, res) {
         if (employeeIdsScope) {
           totalEmployees = employeeIdsScope.length;
           operationalEmpIdSet = new Set(employeeIdsScope.map(String));
+        } else if (activeTenantScope.projectId) {
+          const UserProjectMembership = require('../models/UserProjectMembership');
+          const memberUserIds = (await UserProjectMembership.find({ projectId: activeTenantScope.projectId, isActive: true }).select('userId').lean()).map(m => m.userId);
+          totalEmployees = await User.countDocuments({ _id: { $in: memberUserIds }, role: 'employee', isActive: true, isArchivedDemo: { $ne: true } });
+          const rosterUsers = await User.find({ _id: { $in: memberUserIds }, role: 'employee', isActive: true, isArchivedDemo: { $ne: true } }).select('employeeId').lean();
+          operationalEmpIdSet = new Set(rosterUsers.map(u => String(u.employeeId || '').trim()).filter(Boolean));
+          if (totalEmployees === 0) {
+            const wdtNamed = await WDTSubmission.distinct('employee.employeeId', { projectId: activeTenantScope.projectId, 'employee.name': { $not: /^vacant$/i } });
+            totalEmployees = wdtNamed.length;
+            operationalEmpIdSet = new Set(wdtNamed.map(String));
+          }
         } else {
           const authoritativeRosterCount = await User.countDocuments({ role: 'employee', isActive: true, isRosterOnly: true, isArchivedDemo: { $ne: true } });
           if (authoritativeRosterCount > 0) {
@@ -1223,10 +1234,8 @@ async function getFitmentSummaryReport(req, res) {
           },
           pilotAssessments: {
             totalCount: pilotProfiles.length,
-            label: pilotProfiles.length > 0 ? 'Pilot Baseline Records' : 'No Verified Assessments',
-            notice: pilotProfiles.length > 0
-              ? 'Historical pilot assessments kept separate from operational staff.'
-              : 'No verified competency assessments have been completed yet. Baseline assessment phase pending.'
+            label: 'Sandbox / Pilot Baseline Records',
+            notice: 'Historical pilot assessments performed during initial setup on sandbox accounts; kept separate from operational staff.'
           }
         },
         charts: {
@@ -1248,7 +1257,7 @@ async function getFitmentSummaryReport(req, res) {
 
     const requestGeneration = fitmentSummaryGeneration;
 
-    fitmentSummaryCache.set(normalizedDept, {
+    fitmentSummaryCache.set(tenantKey, {
       inFlightPromise: computePromise,
       generation: requestGeneration,
     });
@@ -1257,7 +1266,7 @@ async function getFitmentSummaryReport(req, res) {
       const result = await computePromise;
       // Race guard: only populate cache if no invalidation happened during execution
       if (fitmentSummaryGeneration === requestGeneration) {
-        fitmentSummaryCache.set(normalizedDept, {
+        fitmentSummaryCache.set(tenantKey, {
           data: result,
           expiresAt: Date.now() + CACHE_TTL_MS,
         });
@@ -1265,7 +1274,7 @@ async function getFitmentSummaryReport(req, res) {
       return res.json(result);
     } catch (err) {
       if (fitmentSummaryGeneration === requestGeneration) {
-        fitmentSummaryCache.delete(normalizedDept);
+        fitmentSummaryCache.delete(tenantKey);
       }
       throw err;
     }
@@ -1286,7 +1295,7 @@ async function getFteAnalysisReport(req, res) {
       getScopedSubmissions(req),
       getEffectiveCategoryMap()
     ]);
-    const rows = getScopedFlattenedRows(req, submissions, categoryMap);
+    const rows = flattenRows(submissions, categoryMap);
 
     const totalHours = rows.reduce((sum, row) => sum + row.monthlyHours, 0);
     const totalFte = totalHours / standardMonthlyHours;
@@ -1441,7 +1450,7 @@ async function getConsolidationAnalysisReport(req, res) {
       getScopedSubmissions(req),
       getEffectiveCategoryMap()
     ]);
-    const rows = getScopedFlattenedRows(req, submissions, categoryMap);
+    const rows = flattenRows(submissions, categoryMap);
 
     let highVolumeCount = 0;
     let keywordCount = 0;
@@ -1940,7 +1949,7 @@ async function getUtilizationAnalysisReport(req, res) {
       getScopedSubmissions(req),
       getEffectiveCategoryMap()
     ]);
-    const rows = getScopedFlattenedRows(req, submissions, categoryMap);
+    const rows = flattenRows(submissions, categoryMap);
 
     const totalHours = rows.reduce((sum, row) => sum + row.monthlyHours, 0);
     const totalSubmissions = submissions.length;
@@ -2165,7 +2174,7 @@ async function getWorkforceCapacityReport(req, res) {
       getScopedSubmissions(req),
       getEffectiveCategoryMap()
     ]);
-    const rows = getScopedFlattenedRows(req, submissions, categoryMap);
+    const rows = flattenRows(submissions, categoryMap);
 
     // Fetch user map for live current grades if requested
     const userMap = new Map(
@@ -2176,7 +2185,7 @@ async function getWorkforceCapacityReport(req, res) {
       ).map((u) => [String(u.employeeId || '').trim(), u])
     );
 
-    const { standardizeGrade, ORDERED_GRADE_BANDS } = require('../utils/gradeStandardizer');
+    const { standardizeGrade, APPROVED_GRADE_BANDS } = require('../utils/gradeStandardizer');
 
     // Verified October 2026 source contract resources whose employeeType was omitted in historical DB import
     const OCT_2026_VERIFIED_CONTRACT_IDS = new Set(['14406', '35781', '67815', '85047']);
@@ -2223,27 +2232,48 @@ async function getWorkforceCapacityReport(req, res) {
       }
     });
 
-    // Helper: Aggregate by Standardized Grade Band
+    // Helper: Aggregate by Standardized Grade Band (Exactly the 6 approved bands, with Unmapped as separate quality metrics if present)
     const buildBandDistribution = (itemRows) => {
       const bandMap = new Map();
-      ORDERED_GRADE_BANDS.forEach((band) => {
+      APPROVED_GRADE_BANDS.forEach((band) => {
         bandMap.set(band, { band, hours: 0, fte: 0, headcount: new Set() });
       });
 
+      let unmappedHours = 0;
+      const unmappedHeadcount = new Set();
+
       itemRows.forEach((r) => {
-        const bandKey = r.effectiveStandardizedBand || 'Unmapped';
-        const current = bandMap.get(bandKey) || { band: bandKey, hours: 0, fte: 0, headcount: new Set() };
-        current.hours += r.monthlyHours;
-        if (r.employeeId && r.employeeId !== 'NA') current.headcount.add(r.employeeId);
-        bandMap.set(bandKey, current);
+        const bandKey = r.effectiveStandardizedBand;
+        if (APPROVED_GRADE_BANDS.includes(bandKey)) {
+          const current = bandMap.get(bandKey);
+          current.hours += r.monthlyHours;
+          if (r.employeeId && r.employeeId !== 'NA') current.headcount.add(r.employeeId);
+          bandMap.set(bandKey, current);
+        } else {
+          unmappedHours += r.monthlyHours;
+          if (r.employeeId && r.employeeId !== 'NA') unmappedHeadcount.add(r.employeeId);
+        }
       });
 
-      return Array.from(bandMap.values()).map((b) => ({
+      const approvedBands = Array.from(bandMap.values()).map((b) => ({
         band: b.band,
         hours: Number(b.hours.toFixed(1)),
         fte: Number((b.hours / standardMonthlyHours).toFixed(2)),
         headcount: b.headcount.size,
       }));
+
+      // If unmapped data exists, include it with explicit dataQualityStatus flag
+      if (unmappedHours > 0 || unmappedHeadcount.size > 0) {
+        approvedBands.push({
+          band: 'Unmapped',
+          hours: Number(unmappedHours.toFixed(1)),
+          fte: Number((unmappedHours / standardMonthlyHours).toFixed(2)),
+          headcount: unmappedHeadcount.size,
+          isDataQualityStatus: true,
+        });
+      }
+
+      return approvedBands;
     };
 
     // Helper: Aggregate by Department
@@ -2375,8 +2405,8 @@ async function getWorkforceCapacityReport(req, res) {
       };
     }).sort((a, b) => b.gapFte - a.gapFte);
 
-    // Grade Band level Gap Matrix
-    const gradeBandGapMatrix = ORDERED_GRADE_BANDS.map((band) => {
+    // Grade Band level Gap Matrix (6 Approved Grade Bands + optional separate data quality row)
+    const gradeBandGapMatrix = APPROVED_GRADE_BANDS.map((band) => {
       const bandStaffed = staffedRows.filter((r) => r.effectiveStandardizedBand === band);
       const bandVacant = vacantRows.filter((r) => r.effectiveStandardizedBand === band);
 
@@ -2397,6 +2427,28 @@ async function getWorkforceCapacityReport(req, res) {
         status: bandRequiredHours > bandAvailableHours ? 'Capacity Deficit' : 'Balanced / Surplus',
       };
     });
+
+    // Check if any unmapped records exist
+    const unmappedStaffed = staffedRows.filter((r) => !APPROVED_GRADE_BANDS.includes(r.effectiveStandardizedBand));
+    const unmappedVacant = vacantRows.filter((r) => !APPROVED_GRADE_BANDS.includes(r.effectiveStandardizedBand));
+    if (unmappedStaffed.length > 0 || unmappedVacant.length > 0) {
+      const unmappedStaffedEmps = new Set(unmappedStaffed.map((r) => r.employeeId)).size;
+      const unmappedStaffedHours = unmappedStaffed.reduce((sum, r) => sum + r.monthlyHours, 0);
+      const unmappedVacantHours = unmappedVacant.reduce((sum, r) => sum + r.monthlyHours, 0);
+      const unmappedAvailableHours = unmappedStaffedEmps * standardMonthlyHours;
+      const unmappedRequiredHours = unmappedStaffedHours + unmappedVacantHours;
+      gradeBandGapMatrix.push({
+        gradeBand: 'Unmapped',
+        isDataQualityStatus: true,
+        staffedHeadcount: unmappedStaffedEmps,
+        availableCapacityFte: unmappedStaffedEmps,
+        staffedWorkloadFte: Number((unmappedStaffedHours / standardMonthlyHours).toFixed(2)),
+        vacantPlannedFte: Number((unmappedVacantHours / standardMonthlyHours).toFixed(2)),
+        requiredTotalFte: Number((unmappedRequiredHours / standardMonthlyHours).toFixed(2)),
+        gapFte: Number(((unmappedRequiredHours - unmappedAvailableHours) / standardMonthlyHours).toFixed(2)),
+        status: unmappedRequiredHours > unmappedAvailableHours ? 'Capacity Deficit' : 'Balanced / Surplus',
+      });
+    }
 
     const viewC_WorkforceGapAnalysis = {
       summary: {

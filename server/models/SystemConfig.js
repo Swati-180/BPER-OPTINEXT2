@@ -124,6 +124,14 @@ const systemConfigSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
     default: null
+  },
+  bootstrapCompleted: {
+    type: Boolean,
+    default: false
+  },
+  completedAt: {
+    type: Date,
+    default: null
   }
 }, {
   collection: 'system_configs',

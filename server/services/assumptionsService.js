@@ -1,4 +1,4 @@
-﻿const SystemConfig = require('../models/SystemConfig');
+const SystemConfig = require('../models/SystemConfig');
 
 // In-memory cache for organization assumptions to eliminate DB latency on repeated report requests
 let cachedAssumptions = null;
@@ -183,7 +183,7 @@ async function getEffectiveStandardMonthlyHours() {
  */
 function resolveActivityCategory(majorProcess = '', fallbackCategory = '', mappingMap = null) {
   const normMP = String(majorProcess || '').trim().toLowerCase();
-
+  
   if (mappingMap instanceof Map && mappingMap.has(normMP)) {
     return mappingMap.get(normMP);
   }

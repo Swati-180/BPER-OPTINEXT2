@@ -119,7 +119,16 @@ const submitWDT = async (req, res) => {
       return res.status(409).json({ message: `A submission for ${month}/${year} already exists and is under review.` });
     }
 
-    const record = await WDTSubmission.create(req.body);
+    // Scoped submission creation: attach companyId and projectId from verified tenant context if available
+    const submissionData = { ...req.body };
+    if (req.tenantScope?.companyId) {
+      submissionData.companyId = req.tenantScope.companyId;
+    }
+    if (req.tenantScope?.projectId) {
+      submissionData.projectId = req.tenantScope.projectId;
+    }
+
+    const record = await WDTSubmission.create(submissionData);
     invalidateScopedReportsCache();
     invalidateSixBySixCache();
 
@@ -172,13 +181,21 @@ const getSubmissions = async (req, res) => {
 
     let query = {};
 
+    // Apply tenant scoping if present in req.tenantScope
+    if (req.tenantScope?.companyId) {
+      query.companyId = req.tenantScope.companyId;
+    }
+    if (req.tenantScope?.projectId) {
+      query.projectId = req.tenantScope.projectId;
+    }
+
     // Standard filter by department if provided via query param
     if (department && department !== 'All Departments') {
        query['employee.department'] = department;
     }
 
     // Role-based filtering
-    const isAdmin = currentUser.role === 'admin' || currentUser.email === 'admin@bper.com';
+    const isAdmin = currentUser.role === 'admin' || currentUser.role === 'super_admin' || currentUser.role === 'company_admin' || currentUser.email === 'admin@bper.com';
     
     if (!isAdmin) {
        if (currentUser.userType === 'manager' || currentUser.role === 'manager') {
@@ -246,6 +263,41 @@ const updateSubmissionStatus = async (req, res) => {
     
     const submission = await WDTSubmission.findOne({ referenceId });
     if (!submission) return res.status(404).json({ message: 'Submission not found' });
+
+    // Server-side Tenant Authorization: Verify reviewer has active authority in submission's company/project
+    const userRole = String(req.user?.role || '').toLowerCase();
+    const actorId = req.user?.userId || req.user?.id;
+    if (userRole !== 'super_admin' && (submission.companyId || submission.projectId)) {
+      const CompanyMembership = require('../models/CompanyMembership');
+      const UserProjectMembership = require('../models/UserProjectMembership');
+
+      let hasAuthority = false;
+      if (submission.companyId) {
+        const isCompAdmin = await CompanyMembership.exists({
+          companyId: submission.companyId,
+          userId: actorId,
+          role: 'company_admin',
+          isActive: true
+        });
+        if (isCompAdmin) hasAuthority = true;
+      }
+
+      if (!hasAuthority && submission.projectId) {
+        const isProjMember = await UserProjectMembership.exists({
+          projectId: submission.projectId,
+          userId: actorId,
+          role: { $in: ['project_admin', 'manager'] },
+          isActive: true
+        });
+        if (isProjMember) hasAuthority = true;
+      }
+
+      if (!hasAuthority) {
+        return res.status(403).json({
+          message: 'Access denied: You do not have review permissions in this company or project.'
+        });
+      }
+    }
     
     // Support granting edit by putting it back to 'Changes Requested' so employee can edit
     let finalStatus = status;
@@ -323,11 +375,46 @@ const getSubmissionByRefId = async (req, res) => {
     const submission = await WDTSubmission.findOne({ referenceId });
     if (!submission) return res.status(404).json({ message: 'Submission not found' });
 
+    // Server-side Tenant Authorization: Verify reviewer has active authority in submission's company/project
+    const userRole = String(req.user?.role || '').toLowerCase();
+    const actorId = req.user?.userId || req.user?.id;
+    if (userRole !== 'super_admin' && (submission.companyId || submission.projectId)) {
+      const CompanyMembership = require('../models/CompanyMembership');
+      const UserProjectMembership = require('../models/UserProjectMembership');
+
+      let hasAuthority = false;
+      if (submission.companyId) {
+        const isCompAdmin = await CompanyMembership.exists({
+          companyId: submission.companyId,
+          userId: actorId,
+          role: 'company_admin',
+          isActive: true
+        });
+        if (isCompAdmin) hasAuthority = true;
+      }
+
+      if (!hasAuthority && submission.projectId) {
+        const isProjMember = await UserProjectMembership.exists({
+          projectId: submission.projectId,
+          userId: actorId,
+          role: { $in: ['project_admin', 'manager'] },
+          isActive: true
+        });
+        if (isProjMember) hasAuthority = true;
+      }
+
+      if (!hasAuthority) {
+        return res.status(403).json({
+          message: 'Access denied: You do not have review permissions in this company or project.'
+        });
+      }
+    }
+
     // Authorization check: Employees can only view their own submissions
     const currentUser = await User.findById(req.user.userId || req.user.id);
     if (!currentUser) return res.status(404).json({ message: 'User not found' });
 
-    const isAdmin = currentUser.role === 'admin' || currentUser.email === 'admin@bper.com';
+    const isAdmin = currentUser.role === 'admin' || currentUser.role === 'super_admin' || currentUser.role === 'company_admin' || currentUser.email === 'admin@bper.com';
     const isManager = currentUser.userType === 'manager' || currentUser.role === 'manager';
 
     if (!isAdmin && !isManager) {

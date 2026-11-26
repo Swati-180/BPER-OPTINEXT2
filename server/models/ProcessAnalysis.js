@@ -13,6 +13,8 @@ function computeScore(criteria = []) {
 }
 
 const processAnalysisSchema = new mongoose.Schema({
+  companyId: { type: mongoose.Schema.Types.ObjectId, ref: 'Company', default: null, index: true },
+  projectId: { type: mongoose.Schema.Types.ObjectId, ref: 'Project', default: null, index: true },
   process: { type: String, required: true },
   department: { type: String, required: true },
   type: { type: String, required: true },
@@ -22,8 +24,8 @@ const processAnalysisSchema = new mongoose.Schema({
   lastUpdatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
 }, { timestamps: true });
 
-// Prevent duplicate process entries per department
-processAnalysisSchema.index({ process: 1, department: 1 }, { unique: true });
+// Prevent duplicate process entries per department within the same project/company
+processAnalysisSchema.index({ companyId: 1, projectId: 1, process: 1, department: 1 }, { unique: true });
 
 function applyComputedFields(record) {
   if (!record) return;

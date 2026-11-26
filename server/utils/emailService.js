@@ -19,33 +19,57 @@ const nodemailer = require('nodemailer');
 
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3001';
 
-// ─── Transporter (created once, reused) ──────────────────────────────────────
+// ─── Transporter (created once, reused or refreshed if config changes) ─────────
 
 let _transporter = null;
 
+function getEmailCredentials() {
+  // Support generic SMTP standard variables first, with backwards compatibility for GMAIL_* vars
+  const host = process.env.EMAIL_HOST || (process.env.GMAIL_USER ? 'smtp.gmail.com' : null);
+  const port = parseInt(process.env.EMAIL_PORT || '587', 10);
+  const secure = process.env.EMAIL_SECURE === 'true' || port === 465;
+  const user = process.env.EMAIL_USER || process.env.GMAIL_USER;
+  const pass = (process.env.EMAIL_PASS || process.env.GMAIL_APP_PASSWORD || '')?.replace(/\s/g, '');
+  const from = process.env.EMAIL_FROM || (user ? `"BPER Platform" <${user}>` : '"BPER Platform" <no-reply@bper.local>');
+
+  return { host, port, secure, user, pass, from };
+}
+
 function getTransporter() {
-  const user = process.env.GMAIL_USER;
-  const pass = process.env.GMAIL_APP_PASSWORD?.replace(/\s/g, ''); // remove spaces
+  const { host, port, secure, user, pass } = getEmailCredentials();
 
   if (!user || !pass) {
-    console.warn('[Email] GMAIL_USER or GMAIL_APP_PASSWORD not set — emails will be skipped.');
+    console.warn('[Email] SMTP user or password not set — email delivery will be skipped.');
     return null;
   }
 
   if (!_transporter) {
-    _transporter = nodemailer.createTransport({
-      host: 'smtp.gmail.com',
-      port: 587,
-      secure: false,
-      auth: { user, pass },
-    });
+    if (host && host.includes('gmail.com')) {
+      _transporter = nodemailer.createTransport({
+        host: 'smtp.gmail.com',
+        port: 587,
+        secure: false,
+        auth: { user, pass },
+      });
+    } else if (host) {
+      _transporter = nodemailer.createTransport({
+        host,
+        port,
+        secure,
+        auth: { user, pass },
+      });
+    } else {
+      _transporter = nodemailer.createTransport({
+        service: 'gmail',
+        auth: { user, pass },
+      });
+    }
   }
   return _transporter;
 }
 
 function isEmailConfigured() {
-  const user = process.env.GMAIL_USER;
-  const pass = process.env.GMAIL_APP_PASSWORD?.replace(/\s/g, '');
+  const { user, pass } = getEmailCredentials();
   return Boolean(user && pass);
 }
 
@@ -55,9 +79,11 @@ async function sendEmail({ to, subject, html }) {
   const transporter = getTransporter();
   if (!transporter) return;
 
+  const { from } = getEmailCredentials();
+
   try {
     const info = await transporter.sendMail({
-      from: `"BPER Platform" <${process.env.GMAIL_USER}>`,
+      from,
       to,
       subject,
       html,
@@ -195,7 +221,12 @@ async function sendInviteEmail(invite) {
   if (!isEmailConfigured()) return { sent: false, reason: 'Email service not configured' };
 
   try {
-    await sendEmail({
+    const transporter = getTransporter();
+    if (!transporter) return { sent: false, reason: 'SMTP Transporter unavailable' };
+
+    const { from } = getEmailCredentials();
+    const info = await transporter.sendMail({
+      from,
       to: invite.email,
       subject: 'You are invited to join BPER Platform',
       html: baseTemplate(`
@@ -204,14 +235,54 @@ async function sendInviteEmail(invite) {
         <p style="font-size:15px;color:#374151;line-height:1.65;">Hi <strong>${invite.name || 'there'}</strong>,<br><br>
           You've been invited to register on the BPER Platform by your administrator.</p>
         <p style="font-size:14px;color:#4b5563;line-height:1.65;margin-bottom:24px;">
-          Click the button below to complete your registration. This link expires in <strong>7 days</strong>.
+          Click the button below to complete your registration. This link expires in <strong>72 hours</strong>.
         </p>
         ${cta(invite.inviteLink, 'Complete Registration')}
         <p style="font-size:12px;color:#94a3b8;margin-top:24px;">Or copy this link: <a href="${invite.inviteLink}" style="color:#1a56a4;">${invite.inviteLink}</a></p>
         <p style="font-size:12px;color:#94a3b8;margin-top:12px;">If you did not expect this email, you can safely ignore it.</p>
       `),
     });
-    return { sent: true };
+
+    // Check messageId from SMTP provider to confirm message was accepted
+    if (info && (info.messageId || info.accepted?.length > 0)) {
+      return { sent: true, messageId: info.messageId, response: info.response };
+    } else {
+      return { sent: false, reason: 'SMTP server did not accept message delivery' };
+    }
+  } catch (err) {
+    return { sent: false, reason: err.message };
+  }
+}
+
+/**
+ * Sent when a new user requests an email ownership verification code
+ */
+async function sendVerificationCodeEmail({ email, name, code }) {
+  if (!email) return { sent: false, reason: 'Email is required' };
+  if (!isEmailConfigured()) return { sent: false, reason: 'Email service not configured' };
+
+  try {
+    const transporter = getTransporter();
+    if (!transporter) return { sent: false, reason: 'SMTP Transporter unavailable' };
+
+    const { from } = getEmailCredentials();
+    const info = await transporter.sendMail({
+      from: from.includes('<') ? from.replace(/<.*>/, `<${getEmailCredentials().user}>`) : `"BPER Security" <${getEmailCredentials().user}>`,
+      to: email,
+      subject: `[BPER] Verification Code: ${code}`,
+      html: baseTemplate(`
+        <p style="margin:0 0 4px;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.12em;">Security Verification</p>
+        <h2 style="margin:0 0 16px;font-size:24px;font-weight:800;color:#0d2445;">Verify Your Email Address</h2>
+        <p style="font-size:15px;color:#374151;line-height:1.65;">Hi <strong>${name || 'there'}</strong>,<br><br>
+          Please enter the following 6-digit verification code to confirm ownership of your email address and complete your BPER account activation:</p>
+        <div style="background:#eff6ff;border:2px dashed #93c5fd;border-radius:12px;padding:18px;text-align:center;margin:24px 0;">
+          <p style="margin:0;font-size:32px;font-weight:900;letter-spacing:0.25em;color:#1e40af;font-family:monospace;">${code}</p>
+        </div>
+        <p style="font-size:13px;color:#64748b;line-height:1.6;">This code is valid for <strong>15 minutes</strong>. If you did not initiate this activation, please contact your company administrator immediately.</p>
+      `),
+    });
+
+    return { sent: true, messageId: info.messageId };
   } catch (err) {
     return { sent: false, reason: err.message };
   }
@@ -223,4 +294,5 @@ module.exports = {
   sendReviewNotificationEmail,
   sendResubmissionEmail,
   sendInviteEmail,
+  sendVerificationCodeEmail,
 };

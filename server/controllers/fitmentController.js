@@ -4,7 +4,11 @@ const { invalidateFitmentSummaryCache } = require('./reportsController');
 const getFitmentByEmployee = async (req, res) => {
   try {
     const { employeeId } = req.params;
-    const fitment = await Fitment.findOne({ employeeId });
+    const query = { employeeId };
+    if (req.tenantScope?.projectId) {
+      query.projectId = req.tenantScope.projectId;
+    }
+    const fitment = await Fitment.findOne(query);
     if (!fitment) return res.status(404).json({ message: 'Fitment profile not found' });
     res.json(fitment);
   } catch (err) {
@@ -15,9 +19,21 @@ const getFitmentByEmployee = async (req, res) => {
 const upsertFitment = async (req, res) => {
   try {
     const { employeeId } = req.body;
+    const filter = { employeeId };
+    const updateData = { ...req.body };
+
+    if (req.tenantScope?.companyId) {
+      filter.companyId = req.tenantScope.companyId;
+      updateData.companyId = req.tenantScope.companyId;
+    }
+    if (req.tenantScope?.projectId) {
+      filter.projectId = req.tenantScope.projectId;
+      updateData.projectId = req.tenantScope.projectId;
+    }
+
     const fitment = await Fitment.findOneAndUpdate(
-      { employeeId },
-      req.body,
+      filter,
+      updateData,
       { new: true, upsert: true, runValidators: true }
     );
     invalidateFitmentSummaryCache();

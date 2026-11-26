@@ -17,13 +17,16 @@ import {
   Grid3X3,
   Calculator,
   GitCompare,
-  Sliders
+  Sliders,
+  Building2,
+  FolderKanban
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { motion } from 'motion/react';
 import { labelTransition, sidebarTransition, sidebarVariants } from './sidebarConfig';
 import { topbarBadgeClass, topbarIconButtonClass } from './topbarConfig';
 import AppErrorBoundary from '../components/AppErrorBoundary';
+import { loadTenantContext, saveTenantContext, type ActiveTenantContext } from '../lib/authStorage';
 
 interface ManagerLayoutProps {
   children: ReactNode;
@@ -42,7 +45,33 @@ export default function ManagerLayout({ children, user, onLogout }: ManagerLayou
   const navigate = useNavigate();
   const [isSidebarHovered, setIsSidebarHovered] = useState(false);
   const [activeTopbarPanel, setActiveTopbarPanel] = useState<'messages' | 'notifications' | null>(null);
+  const [tenant, setTenant] = useState<ActiveTenantContext | null>(() => loadTenantContext());
   const topbarPanelRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    // 1. Check URL parameters for explicit tenant context (?companyId=...&projectId=...)
+    const params = new URLSearchParams(location.search);
+    const paramCompanyId = params.get('companyId');
+    const paramProjectId = params.get('projectId');
+
+    if (paramCompanyId && paramProjectId) {
+      const current = loadTenantContext();
+      if (!current || current.companyId !== paramCompanyId || current.projectId !== paramProjectId) {
+        saveTenantContext({
+          companyId: paramCompanyId,
+          projectId: paramProjectId,
+          companyName: current?.companyId === paramCompanyId ? current.companyName : 'Selected Company',
+          projectName: current?.projectId === paramProjectId ? current.projectName : 'Active Project'
+        });
+      }
+    }
+
+    const handleTenantChanged = (e: any) => {
+      setTenant(e.detail || null);
+    };
+    window.addEventListener('bper:tenant-changed', handleTenantChanged);
+    return () => window.removeEventListener('bper:tenant-changed', handleTenantChanged);
+  }, [location.search]);
 
   useEffect(() => {
     function handleOutsideClick(event: MouseEvent) {
@@ -55,7 +84,8 @@ export default function ManagerLayout({ children, user, onLogout }: ManagerLayou
     return () => document.removeEventListener('mousedown', handleOutsideClick);
   }, []);
 
-  const isAdmin = user.role === 'admin';
+  const isSuperAdmin = user.role === 'super_admin';
+  const isAdmin = user.role === 'admin' || user.role === 'company_admin' || isSuperAdmin;
   const basePath = isAdmin ? '/admin' : '/manager';
 
   const navItems = isAdmin
@@ -159,7 +189,7 @@ export default function ManagerLayout({ children, user, onLogout }: ManagerLayou
             >
               <p className="text-sm font-semibold truncate text-white/90">{user.name}</p>
               <p className="text-[10px] text-white/40 uppercase tracking-wider font-bold">
-                {isAdmin ? 'Administrator' : 'Manager'}
+                {isSuperAdmin ? 'Super Administrator' : (user.role === 'company_admin' || user.role === 'admin' ? 'Administrator' : 'Manager')}
               </p>
             </motion.div>
           </div>
@@ -273,9 +303,39 @@ export default function ManagerLayout({ children, user, onLogout }: ManagerLayou
               <nav className="flex items-center text-xs font-medium text-gray-400 uppercase tracking-widest">
                 <span className="hover:text-[#165BAA] cursor-pointer transition-colors">BPER</span>
                 <span className="mx-2">/</span>
-                <span className="text-gray-900">{isAdmin ? 'Admin Portal' : 'Manager Portal'}</span>
+                <span className="text-gray-900">{isSuperAdmin ? 'Governance Workspace' : (isAdmin ? 'Admin Portal' : 'Manager Portal')}</span>
               </nav>
             </div>
+
+            {/* Active Company & Project Context Badge */}
+            {tenant?.projectName && (
+              <div className="flex items-center gap-2 pl-2 border-l border-slate-200">
+                <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200/80 rounded-lg px-2.5 py-1">
+                  <Building2 className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                  <span className="text-xs font-semibold text-slate-800 max-w-[130px] truncate" title={tenant.companyName}>
+                    {tenant.companyName || 'Company'}
+                  </span>
+                  <span className="text-slate-300">/</span>
+                  <FolderKanban className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+                  <span className="text-xs font-bold text-slate-900 max-w-[140px] truncate" title={tenant.projectName}>
+                    {tenant.projectName}
+                  </span>
+                  {tenant.projectCode && (
+                    <span className="text-[9px] uppercase px-1 py-0.5 rounded font-mono text-slate-500 border border-slate-200 bg-white leading-none">
+                      {tenant.projectCode}
+                    </span>
+                  )}
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => navigate(user.role === 'super_admin' ? '/super-admin' : '/admin/projects')}
+                  className="text-xs text-blue-600 hover:text-blue-800 hover:bg-blue-50 h-7 px-2 font-medium"
+                >
+                  Switch Project
+                </Button>
+              </div>
+            )}
           </div>
 
           <div ref={topbarPanelRef} className="relative flex items-center gap-2">

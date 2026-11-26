@@ -189,7 +189,7 @@ export default function WorkforceCapacityPlanning() {
                   <div className="border-b border-[#E3EAF4] px-5 py-4 flex items-center justify-between">
                     <div>
                       <h3 className="font-bold text-[#0F2649]">Staffed Workload by Standardized Grade Band</h3>
-                      <p className="text-xs text-[#637F9F]">Approved standardized grade bands ({gradePerspective === 'historical' ? 'Submission-Time Grade' : 'Current Grade'})</p>
+                      <p className="text-xs text-[#637F9F]">All six approved grade bands ({gradePerspective === 'historical' ? 'Submission-Time Grade' : 'Current Grade'})</p>
                     </div>
                     <button
                       type="button"
@@ -211,8 +211,15 @@ export default function WorkforceCapacityPlanning() {
                       </thead>
                       <tbody className="divide-y divide-[#E8EEF7]">
                         {data.actualWorkforce?.byGradeBand?.map((row: any) => (
-                          <tr key={row.band} className="hover:bg-[#F9FBFD]">
-                            <td className="px-5 py-3 font-semibold text-[#0F2649]">{row.band}</td>
+                          <tr key={row.band} className={`hover:bg-[#F9FBFD] ${row.isDataQualityStatus || row.band === 'Unmapped' ? 'bg-amber-50/40 text-amber-900' : ''}`}>
+                            <td className="px-5 py-3 font-semibold text-[#0F2649] flex items-center gap-2">
+                              {row.band}
+                              {(row.isDataQualityStatus || row.band === 'Unmapped') && (
+                                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 border border-amber-200">
+                                  Data Quality Status
+                                </span>
+                              )}
+                            </td>
                             <td className="px-5 py-3 text-right tabular-nums text-[#314E72]">{row.headcount}</td>
                             <td className="px-5 py-3 text-right tabular-nums text-[#314E72]">{row.hours.toLocaleString()} hrs</td>
                             <td className="px-5 py-3 text-right tabular-nums font-bold text-[#165BAA]">{row.fte} FTE</td>
@@ -274,8 +281,15 @@ export default function WorkforceCapacityPlanning() {
                       </thead>
                       <tbody className="divide-y divide-[#E8EEF7]">
                         {data.vacancyCapacityPlanning?.byGradeBand?.map((row: any) => (
-                          <tr key={row.band} className="hover:bg-[#F9FBFD]">
-                            <td className="px-5 py-3 font-semibold text-[#0F2649]">{row.band}</td>
+                          <tr key={row.band} className={`hover:bg-[#F9FBFD] ${row.isDataQualityStatus || row.band === 'Unmapped' ? 'bg-amber-50/40 text-amber-900' : ''}`}>
+                            <td className="px-5 py-3 font-semibold text-[#0F2649] flex items-center gap-2">
+                              {row.band}
+                              {(row.isDataQualityStatus || row.band === 'Unmapped') && (
+                                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 border border-amber-200">
+                                  Data Quality Status
+                                </span>
+                              )}
+                            </td>
                             <td className="px-5 py-3 text-right tabular-nums text-[#314E72]">{row.headcount}</td>
                             <td className="px-5 py-3 text-right tabular-nums text-[#314E72]">{row.hours.toLocaleString()} hrs</td>
                             <td className="px-5 py-3 text-right tabular-nums font-bold text-[#165BAA]">{row.fte} FTE</td>
@@ -347,8 +361,15 @@ export default function WorkforceCapacityPlanning() {
                       </thead>
                       <tbody className="divide-y divide-[#E8EEF7]">
                         {data.workforceGapAnalysis?.gradeBandGapMatrix?.map((row: any) => (
-                          <tr key={row.gradeBand} className="hover:bg-[#F9FBFD]">
-                            <td className="px-5 py-3 font-semibold text-[#0F2649]">{row.gradeBand}</td>
+                          <tr key={row.gradeBand} className={`hover:bg-[#F9FBFD] ${row.isDataQualityStatus || row.gradeBand === 'Unmapped' ? 'bg-amber-50/40' : ''}`}>
+                            <td className="px-5 py-3 font-semibold text-[#0F2649] flex items-center gap-2">
+                              {row.gradeBand}
+                              {(row.isDataQualityStatus || row.gradeBand === 'Unmapped') && (
+                                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 border border-amber-200">
+                                  Data Quality Status
+                                </span>
+                              )}
+                            </td>
                             <td className="px-4 py-3 text-right tabular-nums text-[#314E72]">{row.staffedHeadcount}</td>
                             <td className="px-4 py-3 text-right tabular-nums text-[#314E72]">{row.staffedWorkloadFte} FTE</td>
                             <td className="px-4 py-3 text-right tabular-nums text-[#314E72]">{row.vacantPlannedFte} FTE</td>

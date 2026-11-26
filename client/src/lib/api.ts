@@ -5,7 +5,7 @@
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 import * as XLSX from 'xlsx';
-import { clearAuthUser } from './authStorage';
+import { clearAuthUser, loadTenantContext } from './authStorage';
 import { queryCache, DEFAULT_STALE_TIME_MS, STATIC_STALE_TIME_MS, type QueryCacheOptions } from './queryCache';
 
 const BASE_URL = `${API_BASE_URL}/api`;
@@ -23,10 +23,13 @@ function debouncedClearAuth() {
 
 export async function apiFetch(endpoint: string, options: RequestInit = {}) {
   const token = localStorage.getItem('bper.auth.token');
+  const tenant = loadTenantContext();
   
   const headers = {
     'Content-Type': 'application/json',
     ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+    ...(tenant?.companyId ? { 'x-company-id': tenant.companyId } : {}),
+    ...(tenant?.projectId ? { 'x-project-id': tenant.projectId } : {}),
     ...options.headers,
   };
 
@@ -381,22 +384,8 @@ export function exportToExcelClient(data: any[], filename: string, headers?: str
     XLSX.utils.sheet_add_aoa(ws, [headers], { origin: 'A1' });
   }
 
-  // Calculate clean column widths
-  if (data.length > 0) {
-    const keys = Object.keys(data[0]);
-    ws['!cols'] = keys.map((key) => {
-      let maxLen = key.length;
-      for (let i = 0; i < Math.min(data.length, 100); i++) {
-        const val = data[i][key];
-        const strVal = val != null ? String(val) : '';
-        if (strVal.length > maxLen) maxLen = strVal.length;
-      }
-      return { wch: Math.min(Math.max(maxLen + 3, 12), 50) };
-    });
-  }
-
   const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, 'Process Hierarchy');
+  XLSX.utils.book_append_sheet(wb, ws, 'Sheet1');
 
   // Generate file and trigger download
   const dateStr = new Date().toISOString().split('T')[0];

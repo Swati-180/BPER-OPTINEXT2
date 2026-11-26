@@ -31,8 +31,35 @@ export interface InviteRecord {
   acceptedAt?: string;
 }
 
+export interface ActiveTenantContext {
+  companyId: string;
+  projectId: string;
+  companyName?: string;
+  projectName?: string;
+  projectCode?: string;
+  department?: string;
+}
+
 const AUTH_USER_KEY = 'bper.auth.user';
 const INVITES_KEY = 'bper.invites';
+const TENANT_CONTEXT_KEY = 'bper.auth.tenant';
+
+export function loadTenantContext(): ActiveTenantContext | null {
+  return readJson<ActiveTenantContext | null>(TENANT_CONTEXT_KEY, null);
+}
+
+export function saveTenantContext(ctx: ActiveTenantContext) {
+  writeJson(TENANT_CONTEXT_KEY, ctx);
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('bper:tenant-changed', { detail: ctx }));
+  }
+}
+
+export function clearTenantContext() {
+  if (typeof window === 'undefined') return;
+  window.localStorage.removeItem(TENANT_CONTEXT_KEY);
+  window.dispatchEvent(new CustomEvent('bper:tenant-changed', { detail: null }));
+}
 
 function readJson<T>(key: string, fallback: T): T {
   if (typeof window === 'undefined') return fallback;
@@ -70,6 +97,7 @@ export function saveAuthUser(user: AppAuthUser) {
 export function clearAuthUser() {
   if (typeof window === 'undefined') return;
   window.localStorage.removeItem(AUTH_USER_KEY);
+  clearTenantContext();
   window.dispatchEvent(new CustomEvent('bper:auth-cleared'));
 }
 

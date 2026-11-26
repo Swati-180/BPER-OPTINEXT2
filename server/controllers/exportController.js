@@ -80,6 +80,15 @@ async function getScopedSubmissions(req) {
     year: year != null ? Number(year) : 2026,
     'employee.employeeId': { $nin: SYSTEM_TEST_ACCOUNT_IDS },
   };
+
+  // Enforce tenant scoping from req.tenantScope
+  if (req.tenantScope?.companyId) {
+    match.companyId = req.tenantScope.companyId;
+  }
+  if (req.tenantScope?.projectId) {
+    match.projectId = req.tenantScope.projectId;
+  }
+
   if (department && department !== 'All Departments') {
     match['employee.department'] = department;
   }
@@ -96,8 +105,10 @@ async function getScopedSubmissions(req) {
 async function exportWDTSubmissionsExcel(req, res) {
   try {
     const manager = await resolveManager(req);
-    if (!manager || (manager.role !== 'manager' && manager.role !== 'admin')) {
-      return res.status(403).json({ message: 'Manager access required.' });
+    const userRole = String(req.user?.role || '').toLowerCase();
+    const isAuthorized = manager && (['manager', 'admin', 'company_admin', 'super_admin'].includes(manager.role) || ['super_admin'].includes(userRole));
+    if (!isAuthorized) {
+      return res.status(403).json({ message: 'Manager or administrator access required.' });
     }
 
     // Parallelize independent data fetches across all 4 sheets
@@ -470,8 +481,10 @@ async function exportWDTSubmissionsExcel(req, res) {
 async function exportFTEReportExcel(req, res) {
   try {
     const manager = await resolveManager(req);
-    if (!manager || (manager.role !== 'manager' && manager.role !== 'admin')) {
-      return res.status(403).json({ message: 'Manager access required.' });
+    const userRole = String(req.user?.role || '').toLowerCase();
+    const isAuthorized = manager && (['manager', 'admin', 'company_admin', 'super_admin'].includes(manager.role) || ['super_admin'].includes(userRole));
+    if (!isAuthorized) {
+      return res.status(403).json({ message: 'Manager or administrator access required.' });
     }
 
     const [assumptions, submissions] = await Promise.all([

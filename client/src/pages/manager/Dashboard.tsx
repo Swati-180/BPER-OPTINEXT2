@@ -6,11 +6,8 @@ import {
   Clock3,
   Download,
   FileCheck2,
-  HelpCircle,
   RefreshCw,
   TrendingUp,
-  UserCheck,
-  UserX,
   Users,
   X,
 } from 'lucide-react';
@@ -24,12 +21,13 @@ import {
   getFteSummaryReport,
   getFitmentSummaryReport,
 } from '../../lib/api';
-import { loadAuthUser } from '../../lib/authStorage';
+import { loadAuthUser, loadTenantContext } from '../../lib/authStorage';
 import { useNavigate } from 'react-router-dom';
 import { formatDateISO } from '../employee/bperSubmissionStorage';
 import { InlineUpdatingBadge, SkeletonBlock } from '../../components/PortalSkeletons';
+import { StandardWorkforceSummaryKpis, StandardFteReconciliationSection } from '../../components/dashboard/StandardDashboardSections';
 
-type Trend = 'up' | 'steady' | 'down' | 'baseline' | null;
+type Trend = 'up' | 'steady' | 'down';
 
 type ActivityInsight = {
   name: string;
@@ -37,8 +35,7 @@ type ActivityInsight = {
   monthlyHours: number;
   fte: number;
   consolidate: boolean;
-  trend?: Trend;
-  history?: number[];
+  trend: Trend;
 };
 
 type DashboardReport = {
@@ -230,10 +227,18 @@ function getValidCache<T>(cacheItem: CachedItem<T> | null, currentUserEmail: str
 export default function Dashboard() {
   const navigate = useNavigate();
   const user = loadAuthUser();
+  const activeTenant = loadTenantContext();
   const userEmail = (user?.email || 'anonymous').toLowerCase().trim();
-  const isAdmin = user?.role === 'admin';
+  const isSuperAdmin = user?.role === 'super_admin';
+  const isCompanyAdmin = user?.role === 'company_admin';
+  const isAdmin = user?.role === 'admin' || isSuperAdmin || isCompanyAdmin;
   const basePath = isAdmin ? '/admin' : '/manager';
-  const roleLabel = isAdmin ? 'Admin' : 'Manager';
+  const roleLabel = isSuperAdmin ? 'Super Admin' : isCompanyAdmin ? 'Company Admin' : isAdmin ? 'Admin' : 'Manager';
+  const dashboardHeading = activeTenant?.projectName 
+    ? `${activeTenant.projectName} — Workforce Overview`
+    : isSuperAdmin || isCompanyAdmin
+      ? 'Workforce Operations Dashboard'
+      : `${roleLabel} Dashboard`;
 
   // Read valid cache synchronously on mount
   const cachedDashboard = useMemo(() => getValidCache(_dashboardCache, userEmail), [userEmail]);
@@ -396,7 +401,7 @@ export default function Dashboard() {
     return () => window.removeEventListener('bper:assumptions-updated', handleAssumptionsUpdated);
   }, [loadAllReports]);
 
-  async function handleDownloadWord() {
+    async function handleDownloadWord() {
     if (isExportingWord || !dashboard) return;
     setIsExportingWord(true);
     try {
@@ -411,7 +416,6 @@ export default function Dashboard() {
           pendingReview: summary.pendingReview,
           approved: summary.approved,
           staffedFte: summary.staffedFte != null ? summary.staffedFte : summary.primaryEmployeeFte,
-          vacantFte: summary.vacantFte,
           totalFte: summary.totalFte,
           staffedUtilizationPct: summary.staffedUtilizationPct != null ? summary.staffedUtilizationPct : summary.avgUtilizationPct,
           workloadVsTargetPct: summary.workloadVsTargetPct,
@@ -450,7 +454,7 @@ export default function Dashboard() {
     }
   }
 
-  async function handleDownloadExcel() {
+    async function handleDownloadExcel() {
     if (isExportingExcel || !dashboard) return;
     setIsExportingExcel(true);
     try {
@@ -465,7 +469,6 @@ export default function Dashboard() {
           pendingReview: summary.pendingReview,
           approved: summary.approved,
           staffedFte: summary.staffedFte != null ? summary.staffedFte : summary.primaryEmployeeFte,
-          vacantFte: summary.vacantFte,
           totalFte: summary.totalFte,
           staffedUtilizationPct: summary.staffedUtilizationPct != null ? summary.staffedUtilizationPct : summary.avgUtilizationPct,
           workloadVsTargetPct: summary.workloadVsTargetPct,
@@ -618,7 +621,7 @@ export default function Dashboard() {
       <section ref={headerRef} className="rounded-2xl border border-[#D9E4F2] bg-white p-4 shadow-[0_5px_14px_rgba(16,42,80,0.08)]">
         <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-[#0F2649]">{roleLabel} Dashboard</h1>
+            <h1 className="text-2xl font-bold text-[#0F2649]">{dashboardHeading}</h1>
             <p className="mt-1 text-xs text-[#637F9F]">
               Live enterprise summary and analytics computed from submitted WDT records.
             </p>
@@ -626,7 +629,7 @@ export default function Dashboard() {
 
           <div className="flex flex-col gap-1.5 text-[11px] font-semibold md:items-end">
             <div className="flex items-center gap-2">
-              <button
+                            <button
                 type="button"
                 onClick={handleDownloadExcel}
                 disabled={isExportingExcel || !dashboard}
@@ -636,7 +639,7 @@ export default function Dashboard() {
                 <FileSpreadsheet className="h-3.5 w-3.5" />
                 {isExportingExcel ? 'Exporting Excel...' : 'Export Excel'}
               </button>
-              <button
+<button
                 type="button"
                 onClick={handleDownloadWord}
                 disabled={isExportingWord || !dashboard}
@@ -673,10 +676,11 @@ export default function Dashboard() {
               <InlineUpdatingBadge show={isRefreshing} />
             </div>
             <span
-              className={`inline-flex items-center rounded-xl border px-3 py-1.5 ${windowStatus?.isOpen
-                ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
-                : 'border-amber-200 bg-amber-50 text-amber-700'
-                }`}
+              className={`inline-flex items-center rounded-xl border px-3 py-1.5 ${
+                windowStatus?.isOpen
+                  ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                  : 'border-amber-200 bg-amber-50 text-amber-700'
+              }`}
             >
               Submission Window: {windowStatus?.message || 'Unavailable'}
             </span>
@@ -684,8 +688,8 @@ export default function Dashboard() {
         </div>
 
         {isDashboardLoading ? (
-          <div className="mt-3 grid grid-cols-1 gap-2.5 sm:grid-cols-2 xl:grid-cols-4">
-            {[1, 2, 3, 4].map((i) => (
+          <div className="mt-3 grid grid-cols-1 gap-2.5 sm:grid-cols-2 xl:grid-cols-5">
+            {[1, 2, 3, 4, 5].map((i) => (
               <div key={i} className="rounded-xl border border-[#D8E1EE] bg-white p-3.5 shadow-sm space-y-2">
                 <SkeletonBlock className="h-8 w-8 rounded-lg" />
                 <SkeletonBlock className="h-3 w-20" />
@@ -696,138 +700,22 @@ export default function Dashboard() {
           </div>
         ) : dashboardError ? (
           <SectionError message={dashboardError} onRetry={() => loadDashboardData(false)} />
+        ) : safeNumber(summary.totalSubmissions) === 0 && safeNumber(summary.totalStaff) === 0 && safeNumber(summary.vacantPositions) === 0 ? (
+          <>
+          {/* Universal Standard Layout on Empty Project */}
+          <StandardWorkforceSummaryKpis summary={summary} roleLabel={roleLabel} isEmpty={true} />
+          <StandardFteReconciliationSection summary={summary} isEmpty={true} />
+          <div className="mt-3.5 rounded-xl border border-dashed border-[#CBD5E1] bg-[#F8FAFC] p-6 text-center">
+            <Users className="mx-auto h-8 w-8 text-[#94A3B8]" />
+            <h3 className="mt-2 text-sm font-bold text-[#1E293B]">Workspace Initialized — Zero Workforce Records</h3>
+            <p className="mt-1 text-xs text-[#64748B]">This project is active and empty. Once baseline WDT or employee submissions are imported, metrics and tower analytics will calculate dynamically.</p>
+          </div>
+          </>
         ) : (
           <>
-            {/* SECTION 1: WORKFORCE OVERVIEW */}
-            <div className="mt-3.5">
-              <div className="mb-2">
-                <h2 className="text-sm font-bold uppercase tracking-wider text-[#102B52]">Workforce Overview</h2>
-                <p className="text-[11px] text-[#637F9F]">Current staffing position and approval status.</p>
-              </div>
-              <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 xl:grid-cols-4">
-                <KpiCard
-                  icon={UserCheck}
-                  label="Staffed Positions"
-                  value={String(summary.totalStaff != null ? summary.totalStaff : (summary.totalEmployees != null ? summary.totalEmployees : 248))}
-                  helper="Occupied positions."
-                />
-                <KpiCard
-                  icon={UserX}
-                  label="Planned Vacancies"
-                  value={String(summary.vacantPositions != null ? summary.vacantPositions : 78)}
-                  helper="Unoccupied planned positions."
-                />
-                <KpiCard
-                  icon={Users}
-                  label="Total Positions"
-                  value={String(safeNumber(summary.totalSubmissions, 326))}
-                  helper="248 staffed + 78 vacancies."
-                  tooltip="Represents 326 distinct physical positions (248 staffed positions + 78 planned vacancies) modeled in the project scope."
-                />
-                <KpiCard
-                  icon={Clock3}
-                  label="Pending Approvals"
-                  value={String(safeNumber(summary.pendingReview, 0))}
-                  helper="Current approval queue."
-                />
-              </div>
-            </div>
-
-            {/* SECTION 2: WORKLOAD ANALYSIS */}
-            <div className="mt-4 rounded-xl border border-[#DCE7F5] bg-gradient-to-r from-[#F7FAFE] via-white to-[#F7FAFE] p-4 shadow-sm">
-              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#E3EDF9] pb-2.5">
-                <div>
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-[#102B52]">Workload Analysis</h3>
-                  <p className="text-[11px] text-[#607D9E]">Monthly activity workload expressed as Full-Time Equivalent (FTE).</p>
-                </div>
-                <span className="inline-flex items-center rounded-lg border border-[#CDE0F7] bg-[#EEF5FF] px-2.5 py-1 text-[11px] font-bold text-[#1E5EAB]">
-                  Calculation: 378.82 + 120.64 = 499.46 FTE
-                </span>
-              </div>
-
-              <div className="mt-3.5 grid grid-cols-1 md:grid-cols-3 gap-3">
-                {/* 1. Staffed Workload (Green) */}
-                <div className="rounded-xl bg-white border border-[#BBF7D0] p-4 shadow-xs relative overflow-hidden flex flex-col justify-between">
-                  <div className="absolute top-0 left-0 right-0 h-1 bg-[#16A34A]" />
-                  <div>
-                    <div className="flex items-center justify-between">
-                      <p className="text-[11px] font-bold uppercase tracking-wider text-[#166534]">Staffed Workload</p>
-                      <span className="inline-flex items-center rounded-full bg-[#DCFCE7] px-2 py-0.5 text-[10px] font-semibold text-[#15803D]">
-                        248 Positions
-                      </span>
-                    </div>
-                    <div className="mt-2 flex items-baseline gap-1.5">
-                      <span className="text-2xl font-black text-[#15803D]">
-                        {safeNumber(summary.staffedFte != null ? summary.staffedFte : summary.primaryEmployeeFte, 378.82).toFixed(2)}
-                      </span>
-                      <span className="text-xs font-bold text-[#16A34A]">FTE</span>
-                    </div>
-                    <p className="mt-1 text-xs font-medium text-[#166534]">
-                      {safeNumber(summary.staffedHours, 60611.64).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} hours/month
-                    </p>
-                  </div>
-                  <div className="mt-3 pt-2.5 border-t border-[#DCFCE7] text-[11px] text-[#15803D]">
-                    Based on 248 staffed positions.
-                  </div>
-                </div>
-
-                {/* 2. Vacancy Workload (Amber) */}
-                <div className="rounded-xl bg-white border border-[#FED7AA] p-4 shadow-xs relative overflow-hidden flex flex-col justify-between">
-                  <div className="absolute top-0 left-0 right-0 h-1 bg-[#D97706]" />
-                  <div>
-                    <div className="flex items-center justify-between">
-                      <p className="text-[11px] font-bold uppercase tracking-wider text-[#9A3412]">Vacancy Workload</p>
-                      <span className="inline-flex items-center rounded-full bg-[#FEF3C7] px-2 py-0.5 text-[10px] font-semibold text-[#B45309]">
-                        78 Vacancies
-                      </span>
-                    </div>
-                    <div className="mt-2 flex items-baseline gap-1.5">
-                      <span className="text-2xl font-black text-[#B45309]">
-                        {safeNumber(summary.vacantFte, 120.64).toFixed(2)}
-                      </span>
-                      <span className="text-xs font-bold text-[#D97706]">FTE</span>
-                    </div>
-                    <p className="mt-1 text-xs font-medium text-[#9A3412]">
-                      {safeNumber(summary.vacantHours, 19302.27).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} hours/month
-                    </p>
-                  </div>
-                  <div className="mt-3 pt-2.5 border-t border-[#FEF3C7] text-[11px] text-[#B45309]">
-                    Based on 78 planned vacancies.
-                  </div>
-                </div>
-
-                {/* 3. Total Modeled Workload (Blue) */}
-                <div className="rounded-xl bg-gradient-to-b from-[#EFF6FF] to-white border border-[#93C5FD] p-4 shadow-xs relative overflow-hidden flex flex-col justify-between">
-                  <div className="absolute top-0 left-0 right-0 h-1 bg-[#2563EB]" />
-                  <div>
-                    <div className="flex items-center justify-between">
-                      <p className="text-[11px] font-bold uppercase tracking-wider text-[#1E40AF]">Total Modeled Workload</p>
-                      <span className="inline-flex items-center rounded-full bg-[#DBEAFE] px-2 py-0.5 text-[10px] font-semibold text-[#1D4ED8]">
-                        326 Positions
-                      </span>
-                    </div>
-                    <div className="mt-2 flex items-baseline gap-1.5">
-                      <span className="text-2xl font-black text-[#1E3A8A]">
-                        {safeNumber(summary.totalFte != null ? summary.totalFte : 499.46).toFixed(2)}
-                      </span>
-                      <span className="text-xs font-bold text-[#2563EB]">FTE</span>
-                    </div>
-                    <p className="mt-1 text-xs font-medium text-[#1D4ED8]">
-                      {safeNumber(summary.totalHours, 79913.91).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} hours/month
-                    </p>
-                  </div>
-                  <div className="mt-3 pt-2.5 border-t border-[#DBEAFE] text-[11px] text-[#1E40AF]">
-                    Based on staffed and planned vacancy workload combined.
-                  </div>
-                </div>
-              </div>
-
-              {/* Explanatory Note */}
-              <div className="mt-3 pt-2.5 border-t border-[#E3EDF9] flex items-center gap-2 text-[11px] text-[#607D9E]">
-                <span className="inline-flex items-center justify-center h-4 w-4 rounded-full bg-[#E0EDFB] text-[#1E5EAB] text-[10px] font-bold shrink-0">i</span>
-                <span>FTE represents workload equivalent, not the number of employees or positions. One FTE is calculated using the standard reference capacity of 160 hours per month.</span>
-              </div>
-            </div>
+          {/* Universal Standard Layout on Populated Project */}
+          <StandardWorkforceSummaryKpis summary={summary} roleLabel={roleLabel} isEmpty={false} />
+          <StandardFteReconciliationSection summary={summary} isEmpty={false} />
           </>
         )}
       </section>
@@ -856,7 +744,7 @@ export default function Dashboard() {
           </p>
 
           <div className="mt-3 space-y-1.5 overflow-y-auto flex-1 pr-1.5 custom-scrollbar">
-            {towerDistribution.length === 0 && (isFteSummaryLoading || isDashboardLoading) ? (
+            {isFteSummaryLoading && !fteSummary ? (
               <div className="space-y-3 p-2">
                 {[1, 2, 3, 4, 5, 6].map((i) => (
                   <div key={i} className="flex items-center gap-3">
@@ -866,8 +754,8 @@ export default function Dashboard() {
                   </div>
                 ))}
               </div>
-            ) : towerDistribution.length === 0 && (fteSummaryError || dashboardError) ? (
-              <SectionError message={fteSummaryError || dashboardError || 'Failed to load tower distribution.'} onRetry={() => { loadFteSummaryData(false); loadDashboardData(false); }} />
+            ) : fteSummaryError && !fteSummary ? (
+              <SectionError message={fteSummaryError} onRetry={() => loadFteSummaryData(false)} />
             ) : towerDistribution.length === 0 ? (
               <EmptyBlock label="No tower-level FTE data available." />
             ) : (
@@ -967,8 +855,8 @@ export default function Dashboard() {
             <span className="text-xs font-semibold uppercase tracking-[0.14em] text-[#8AA0BA]">
               {topActivities.length > 0
                 ? (dashboard?.charts?.totalActivitiesCount && dashboard.charts.totalActivitiesCount > topActivities.length
-                  ? `Top ${topActivities.length} of ${dashboard.charts.totalActivitiesCount} Activities`
-                  : `${topActivities.length} Activities`)
+                    ? `Top ${topActivities.length} of ${dashboard.charts.totalActivitiesCount} Activities`
+                    : `${topActivities.length} Activities`)
                 : 'Live Aggregation'}
             </span>
           </div>
@@ -1014,7 +902,7 @@ export default function Dashboard() {
                             {fteVal.toFixed(2)}
                           </td>
                           <td className="px-2 py-2.5">
-                            <TrendSpark trend={activity.trend} history={activity.history} monthlyHours={hoursVal} />
+                            <TrendSpark trend={activity.trend || 'steady'} monthlyHours={hoursVal} />
                           </td>
                           <td className="px-2 py-2.5">
                             <div className="flex justify-center">
@@ -1274,35 +1162,24 @@ function KpiCard({
   label,
   value,
   helper,
-  tooltip,
   highlight,
 }: {
   icon: React.ComponentType<{ className?: string }>;
   label: string;
   value: string;
   helper: string;
-  tooltip?: string;
   highlight?: boolean;
 }) {
   return (
     <article
-      className={`rounded-xl border p-3.5 shadow-[0_4px_10px_rgba(15,40,86,0.06)] h-full ${highlight
-        ? 'border-[#295FA7] bg-linear-to-b from-[#153C8B] to-[#2152B8] text-white'
-        : 'border-[#D8E1EE] bg-white'
-        }`}
+      className={`rounded-xl border p-3.5 shadow-[0_4px_10px_rgba(15,40,86,0.06)] h-full ${
+        highlight
+          ? 'border-[#295FA7] bg-linear-to-b from-[#153C8B] to-[#2152B8] text-white'
+          : 'border-[#D8E1EE] bg-white'
+      }`}
     >
-      <div className="flex items-center justify-between">
-        <div className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-white/20 bg-white/10">
-          <Icon className={`h-4.5 w-4.5 ${highlight ? 'text-white' : 'text-[#8EA2BC]'}`} />
-        </div>
-        {tooltip && (
-          <div className="group relative flex items-center">
-            <HelpCircle className="h-4 w-4 cursor-help text-[#B9D5F8] opacity-80 hover:opacity-100 transition-opacity" />
-            <div className="absolute right-0 top-6 z-30 hidden w-64 rounded-lg bg-[#0F2649] p-2.5 text-[11px] font-normal leading-relaxed text-white shadow-xl group-hover:block border border-[#234B7D]">
-              {tooltip}
-            </div>
-          </div>
-        )}
+      <div className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-white/20 bg-white/10">
+        <Icon className={`h-4.5 w-4.5 ${highlight ? 'text-white' : 'text-[#C8D2DF]'}`} />
       </div>
       <p className={`mt-2.5 text-xs font-bold uppercase tracking-[0.12em] ${highlight ? 'text-[#D8E7FF]' : 'text-[#607A9B]'}`}>
         {label}
@@ -1313,7 +1190,7 @@ function KpiCard({
   );
 }
 
-function StatusRow({ label, value, colorClass, count }: { label: string; value: number; colorClass: string; count: number;[key: string]: any }) {
+function StatusRow({ label, value, colorClass, count }: { label: string; value: number; colorClass: string; count: number; [key: string]: any }) {
   return (
     <div className="space-y-1.5">
       <div className="flex items-center justify-between text-xs font-medium text-[#36506F]">
@@ -1332,64 +1209,20 @@ function StatusRow({ label, value, colorClass, count }: { label: string; value: 
   );
 }
 
-function TrendSpark({
-  trend,
-  history,
-  monthlyHours,
-}: {
-  trend?: Trend;
-  history?: number[];
-  monthlyHours?: number;
-}) {
-  // If genuine multi-period historical points are present, dynamically render a polyline sparkline
-  if (Array.isArray(history) && history.length >= 2) {
-    const minVal = Math.min(...history);
-    const maxVal = Math.max(...history);
-    const range = maxVal - minVal || 1;
-    const width = 56;
-    const height = 22;
-    const padding = 3;
-    const availableHeight = height - padding * 2;
-    const stepX = (width - padding * 2) / (history.length - 1);
+function TrendSpark({ trend, monthlyHours }: { trend: Trend; monthlyHours?: number }) {
+  const stroke = trend === 'up' ? '#16A34A' : trend === 'down' ? '#64748B' : '#64748B';
+  const d = trend === 'up' ? 'M4 16 L16 12 L28 12 L40 10 L52 9' : trend === 'down' ? 'M4 9 L16 10 L28 11 L40 13 L52 13' : 'M4 12 L16 12 L28 12 L40 12 L52 12';
 
-    const points = history
-      .map((val, idx) => {
-        const x = padding + idx * stepX;
-        const y = height - padding - ((val - minVal) / range) * availableHeight;
-        return `${x.toFixed(1)},${y.toFixed(1)}`;
-      })
-      .join(' ');
-
-    const strokeColor =
-      trend === 'up'
-        ? '#16A34A'
-        : trend === 'down'
-          ? '#DC2626'
-          : '#64748B';
-
-    return (
-      <div className="flex justify-center" title="Historical dynamic trend">
-        <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} fill="none" aria-label={`Dynamic activity trend: ${trend || 'historical'}`}>
-          <polyline points={points} stroke={strokeColor} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-      </div>
-    );
-  }
-
-  // Baseline / Single-period state: Insufficient historical data
   return (
-    <div
-      className="flex justify-center items-center"
-      title="Insufficient historical data to determine trend."
-    >
-      <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold tracking-wide bg-[#F1F5F9] text-[#64748B] border border-[#E2E8F0] cursor-help">
-        Baseline
-      </span>
+    <div className="flex justify-center">
+      <svg width="56" height="22" viewBox="0 0 56 22" fill="none" aria-label={`Activity trend: ${trend}`}>
+        <path d={d} stroke={stroke} strokeWidth="2" strokeLinecap="round" />
+      </svg>
     </div>
   );
 }
 
-function UtilizationRow({ label, value }: { label: string; value: number;[key: string]: any }) {
+function UtilizationRow({ label, value }: { label: string; value: number; [key: string]: any }) {
   return (
     <div>
       <div className="flex items-center justify-between text-xs font-semibold text-[#2E4766]">

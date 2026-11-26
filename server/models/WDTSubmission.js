@@ -1,6 +1,18 @@
 const mongoose = require('mongoose');
 
 const wdtSubmissionSchema = new mongoose.Schema({
+  companyId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Company',
+    default: null,
+    index: true
+  },
+  projectId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Project',
+    default: null,
+    index: true
+  },
   referenceId: { type: String, required: true, unique: true },
   batchId: { type: String, index: true },
   reportingPeriod: { type: String, index: true }, // e.g. '2026-10'
