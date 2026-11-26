@@ -1,74 +1,106 @@
 /**
  * migrate_optinext_production_tenant.js
  *
- * Dedicated, Non-Destructive Production Tenant Migration Script for OptiNext Global.
- *
- * Production Identification:
+ * Migration & Verification Script for Historical Tenant Isolation (OptiNext Global / FIN_OPS).
+ * Links historical unassigned WDT Submissions (326) and PAM Records (2,126) to:
  * - Company: OptiNext Global (code: 'OPTINEXT')
  * - Project: Finance & Accounting Operations (code: 'FIN_OPS')
  *
- * Guarantees:
- * 1. Non-destructive: Does NOT drop collections, overwrite fields, or alter existing data.
- * 2. Idempotent: Uses conditional updates ($set on missing/null fields only) and upserts.
- * 3. Dry-Run capable: Simulates all operations without committing when --dry-run is passed.
- * 4. Production verification: Reports detailed counts of records carrying OptiNext tenant vs unassigned.
+ * RESTRICTED AUTHORIZATION RULES:
+ * 1. Only explicitly approved OptiNext production identities are eligible for membership:
+ *    - admin@optinext.test (Company: company_admin, Project: project_admin)
+ *    - manager@bper.com (Company: member, Project: manager)
+ *    - employee@bper.com (Company: member, Project: employee)
+ * 2. Foreign-company accounts, Super Admin accounts, and test fixtures are strictly excluded.
+ * 3. Anomalous records (inactive admin membership, unlinked EMP-001 placeholder) are detected
+ *    and audited as separate proposed repairs — NEVER silently modified or activated during dry-run.
+ * 4. Failsafe safety checks enforce dry-run default, require --execute, and prevent running on unintended targets.
  */
 
 const mongoose = require('mongoose');
-require('../models/Company');
-require('../models/Project');
-require('../models/CompanyMembership');
-require('../models/UserProjectMembership');
-require('../models/User');
-require('../models/WDTSubmission');
-require('../models/ProcessAnalysis');
-require('../models/EmployeeInvite');
+const Company = require('../models/Company');
+const Project = require('../models/Project');
+const CompanyMembership = require('../models/CompanyMembership');
+const UserProjectMembership = require('../models/UserProjectMembership');
+const WDTSubmission = require('../models/WDTSubmission');
+const ProcessAnalysis = require('../models/ProcessAnalysis');
+const User = require('../models/User');
 
 const OPTINEXT_COMPANY_CONFIG = {
   name: 'OptiNext Global',
   code: 'OPTINEXT',
-  description: 'Enterprise corporate entity for OptiNext Global operations.',
-  isActive: true
+  status: 'active',
+  settings: {
+    allowCrossProjectAnalytics: false,
+    requireProjectSelection: true
+  }
 };
 
 const FIN_OPS_PROJECT_CONFIG = {
   name: 'Finance & Accounting Operations',
   code: 'FIN_OPS',
-  department: 'Finance & Accounting',
-  description: 'Primary financial operations workforce analytics workspace.',
-  status: 'active'
+  status: 'active',
+  settings: {
+    workforcePlanningEnabled: true,
+    historicalComparisonsEnabled: true
+  }
 };
 
-/**
- * Plans or executes non-destructive backfill for OptiNext Global and FIN_OPS project.
- *
- * @param {mongoose.Connection} connection - Active mongoose connection
- * @param {Object} options - Migration options
- * @param {boolean} options.dryRun - If true, evaluates mutations without committing
- */
-async function migrateOptiNextTenant(connection, options = { dryRun: true }) {
-  const Company = connection.model('Company');
-  const Project = connection.model('Project');
-  const CompanyMembership = connection.model('CompanyMembership');
-  const UserProjectMembership = connection.model('UserProjectMembership');
-  const User = connection.model('User');
-  const WDTSubmission = connection.model('WDTSubmission');
-  const ProcessAnalysis = connection.model('ProcessAnalysis');
-  const EmployeeInvite = connection.model('EmployeeInvite');
+// Explicitly approved OptiNext production roster
+const APPROVED_OPTINEXT_ROSTER = [
+  {
+    email: 'admin@optinext.test',
+    expectedCompanyRole: 'company_admin',
+    expectedProjectRole: 'project_admin',
+    description: 'OptiNext Company & Project Administrator (anchor account)'
+  },
+  {
+    email: 'manager@bper.com',
+    expectedCompanyRole: 'member',
+    expectedProjectRole: 'manager',
+    description: 'Finance & Accounting Operations Line Manager'
+  },
+  {
+    email: 'employee@bper.com',
+    expectedCompanyRole: 'member',
+    expectedProjectRole: 'employee',
+    description: 'Operational Process Contributor (EMP-001)'
+  }
+];
 
-  console.log(`[OptiNext Migration] Starting tenant migration assessment (dryRun: ${options.dryRun})...`);
+async function migrateOptiNextTenant(dbConnection, options = { dryRun: true }) {
+  console.log(`[OptiNext Migration] Starting tenant migration (DRY_RUN = ${!!options.dryRun})...`);
 
-  // 1. Resolve Anchor Superadmin/Admin User
-  let anchorUser = await User.findOne({ role: { $in: ['super_admin', 'admin'] } }).sort({ createdAt: 1 });
+  // Target Database Safeguard Check
+  const dbName = dbConnection.name || mongoose.connection.name;
+  const dbHost = dbConnection.host || mongoose.connection.host;
+  console.log(`[OptiNext Migration] Target database: "${dbName}" on host "${dbHost}"`);
+
+  if (!options.dryRun) {
+    if (!options.allowExecution) {
+      throw new Error('[SAFETY HALT] Database write requested without explicit --execute flag. Aborting.');
+    }
+    // Warn if pointing to Atlas / non-localhost without confirmation
+    const isRemote = dbHost && !['localhost', '127.0.0.1'].includes(dbHost);
+    if (isRemote && !options.confirmRemoteProduction) {
+      throw new Error(`[SAFETY HALT] Target database is remote (${dbHost}). Explicit confirmation token required.`);
+    }
+  }
+
+  // 1. Audit & Resolve Anchor User
+  let anchorUser = await User.findOne({ email: 'admin@optinext.test' });
   if (!anchorUser) {
-    anchorUser = await User.findOne().sort({ createdAt: 1 });
+    anchorUser = await User.findOne({ role: 'admin' });
   }
   if (!anchorUser) {
-    throw new Error('[Migration Aborted] No anchor user found in User collection.');
+    anchorUser = await User.findOne({});
   }
-  console.log(`[OptiNext Migration] Anchor User: ${anchorUser.email || anchorUser._id} (${anchorUser._id})`);
+  if (!anchorUser) {
+    throw new Error('No user found in database to anchor company creation.');
+  }
+  console.log(`[OptiNext Migration] Anchor User resolved: ${anchorUser.email} (${anchorUser._id})`);
 
-  // 2. Resolve or Provision OptiNext Company
+  // 2. Audit & Create/Resolve Company: OptiNext Global
   let optinextCompany = await Company.findOne({ code: OPTINEXT_COMPANY_CONFIG.code });
   if (!optinextCompany && !options.dryRun) {
     optinextCompany = await Company.create({
@@ -83,12 +115,15 @@ async function migrateOptiNextTenant(connection, options = { dryRun: true }) {
     console.log(`[OptiNext Migration] Existing Company resolved: ${optinextCompany.name} (${optinextCompany._id})`);
   }
 
-  // 3. Resolve or Provision FIN_OPS Project
-  let finOpsProject = await Project.findOne({ companyId: optinextCompany._id, code: FIN_OPS_PROJECT_CONFIG.code });
+  // 3. Audit & Create/Resolve Project: FIN_OPS
+  let finOpsProject = await Project.findOne({
+    companyId: optinextCompany._id,
+    code: FIN_OPS_PROJECT_CONFIG.code
+  });
   if (!finOpsProject && !options.dryRun) {
     finOpsProject = await Project.create({
-      ...FIN_OPS_PROJECT_CONFIG,
       companyId: optinextCompany._id,
+      ...FIN_OPS_PROJECT_CONFIG,
       createdBy: anchorUser._id
     });
     console.log(`[OptiNext Migration] Created Project: ${finOpsProject.name} (${finOpsProject._id})`);
@@ -139,59 +174,177 @@ async function migrateOptiNextTenant(connection, options = { dryRun: true }) {
     console.log(`[OptiNext Migration DRY-RUN] Would migrate ${unassignedPAMCount} unassigned PAM records.`);
   }
 
-  // 6. Audit & Map Users to Company & Project Memberships
-  const activeUsers = await User.find({ isActive: true, isVacant: false });
-  console.log(`[OptiNext Migration] Found ${activeUsers.length} active operational users to evaluate for membership.`);
+  // 6. Strict Authorized Roster Evaluation
+  console.log(`\n--- [OptiNext Migration: Evaluating Approved Roster] ---`);
+  
+  const proposedCompanyMemberships = [];
+  const proposedProjectMemberships = [];
+  const existingValidMemberships = [];
+  const proposedRepairs = [];
+  const excludedAccounts = [];
 
-  let createdCompanyMemberships = 0;
-  let createdProjectMemberships = 0;
+  // A. Audit all database users to categorize exclusions
+  const allUsers = await User.find({});
+  for (const u of allUsers) {
+    const isApproved = APPROVED_OPTINEXT_ROSTER.some(r => r.email.toLowerCase() === u.email.toLowerCase());
+    if (!isApproved) {
+      let reason = 'Test fixture / non-operational account';
+      if (u.role === 'super_admin' || u.email.includes('superadmin')) {
+        reason = 'Platform Super Admin (governance role, not tenant member)';
+      } else if (u.email.includes('acme') || u.email.includes('alpha') || u.email.includes('beta')) {
+        reason = 'Foreign company account';
+      }
+      excludedAccounts.push({
+        userId: u._id,
+        email: u.email,
+        role: u.role,
+        reason
+      });
+    }
+  }
 
-  for (const user of activeUsers) {
+  // B. Process each approved identity
+  for (const rosterEntry of APPROVED_OPTINEXT_ROSTER) {
+    const user = await User.findOne({ email: rosterEntry.email });
+    if (!user) {
+      console.warn(`[OptiNext Migration WARNING] Approved roster user not found in database: ${rosterEntry.email}`);
+      continue;
+    }
+
+    // --- Company Membership Check ---
     const existingCompMem = await CompanyMembership.findOne({
       companyId: optinextCompany._id,
       userId: user._id
     });
 
-    const isCompanyAdmin = user.role === 'admin' || user.role === 'company_admin' || user.role === 'super_admin';
-    const compRole = isCompanyAdmin ? 'company_admin' : 'member';
-
-    if (!existingCompMem && !options.dryRun) {
-      await CompanyMembership.create({
-        companyId: optinextCompany._id,
+    if (existingCompMem) {
+      existingValidMemberships.push({
+        type: 'CompanyMembership',
         userId: user._id,
-        role: compRole,
-        isActive: true,
-        createdBy: anchorUser._id
+        email: user.email,
+        role: existingCompMem.role,
+        isActive: existingCompMem.isActive,
+        id: existingCompMem._id
       });
-      createdCompanyMemberships++;
-    } else if (!existingCompMem && options.dryRun) {
-      createdCompanyMemberships++;
+    } else {
+      proposedCompanyMemberships.push({
+        userId: user._id,
+        email: user.email,
+        companyId: optinextCompany._id,
+        companyCode: optinextCompany.code,
+        role: rosterEntry.expectedCompanyRole,
+        action: 'CREATE'
+      });
+
+      if (!options.dryRun) {
+        await CompanyMembership.create({
+          companyId: optinextCompany._id,
+          userId: user._id,
+          role: rosterEntry.expectedCompanyRole,
+          isActive: true,
+          createdBy: anchorUser._id
+        });
+      }
     }
 
+    // --- User Project Membership Check ---
     const existingProjMem = await UserProjectMembership.findOne({
       companyId: optinextCompany._id,
       projectId: finOpsProject._id,
       userId: user._id
     });
 
-    let projectRole = 'employee';
-    if (isCompanyAdmin) projectRole = 'project_admin';
-    else if (user.role === 'manager') projectRole = 'manager';
+    if (existingProjMem) {
+      // Check if membership is healthy or requires repair
+      if (!existingProjMem.isActive) {
+        proposedRepairs.push({
+          type: 'UserProjectMembership_Inactive',
+          membershipId: existingProjMem._id,
+          userId: user._id,
+          email: user.email,
+          currentStatus: 'isActive: false',
+          recommendedFix: 'Set isActive: true to restore administrative access',
+          requiresManualApproval: true
+        });
+      } else {
+        existingValidMemberships.push({
+          type: 'UserProjectMembership',
+          userId: user._id,
+          email: user.email,
+          role: existingProjMem.role,
+          isActive: existingProjMem.isActive,
+          id: existingProjMem._id
+        });
+      }
+    } else {
+      // Check if user is employee@bper.com and EMP-001 placeholder exists
+      let matchedPlaceholder = null;
+      if (user.employeeId) {
+        matchedPlaceholder = await UserProjectMembership.findOne({
+          companyId: optinextCompany._id,
+          projectId: finOpsProject._id,
+          employeeId: user.employeeId,
+          userId: null
+        });
+      }
 
-    if (!existingProjMem && !options.dryRun) {
-      await UserProjectMembership.create({
-        companyId: optinextCompany._id,
-        projectId: finOpsProject._id,
-        userId: user._id,
-        role: projectRole,
-        employeeId: user.employeeId || null,
-        formAccessGranted: user.formAccessGranted !== false,
-        isActive: true,
-        createdBy: anchorUser._id
+      if (matchedPlaceholder) {
+        proposedRepairs.push({
+          type: 'UserProjectMembership_UnlinkedPlaceholder',
+          membershipId: matchedPlaceholder._id,
+          employeeId: user.employeeId,
+          userId: user._id,
+          email: user.email,
+          currentStatus: 'userId: null (Unlinked placeholder)',
+          recommendedFix: `Link membership ${matchedPlaceholder._id} to user ${user.email} (${user._id})`,
+          requiresManualApproval: true
+        });
+      } else {
+        proposedProjectMemberships.push({
+          userId: user._id,
+          email: user.email,
+          companyId: optinextCompany._id,
+          projectId: finOpsProject._id,
+          projectCode: finOpsProject.code,
+          role: rosterEntry.expectedProjectRole,
+          employeeId: user.employeeId || null,
+          action: 'CREATE'
+        });
+
+        if (!options.dryRun) {
+          await UserProjectMembership.create({
+            companyId: optinextCompany._id,
+            projectId: finOpsProject._id,
+            userId: user._id,
+            role: rosterEntry.expectedProjectRole,
+            employeeId: user.employeeId || null,
+            formAccessGranted: user.formAccessGranted !== false,
+            isActive: true,
+            createdBy: anchorUser._id
+          });
+        }
+      }
+    }
+  }
+
+  // Audit existing UPMs to identify test fixture memberships
+  const allFinOpsProjMems = await UserProjectMembership.find({
+    companyId: optinextCompany._id,
+    projectId: finOpsProject._id
+  }).populate('userId', 'email');
+
+  const fixtureMembershipsInFinOps = [];
+  for (const pm of allFinOpsProjMems) {
+    const pmEmail = pm.userId ? pm.userId.email : null;
+    const isApproved = APPROVED_OPTINEXT_ROSTER.some(r => pmEmail && r.email.toLowerCase() === pmEmail.toLowerCase());
+    const isPlaceholder = pm.employeeId === 'EMP-001' && pm.userId === null;
+    if (!isApproved && !isPlaceholder) {
+      fixtureMembershipsInFinOps.push({
+        membershipId: pm._id,
+        email: pmEmail || 'NO_USER_LINK',
+        role: pm.role,
+        employeeId: pm.employeeId
       });
-      createdProjectMemberships++;
-    } else if (!existingProjMem && options.dryRun) {
-      createdProjectMemberships++;
     }
   }
 
@@ -202,34 +355,68 @@ async function migrateOptiNextTenant(connection, options = { dryRun: true }) {
     projectId: finOpsProject._id,
     projectCode: finOpsProject.code,
     projectName: finOpsProject.name,
-    totalWDT: await WDTSubmission.countDocuments(),
-    optinextWDT: optinextWDTCount + (options.dryRun ? 0 : migratedWDT),
-    unassignedWDT: unassignedWDTCount,
-    migratedWDT,
-    totalPAM: await ProcessAnalysis.countDocuments(),
-    optinextPAM: optinextPAMCount + (options.dryRun ? 0 : migratedPAM),
-    unassignedPAM: unassignedPAMCount,
-    migratedPAM,
-    activeUsersEvaluated: activeUsers.length,
-    createdCompanyMemberships,
-    createdProjectMemberships,
+    historicalData: {
+      totalWDT: await WDTSubmission.countDocuments(),
+      optinextWDT: optinextWDTCount + (options.dryRun ? 0 : migratedWDT),
+      unassignedWDT: unassignedWDTCount,
+      migratedWDT,
+      totalPAM: await ProcessAnalysis.countDocuments(),
+      optinextPAM: optinextPAMCount + (options.dryRun ? 0 : migratedPAM),
+      unassignedPAM: unassignedPAMCount,
+      migratedPAM
+    },
+    approvedRosterEvaluation: {
+      approvedUsersCount: APPROVED_OPTINEXT_ROSTER.length,
+      existingValidMembershipsCount: existingValidMemberships.length,
+      proposedCompanyMembershipsCount: proposedCompanyMemberships.length,
+      proposedProjectMembershipsCount: proposedProjectMemberships.length,
+      proposedRepairsCount: proposedRepairs.length,
+      excludedAccountsCount: excludedAccounts.length,
+      testFixturesInFinOpsCount: fixtureMembershipsInFinOps.length
+    },
+    details: {
+      proposedCompanyMemberships,
+      proposedProjectMemberships,
+      proposedRepairs,
+      existingValidMemberships,
+      excludedAccounts,
+      fixtureMembershipsInFinOps
+    },
     dryRun: options.dryRun
   };
 
-  console.log(`[OptiNext Migration Completed] Summary:`, JSON.stringify(summary, null, 2));
+  console.log(`\n=================== OPTINEXT MIGRATION SUMMARY ===================`);
+  console.log(`Mode: ${options.dryRun ? 'DRY-RUN (No database writes)' : 'EXECUTE'}`);
+  console.log(`WDT Submissions: ${summary.historicalData.optinextWDT} linked to OptiNext, ${summary.historicalData.unassignedWDT} unassigned.`);
+  console.log(`PAM Records: ${summary.historicalData.optinextPAM} linked to OptiNext, ${summary.historicalData.unassignedPAM} unassigned.`);
+  console.log(`Proposed New Company Memberships: ${proposedCompanyMemberships.length}`);
+  proposedCompanyMemberships.forEach(m => console.log(`  + CompanyMembership: ${m.email} -> ${m.role}`));
+  console.log(`Proposed New Project Memberships: ${proposedProjectMemberships.length}`);
+  proposedProjectMemberships.forEach(m => console.log(`  + ProjectMembership: ${m.email} -> ${m.role}`));
+  console.log(`Proposed Repairs (Requires Separate Admin Approval): ${proposedRepairs.length}`);
+  proposedRepairs.forEach(r => console.log(`  ! Repair [${r.type}]: ${r.email || r.employeeId} - ${r.recommendedFix}`));
+  console.log(`Excluded Foreign/SuperAdmin/Fixture Accounts: ${excludedAccounts.length}`);
+  console.log(`==================================================================\n`);
+
   return summary;
 }
 
 if (require.main === module) {
   const isDryRun = process.argv.includes('--dry-run') || !process.argv.includes('--execute');
+  const allowExecution = process.argv.includes('--execute');
+  const confirmRemoteProduction = process.argv.includes('--confirm-production');
   const mongoUri = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27018/bper_isolated_local_test';
 
   mongoose.connect(mongoUri).then(async (conn) => {
     try {
-      await migrateOptiNextTenant(mongoose.connection, { dryRun: isDryRun });
+      await migrateOptiNextTenant(mongoose.connection, {
+        dryRun: isDryRun,
+        allowExecution,
+        confirmRemoteProduction
+      });
       process.exit(0);
     } catch (err) {
-      console.error('[OptiNext Migration Error]:', err);
+      console.error('[OptiNext Migration Error]:', err.message || err);
       process.exit(1);
     }
   });
@@ -238,5 +425,6 @@ if (require.main === module) {
 module.exports = {
   migrateOptiNextTenant,
   OPTINEXT_COMPANY_CONFIG,
-  FIN_OPS_PROJECT_CONFIG
+  FIN_OPS_PROJECT_CONFIG,
+  APPROVED_OPTINEXT_ROSTER
 };
