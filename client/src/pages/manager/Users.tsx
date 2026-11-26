@@ -67,7 +67,7 @@ const initialCreateUserForm: CreateUserFormState = {
 	email: '',
 	role: 'employee',
 	jobTitle: '',
-	jobBand: 'L1',
+	jobBand: 'E1–E4',
 	department: '',
 	location: '',
 	employeeType: 'Full-time',
@@ -980,9 +980,12 @@ export default function UsersPage() {
 											onChange={(event) => setCreateUserForm((prev) => ({ ...prev, jobBand: event.target.value }))}
 											className="h-11 w-full rounded-xl border border-[#D8E2F0] bg-white px-4 text-sm font-medium text-[#243A59] outline-none focus:border-[#7BA0CF] focus:ring-2 focus:ring-[#D7E6F7]"
 										>
-											<option>L1</option>
-											<option>L2</option>
-											<option>M4</option>
+											<option value="VP & AVP">VP & AVP</option>
+											<option value="GM">GM</option>
+											<option value="E1–E4">E1–E4</option>
+											<option value="O3–O5">O3–O5</option>
+											<option value="O2 and Below + Intern">O2 and Below + Intern</option>
+											<option value="Outsourced / Contractual">Outsourced / Contractual</option>
 										</select>
 									</label>
 

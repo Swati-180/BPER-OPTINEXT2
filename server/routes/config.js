@@ -5,9 +5,9 @@ const requireRoles = require('../middleware/roleAccess');
 const { getAssumptions, updateAssumptions } = require('../controllers/configController');
 
 // GET /api/config/assumptions: Available to Admins and Managers for dashboard/report consumption
-router.get('/assumptions', verifyToken, requireRoles(['admin', 'manager']), getAssumptions);
+router.get('/assumptions', verifyToken, requireRoles(['admin', 'super_admin', 'company_admin', 'manager']), getAssumptions);
 
 // PUT /api/config/assumptions: Restricted strictly to Administrators
-router.put('/assumptions', verifyToken, requireRoles(['admin']), updateAssumptions);
+router.put('/assumptions', verifyToken, requireRoles(['admin', 'super_admin', 'company_admin']), updateAssumptions);
 
 module.exports = router;

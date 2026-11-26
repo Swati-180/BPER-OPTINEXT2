@@ -2185,7 +2185,7 @@ async function getWorkforceCapacityReport(req, res) {
       ).map((u) => [String(u.employeeId || '').trim(), u])
     );
 
-    const { standardizeGrade, ORDERED_GRADE_BANDS } = require('../utils/gradeStandardizer');
+    const { standardizeGrade, APPROVED_GRADE_BANDS } = require('../utils/gradeStandardizer');
 
     // Verified October 2026 source contract resources whose employeeType was omitted in historical DB import
     const OCT_2026_VERIFIED_CONTRACT_IDS = new Set(['14406', '35781', '67815', '85047']);
@@ -2232,27 +2232,48 @@ async function getWorkforceCapacityReport(req, res) {
       }
     });
 
-    // Helper: Aggregate by Standardized Grade Band
+    // Helper: Aggregate by Standardized Grade Band (Exactly the 6 approved bands, with Unmapped as separate quality metrics if present)
     const buildBandDistribution = (itemRows) => {
       const bandMap = new Map();
-      ORDERED_GRADE_BANDS.forEach((band) => {
+      APPROVED_GRADE_BANDS.forEach((band) => {
         bandMap.set(band, { band, hours: 0, fte: 0, headcount: new Set() });
       });
 
+      let unmappedHours = 0;
+      const unmappedHeadcount = new Set();
+
       itemRows.forEach((r) => {
-        const bandKey = r.effectiveStandardizedBand || 'Unmapped';
-        const current = bandMap.get(bandKey) || { band: bandKey, hours: 0, fte: 0, headcount: new Set() };
-        current.hours += r.monthlyHours;
-        if (r.employeeId && r.employeeId !== 'NA') current.headcount.add(r.employeeId);
-        bandMap.set(bandKey, current);
+        const bandKey = r.effectiveStandardizedBand;
+        if (APPROVED_GRADE_BANDS.includes(bandKey)) {
+          const current = bandMap.get(bandKey);
+          current.hours += r.monthlyHours;
+          if (r.employeeId && r.employeeId !== 'NA') current.headcount.add(r.employeeId);
+          bandMap.set(bandKey, current);
+        } else {
+          unmappedHours += r.monthlyHours;
+          if (r.employeeId && r.employeeId !== 'NA') unmappedHeadcount.add(r.employeeId);
+        }
       });
 
-      return Array.from(bandMap.values()).map((b) => ({
+      const approvedBands = Array.from(bandMap.values()).map((b) => ({
         band: b.band,
         hours: Number(b.hours.toFixed(1)),
         fte: Number((b.hours / standardMonthlyHours).toFixed(2)),
         headcount: b.headcount.size,
       }));
+
+      // If unmapped data exists, include it with explicit dataQualityStatus flag
+      if (unmappedHours > 0 || unmappedHeadcount.size > 0) {
+        approvedBands.push({
+          band: 'Unmapped',
+          hours: Number(unmappedHours.toFixed(1)),
+          fte: Number((unmappedHours / standardMonthlyHours).toFixed(2)),
+          headcount: unmappedHeadcount.size,
+          isDataQualityStatus: true,
+        });
+      }
+
+      return approvedBands;
     };
 
     // Helper: Aggregate by Department
@@ -2384,8 +2405,8 @@ async function getWorkforceCapacityReport(req, res) {
       };
     }).sort((a, b) => b.gapFte - a.gapFte);
 
-    // Grade Band level Gap Matrix
-    const gradeBandGapMatrix = ORDERED_GRADE_BANDS.map((band) => {
+    // Grade Band level Gap Matrix (6 Approved Grade Bands + optional separate data quality row)
+    const gradeBandGapMatrix = APPROVED_GRADE_BANDS.map((band) => {
       const bandStaffed = staffedRows.filter((r) => r.effectiveStandardizedBand === band);
       const bandVacant = vacantRows.filter((r) => r.effectiveStandardizedBand === band);
 
@@ -2406,6 +2427,28 @@ async function getWorkforceCapacityReport(req, res) {
         status: bandRequiredHours > bandAvailableHours ? 'Capacity Deficit' : 'Balanced / Surplus',
       };
     });
+
+    // Check if any unmapped records exist
+    const unmappedStaffed = staffedRows.filter((r) => !APPROVED_GRADE_BANDS.includes(r.effectiveStandardizedBand));
+    const unmappedVacant = vacantRows.filter((r) => !APPROVED_GRADE_BANDS.includes(r.effectiveStandardizedBand));
+    if (unmappedStaffed.length > 0 || unmappedVacant.length > 0) {
+      const unmappedStaffedEmps = new Set(unmappedStaffed.map((r) => r.employeeId)).size;
+      const unmappedStaffedHours = unmappedStaffed.reduce((sum, r) => sum + r.monthlyHours, 0);
+      const unmappedVacantHours = unmappedVacant.reduce((sum, r) => sum + r.monthlyHours, 0);
+      const unmappedAvailableHours = unmappedStaffedEmps * standardMonthlyHours;
+      const unmappedRequiredHours = unmappedStaffedHours + unmappedVacantHours;
+      gradeBandGapMatrix.push({
+        gradeBand: 'Unmapped',
+        isDataQualityStatus: true,
+        staffedHeadcount: unmappedStaffedEmps,
+        availableCapacityFte: unmappedStaffedEmps,
+        staffedWorkloadFte: Number((unmappedStaffedHours / standardMonthlyHours).toFixed(2)),
+        vacantPlannedFte: Number((unmappedVacantHours / standardMonthlyHours).toFixed(2)),
+        requiredTotalFte: Number((unmappedRequiredHours / standardMonthlyHours).toFixed(2)),
+        gapFte: Number(((unmappedRequiredHours - unmappedAvailableHours) / standardMonthlyHours).toFixed(2)),
+        status: unmappedRequiredHours > unmappedAvailableHours ? 'Capacity Deficit' : 'Balanced / Surplus',
+      });
+    }
 
     const viewC_WorkforceGapAnalysis = {
       summary: {

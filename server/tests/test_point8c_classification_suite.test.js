@@ -19,10 +19,18 @@ const path = require('path');
 const mongoose = require('mongoose');
 const jwt = require('jsonwebtoken');
 
-const rootDir = path.resolve(__dirname, '..');
-require('dotenv').config({ path: path.join(rootDir, '.env') });
-
-const JWT_SECRET = process.env.JWT_SECRET || 'bper_jwt_secret_key_2024';
+// Explicitly check server/.env and parent .env
+const envCandidates = [
+  path.resolve(__dirname, '../.env'),
+  path.resolve(__dirname, '../../BPER-OPTINEXT2/server/.env'),
+  path.resolve(__dirname, '../../BPER-OPTINEXT2/.env')
+];
+for (const envPath of envCandidates) {
+  if (require('fs').existsSync(envPath)) {
+    require('dotenv').config({ path: envPath });
+  }
+}
+const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret_key';
 
 const adminToken = jwt.sign({ id: '6b06c85eb4a87cbf1f4d5076', userId: '6b06c85eb4a87cbf1f4d5076', role: 'super_admin', email: 'superadmin@bper.test' }, JWT_SECRET);
 const employeeToken = jwt.sign({ id: '6abe04ff6d2aa9e94496fc71', userId: '6abe04ff6d2aa9e94496fc71', role: 'employee', email: 'employee@bper.com' }, JWT_SECRET);
